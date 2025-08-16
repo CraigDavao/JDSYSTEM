@@ -1,0 +1,183 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 3rem; /* 👈 top/bottom 0.8rem, left/right 3rem */
+  background: #fff;
+}
+
+
+/* Logo */
+.logo img {
+  height: 35px; /* adjust size */
+  width: auto;
+}
+
+/* Navigation Links */
+.link-container {
+  flex: 1; /* take available space */
+  display: flex;
+  justify-content: center; /* center links */
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-links .link a {
+  text-decoration: none;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.nav-links .link a:hover {
+  color: #000;
+}
+
+/* Icons */
+.icon-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  font-size: 1.2rem;
+  color: #444;
+}
+
+.icon-header a {
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.icon-header a:hover {
+  color: #000;
+}
+
+/* Badge for wishlist/cart */
+.icon-header .badge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.6rem;
+  background: #f06;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* General dropdown container */
+.has-dropdown {
+  position: relative;
+}
+
+/* Full width dropdown */
+.has-dropdown .dropdown {
+  position: absolute;
+  top: 100%;              /* below the parent link */
+  left: 0;
+  width: 100vw;           /* full viewport width */
+  margin-top: 10px;       /* gap between link and dropdown */
+  background: #fff;       /* dropdown background */
+  display: none;          /* hidden by default */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 20px;          /* spacing inside dropdown */
+  z-index: 999;
+}
+
+/* Show when parent has "open" */
+.has-dropdown.open .dropdown {
+  display: block;
+}
+
+
+
+/* Mega dropdown container */
+.mega-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%; /* full width */
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  padding: 2rem;
+  z-index: 200;
+}
+
+/* Layout inside */
+.mega-content {
+  display: flex;
+  justify-content: space-between;
+  max-width: 1200px; /* optional center width */
+  margin: 0 auto;
+  gap: 2rem;
+}
+
+/* Left categories */
+.mega-categories {
+  flex: 1;
+}
+
+.mega-categories h4 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.mega-categories ul {
+  list-style: none;
+}
+
+.mega-categories li {
+  margin-bottom: 0.5rem;
+}
+
+.mega-categories a {
+  text-decoration: none;
+  color: #444;
+  transition: color 0.3s;
+}
+
+.mega-categories a:hover {
+  color: #000;
+}
+
+/* Right images */
+.mega-images {
+  flex: 2;
+  display: flex;
+  gap: 1rem;
+}
+
+.mega-images img {
+  width: 100%;
+  max-width: 200px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+/* Hover show */
+.has-dropdown:hover .mega-dropdown {
+  display: block;
+}
+
+.has-dropdown.open .mega-dropdown {
+  display: block;
+}
+
