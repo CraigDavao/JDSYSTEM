@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jolly Dolly - Troubleshooting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        header {
+            background: #6a11cb;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .card {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        h2 {
+            color: #6a11cb;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        h3 {
+            color: #2575fc;
+            margin: 15px 0 10px;
+        }
+        ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .path-test {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .test-button {
+            background: #6a11cb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        .test-button:hover {
+            background: #2575fc;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .file-structure {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            line-height: 1.8;
+        }
+        .solution {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Jolly Dolly Troubleshooting Guide</h1>
+            <p class="subtitle">Identify and fix issues with your CSS and JavaScript</p>
+        </header>
+        
+        <div class="content">
+            <div class="card">
+                <h2>Common Issues</h2>
+                
+                <h3>1. File Path Problems</h3>
+                <p>The most common issue is incorrect file paths. Check if your paths are correct:</p>
+                <ul>
+                    <li>Absolute path: <code>/jollydolly-website/css/style.css</code></li>
+                    <li>Relative path: <code>../css/style.css</code> (depends on file location)</li>
+                </ul>
+                
+                <h3>2. File Permissions</h3>
+                <p>Ensure your CSS and JS files have proper read permissions:</p>
+                <ul>
+                    <li>On Linux: <code>chmod 644 css/style.css</code></li>
+                    <li>On Windows: Check file properties</li>
+                </ul>
+                
+                <h3>3. Browser Caching</h3>
+                <p>Your browser might be loading old cached versions:</p>
+                <ul>
+                    <li>Hard refresh with <code>Ctrl+F5</code> (Windows) or <code>Cmd+Shift+R</code> (Mac)</li>
+                    <li>Clear browser cache entirely</li>
+                </ul>
+                
+                <h3>4. Syntax Errors</h3>
+                <p>Check for errors in your CSS/JS files:</p>
+                <ul>
+                    <li>Use browser developer tools (F12)</li>
+                    <li>Check the Console tab for JavaScript errors</li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h2>Your File Structure</h2>
+                <div class="file-structure">
+                    /jollydolly-website<br>
+                    │── /connection<br>
+                    │   └── connection.php<br>
+                    │── /includes<br>
+                    │   ├── header.php<br>
+                    │── /uploads<br>
+                    │── /css<br>
+                    │   └── style.css<br>
+                    │── /js<br>
+                    │   └── script.js<br>
+                    │── /pages<br>
+                    │   ├── products.php<br>
+                    │   ├── product-details.php<br>
+                    │   ├── cart.php<br>
+                    │   ├── checkout.php<br>
+                    │   ├── favorites.php<br>
+                    │   ├── purchase-history.php<br>
+                    │── index.php<br>
+                    │── functions.php<br>
+                    │── config.php
+                </div>
+                
+                <h2>Path Testing</h2>
+                <p>Test if your browser can access these files:</p>
+                <div class="path-test">
+                    <p id="css-test">CSS File: Testing...</p>
+                    <p id="js-test">JS File: Testing...</p>
+                </div>
+                
+                <h2>Quick Fixes</h2>
+                <div class="solution">
+                    <p><strong>Try these solutions:</strong></p>
+                    <ol>
+                        <li>Use absolute paths with <code>&lt;?php echo SITE_URL; ?&gt;</code></li>
+                        <li>Check file permissions</li>
+                        <li>Clear browser cache</li>
+                        <li>Verify files exist in the correct locations</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Jolly Dolly Website Troubleshooting | Check the browser console (F12) for detailed error messages</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Test CSS path
+            testFileExists('/jollydolly-website/css/style.css', 'css-test');
+            
+            // Test JS path
+            testFileExists('/jollydolly-website/js/script.js', 'js-test');
+            
+            function testFileExists(url, elementId) {
+                fetch(url, { method: 'HEAD' })
+                .then(response => {
+                    const element = document.getElementById(elementId);
+                    if (response.ok) {
+                        element.innerHTML = element.innerHTML.replace('Testing...', '<span class="success">✓ Found</span>');
+                    } else {
+                        element.innerHTML = element.innerHTML.replace('Testing...', '<span class="error">✗ Not found</span>');
+                    }
+                })
+                .catch(() => {
+                    const element = document.getElementById(elementId);
+                    element.innerHTML = element.innerHTML.replace('Testing...', '<span class="error">✗ Error loading</span>');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

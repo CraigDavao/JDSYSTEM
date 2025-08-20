@@ -1,0 +1,297 @@
+  * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 400;
+            color: #333;
+            line-height: 1.6;
+            background-color: #f9f9f9;
+        }
+        
+        /* GingerSnaps-inspired typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            color: #2a2a2a;
+            letter-spacing: 0.5px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1.2rem;
+        }
+        
+        h3 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        h4 {
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+            font-weight: 500;
+        }
+        
+        p {
+            margin-bottom: 1.2rem;
+            line-height: 1.7;
+        }
+        
+        a {
+            color: #8b5a2b;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        a:hover {
+            color: #6d4524;
+        }
+        
+        /* Navigation styling with GingerSnaps inspiration */
+        nav.site-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 3rem;
+            background: #fff;
+            position: relative;
+            z-index: 1001;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+        
+        .link-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            position: static;
+        }
+        
+        .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 2.2rem;
+            position: static;
+        }
+        
+        .nav-links .link a {
+            text-decoration: none;
+            color: #2a2a2a;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .nav-links .link a:hover {
+            color: #8b5a2b;
+        }
+        
+        .icon-header {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #444;
+        }
+        
+        .icon-header a {
+            position: relative;
+            color: inherit;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .icon-header a:hover {
+            color: #8b5a2b;
+        }
+        
+        .icon-header .badge {
+            position: absolute;
+            top: -0.4rem;
+            right: -0.6rem;
+            background: #e8a598;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 0.65rem;
+            width: 1.1rem;
+            height: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+        }
+        
+        .has-dropdown {
+            position: static;
+        }
+        
+        /* Mega dropdown styles */
+        .mega-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #fff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            padding: 2.2rem 0;
+            z-index: 1000;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        /* Show when JS adds .open */
+        .has-dropdown.open .mega-dropdown {
+            display: block;
+        }
+        
+        .mega-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            gap: 3rem;
+            padding: 0 2rem;
+        }
+        
+        .mega-categories {
+            flex: 1;
+        }
+        
+        .mega-categories h4 {
+            font-size: 1.2rem;
+            margin-bottom: 1.2rem;
+            color: #2a2a2a;
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        
+        .mega-categories ul {
+            list-style: none;
+        }
+        
+        .mega-categories li {
+            margin-bottom: 0.7rem;
+        }
+        
+        .mega-categories a {
+            text-decoration: none;
+            color: #555;
+            transition: color 0.3s;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 400;
+            font-size: 0.95rem;
+        }
+        
+        .mega-categories a:hover {
+            color: #8b5a2b;
+        }
+        
+        .mega-images {
+            flex: 2;
+            display: flex;
+            gap: 1.2rem;
+        }
+        
+        .mega-images img {
+            width: 100%;
+            max-width: 220px;
+            border-radius: 6px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .mega-images img:hover {
+            transform: scale(1.03);
+        }
+        
+        /* Content styling */
+        .content {
+            max-width: 1200px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+        
+        .content h1 {
+            text-align: center;
+            font-size: 2.8rem;
+            color: #2a2a2a;
+            margin-bottom: 2rem;
+        }
+        
+        .content p {
+            text-align: center;
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            color: #555;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .product-card {
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        .product-image {
+            height: 250px;
+            background-color: #f7f7f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+        
+        .product-info {
+            padding: 1.2rem;
+        }
+        
+        .product-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .product-info .price {
+            font-weight: 600;
+            color: #8b5a2b;
+            font-size: 1.1rem;
+        }
+        
