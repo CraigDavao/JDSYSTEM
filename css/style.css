@@ -186,7 +186,7 @@
         
         .mega-content {
             max-width: 1200px;
-            margin: 0 auto;
+            margin:  0 auto;
             display: flex;
             justify-content: space-between;
             gap: 3rem;
@@ -236,7 +236,6 @@
         .mega-images img {
             width: 100%;
             max-width: 220px;
-            border-radius: 6px;
             object-fit: cover;
             transition: transform 0.3s ease;
         }
@@ -257,7 +256,6 @@
         .mega-content.four-cols .mega-images img {
             width: 100%;
             max-width: 200px;
-            border-radius: 6px;
             object-fit: cover;
             transition: transform 0.3s ease;
         }
@@ -277,7 +275,6 @@
         .mega-content.five-cols .mega-images img {
             width: 100%;
             max-width: 200px;
-            border-radius: 6px;
             object-fit: cover;
             transition: transform 0.3s ease;
         }
@@ -321,7 +318,6 @@
         .mega-content.three-cols .mega-images img {
             width: 100%;
             max-width: 220px;
-            border-radius: 6px;
             object-fit: cover;
             transition: transform 0.3s ease;
         }
@@ -339,19 +335,22 @@
             background: rgba(255,255,255,0.98);
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* move content to top */
-            padding-top: 10vh; /* adjust vertical position */
+            align-items: flex-start;
+            padding-top: 5vh; /* adjust vertical start */
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.4s ease, visibility 0.4s ease;
+            transform: translateY(-20px); /* start slightly above */
+            transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
             z-index: 2000;
         }
 
-
+        /* Open state */
         .search-dropdown.open {
             opacity: 1;
             visibility: visible;
+            transform: translateY(0); /* slide to position */
         }
+
 
         .search-container {
             text-align: center;
