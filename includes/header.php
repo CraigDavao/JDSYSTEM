@@ -37,7 +37,7 @@ $conn->set_charset("utf8mb4");
 <nav class="site-nav">
     <div class="logo">
         <a href="<?php echo SITE_URL; ?>index.php">
-            <img src="uploads/logo.jpg" alt="Jolly Dolly Logo">
+            <img src="<?php echo SITE_URL; ?>uploads/logo.jpg" alt="Logo">
         </a>
     </div>
 
@@ -45,11 +45,13 @@ $conn->set_charset("utf8mb4");
         <ul class="nav-links">
             <!-- NEW with mega dropdown -->
             <li class="link has-dropdown">
-                <a href="#" class="dropdown-toggle">
+                <a href="<?php echo SITE_URL; ?>pages/new.php?category=all" class="dropdown-toggle">
                     NEW
                     <svg class="hdt-menu-item-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="7" viewBox="0 0 10 7" fill="none">
-                        <path d="M10 1.24243L5 6.24243L0 1.24243L0.8875 0.354932L5 4.46743L9.1125 0.354931L10 1.24243Z" fill="currentColor"></path>
-                    </svg>
+                    <path d="M10 1.24243L5 6.24243L0 1.24243L0.8875 0.354932L5 4.46743L9.1125 0.354931L10 1.24243Z" fill="currentColor"></path>
+                </svg>
+                 </a>
+
                 </a>
 
                 <div class="mega-dropdown">
@@ -57,12 +59,13 @@ $conn->set_charset("utf8mb4");
                         <div class="mega-categories">
                             <h4>Categories</h4>
                             <ul>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=girls">Girls</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=boys">Boys</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=baby-girls">Baby Girls</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=baby-boys">Baby Boys</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=newborn">Newborn</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/girls.php?category=girls">Girls</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/boys.php?category=boys">Boys</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/babygirls.php?category=baby-girls">Baby Girls</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/babyboys.php?category=baby-boys">Baby Boys</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/newborn.php?category=newborn">Newborn</a></li>
                             </ul>
+
                         </div>
 
                         <div class="mega-images">

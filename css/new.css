@@ -1,0 +1,87 @@
+.new-header {
+     max-width:1440px;  /* wider container */
+     margin:40px auto 20px;
+     padding:0 20px;   /* more breathing space */
+     text-align:center;
+}
+
+.new-title { 
+    font-size:32px; 
+    font-weight:600; 
+    margin:0; 
+}
+
+.subtitle { 
+    font-size:16px; 
+    color:#555; 
+    margin:8px 0 20px; 
+}
+
+.product-grid {
+  max-width:1440px;   /* wider grid */
+  margin:0 auto; 
+  padding:0 20px;
+  display:grid; 
+  grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); /* slightly bigger cards */
+  gap:35px; /* more space between cards */
+}
+
+.product-card {
+  display:flex; 
+  flex-direction:column; 
+  text-decoration:none; 
+  background: transparent;
+  color:#000;
+}
+
+.product-thumb {
+  width: 100%;
+  height: 400px;        /* fixed height */
+  object-fit: contain;  /* keep proportions, no cropping */
+  border-radius: 0;     /* no rounded corners */
+  background: transparent; /* remove white/gray background */
+  transition: transform .3s ease;
+}
+.product-card:hover .product-thumb { 
+  transform: scale(1.03); 
+}
+
+.product-info { 
+    margin-top:12px; 
+    text-align:left; 
+}
+
+.product-name { 
+    font-size:15px; 
+    font-weight:400; 
+    margin:0 0 4px; 
+    color:#111; 
+}
+
+.product-price { 
+    font-size:16px; 
+    font-weight:600; 
+    color:#111; 
+}
+
+.pager { 
+    max-width:1440px; 
+    margin:40px auto; 
+    display:flex; 
+    gap:8px; 
+    justify-content:center; 
+}
+
+.pager a, .pager span {
+  border: 1px solid #ddd; 
+  text-decoration: none; 
+  color: #333; 
+  font-size: 14px;
+  background: transparent; /* removed white background */
+}
+
+.pager .current { 
+    background:#111; 
+    color:#fff; 
+    border-color:#111; 
+}
