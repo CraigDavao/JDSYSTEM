@@ -466,4 +466,113 @@
             color: #8b5a2b;
             font-size: 1.1rem;
         }
-        
+
+     /* Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000;
+}
+
+/* Modal Box */
+.modal-box {
+  background: #fff;
+  padding: 2.5rem;
+  width: 500px;
+  max-width: 95%;
+  border-radius: 0;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  position: relative;
+  animation: fadeIn 0.3s ease;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Close button (X) */
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  color: #2b2115;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+/* Title */
+.form-container h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #2b2115;
+  text-transform: capitalize;
+}
+
+/* Inputs */
+.form-container input {
+  width: 100%;
+  padding: 0.9rem;
+  margin: 0.7rem 0;
+  border: 1px solid #ddd;
+  border-radius: 0;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.form-container input:focus {
+  border-color: #8b5a2b;
+}
+
+/* Links (Forgot password + bottom links) */
+.form-container a {
+  font-size: 0.9rem;
+  color: #2b2115;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.form-container a:hover {
+  opacity: 0.7;
+}
+
+/* Bottom section (button + link side by side) */
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  gap: 1rem;
+}
+
+/* Button */
+.form-container button {
+  flex: 1;
+  padding: 1rem;
+  background: #f5f5f5;
+  color: #2b2115;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid #ddd;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.form-container button:hover {
+  background: #e8e8e8;
+}
+
+/* Hide initially */
+.hidden { display: none; }
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px);}
+  to   { opacity: 1; transform: translateY(0);}
+}
+

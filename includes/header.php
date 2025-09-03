@@ -24,20 +24,20 @@ $conn->set_charset("utf8mb4");
     <title>JDSystem</title>
 
     <!-- CSS -->
-    <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/style.css">
+    <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/style.css?v=<?= time(); ?>">
 
     <!-- Font Awesome (for icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <!-- JS -->
-    <script src="<?php echo SITE_URL; ?>js/script.js" defer></script>
+    <script src="<?php echo SITE_URL; ?>js/script.js?v=<?= time(); ?>" defer></script>
 </head>
 
 <body>
 <nav class="site-nav">
     <div class="logo">
         <a href="<?php echo SITE_URL; ?>index.php">
-            <img src="uploads/jdlogo.jpg" alt="Jolly Dolly Logo">
+            <img src="uploads/logo.jpg" alt="Jolly Dolly Logo">
         </a>
     </div>
 
@@ -234,8 +234,71 @@ $conn->set_charset("utf8mb4");
         </div>
 
 
-        <a href="<?php echo SITE_URL; ?>pages/profile.php" title="Profile"><i class="fa-regular fa-user"></i></a>
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <!-- If logged in, go to dashboard -->
+            <a href="<?php echo SITE_URL; ?>dashboard.php" title="My Account">
+                <i class="fa-regular fa-user"></i>
+            </a>
+        <?php else: ?>
+            <!-- If NOT logged in, open modal -->
+            <a href="#" id="profile-icon" title="Login / Register">
+                <i class="fa-regular fa-user"></i>
+            </a>
+        <?php endif; ?>
+
         <a href="<?php echo SITE_URL; ?>pages/favorites.php" title="Wishlist"><i class="fa-regular fa-heart"></i><span class="badge">0</span></a>
         <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart"><i class="fa-solid fa-bag-shopping"></i><span class="badge">0</span></a>
     </div>
 </nav>
+
+<!-- Profile Modal -->
+<div id="profile-modal" class="modal-overlay">
+  <div class="modal-box">
+    <!-- Close Button -->
+    <button class="modal-close" id="close-modal">&times;</button>
+
+    <!-- Login Form -->
+    <div class="form-container" id="login-form">
+      <h2>Log in</h2>
+      <form method="POST" action="auth/login.php">
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+
+        <a href="#" id="forgot-password">Forgot your password?</a>
+
+        <div class="form-actions">
+          <button type="submit">Log in</button>
+          <a href="#" id="show-register">New customer? Create your account</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Register Form -->
+<div class="form-container hidden" id="register-form">
+  <h2>Create account</h2>
+  <form method="POST" action="auth/register.php">
+    <input type="text" name="fullname" placeholder="Full Name" required>
+    <input type="text" name="number" placeholder="Mobile Number" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+
+    <div class="form-actions">
+      <button type="submit">Register</button>
+      <a href="#" id="show-login">Already have an account? Log in</a>
+    </div>
+  </form>
+</div>
+
+
+    <!-- Verification Form -->
+    <div class="form-container hidden" id="verify-form">
+      <h2>Verify account</h2>
+      <form method="POST" action="auth/verify.php">
+        <input type="hidden" name="email" id="verify-email">
+        <input type="text" name="code" placeholder="Enter Verification Code *" required>
+        <button type="submit">Verify</button>
+      </form>
+    </div>
+  </div>
+</div>
+
