@@ -1,87 +1,108 @@
 .new-header {
-     max-width:1440px;  /* wider container */
-     margin:40px auto 20px;
-     padding:0 20px;   /* more breathing space */
-     text-align:center;
+  max-width:1440px;  
+  margin:40px auto 20px;
+  padding:0 20px;
+  text-align:center;
 }
 
 .new-title { 
-    font-size:32px; 
-    font-weight:600; 
-    margin:0; 
+  font-size:32px; 
+  font-weight:600; 
+  margin:0; 
 }
 
 .subtitle { 
-    font-size:16px; 
-    color:#555; 
-    margin:8px 0 20px; 
+  font-size:16px; 
+  color:#555; 
+  margin:8px 0 20px; 
 }
 
 .product-grid {
-  max-width:1440px;   /* wider grid */
+  max-width:1440px;   
   margin:0 auto; 
   padding:0 20px;
   display:grid; 
-  grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); /* slightly bigger cards */
-  gap:35px; /* more space between cards */
+  grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); 
+  gap:35px;
 }
 
 .product-card {
   display:flex; 
   flex-direction:column; 
   text-decoration:none; 
-  background: transparent;
   color:#000;
+  background:none;   /* no card background */
+  box-shadow:none;   /* remove any shadow if browser applies */
+  border:none;       /* no border */
+  /* Remove all transitions and transformations */
+  transition: none !important;
+  transform: none !important;
+}
+
+/* Remove all hover effects */
+.product-card:hover {
+  transform: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  opacity: 1 !important;
 }
 
 .product-thumb {
-  width: 100%;
-  height: 400px;        /* fixed height */
-  object-fit: contain;  /* keep proportions, no cropping */
-  border-radius: 0;     /* no rounded corners */
-  background: transparent; /* remove white/gray background */
-  transition: transform .3s ease;
+  width:100%;
+  height:400px;        
+  object-fit:contain;   /* keep proportions */
+  background:none;      /* transparent, no background */
+  border:none;          /* remove border */
+  /* Remove transition that was causing hover effects */
+  transition: none !important;
+  transform: none !important;
 }
-.product-card:hover .product-thumb { 
-  transform: scale(1.03); 
+
+/* Remove hover effects on product thumb */
+.product-card:hover .product-thumb {
+  transform: none !important;
+  scale: 1 !important;
+  opacity: 1 !important;
 }
 
 .product-info { 
-    margin-top:12px; 
-    text-align:left; 
+  margin-top:12px; 
+  text-align:left; 
 }
 
 .product-name { 
-    font-size:15px; 
-    font-weight:400; 
-    margin:0 0 4px; 
-    color:#111; 
+  font-size:15px; 
+  font-weight:400; 
+  margin:0 0 4px; 
+  color:#111; 
+  text-transform: uppercase;
 }
 
 .product-price { 
-    font-size:16px; 
-    font-weight:600; 
-    color:#111; 
+  font-size:16px; 
+  font-weight:600; 
+  color:#111; 
 }
 
 .pager { 
-    max-width:1440px; 
-    margin:40px auto; 
-    display:flex; 
-    gap:8px; 
-    justify-content:center; 
+  max-width:1440px; 
+  margin:40px auto; 
+  display:flex; 
+  gap:8px; 
+  justify-content:center; 
 }
 
 .pager a, .pager span {
-  border: 1px solid #ddd; 
-  text-decoration: none; 
-  color: #333; 
-  font-size: 14px;
-  background: transparent; /* removed white background */
+  border:1px solid #ddd; 
+  text-decoration:none; 
+  color:#333; 
+  font-size:14px;
+  background:none;  /* transparent */
 }
 
 .pager .current { 
-    background:#111; 
-    color:#fff; 
-    border-color:#111; 
+  background:#111; 
+  color:#fff; 
+  border-color:#111; 
 }

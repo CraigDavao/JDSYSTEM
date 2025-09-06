@@ -77,52 +77,54 @@ $conn->set_charset("utf8mb4");
                 </div>
             </li>
 
-            <!-- KID with mega dropdown -->
-            <li class="link has-dropdown">
-                <a href="#" class="dropdown-toggle">
-                    KID
-                    <svg class="hdt-menu-item-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="7" viewBox="0 0 10 7" fill="none">
-                        <path d="M10 1.24243L5 6.24243L0 1.24243L0.8875 0.354932L5 4.46743L9.1125 0.354931L10 1.24243Z" fill="currentColor"></path>
-                    </svg>
-                </a>
+          <!-- KID with mega dropdown -->
+<li class="link has-dropdown">
+    <a href="<?= SITE_URL ?>pages/kid.php" class="dropdown-toggle">
+        KID
+        <svg class="hdt-menu-item-arrow" xmlns="http://www.w3.org/2000/svg" width="10" height="7" viewBox="0 0 10 7" fill="none">
+            <path d="M10 1.24243L5 6.24243L0 1.24243L0.8875 0.354932L5 4.46743L9.1125 0.354931L10 1.24243Z" fill="currentColor"></path>
+        </svg>
+    </a>
 
-                <div class="mega-dropdown">
-                    <div class="mega-content four-cols">
-                        <!-- Girls -->
-                        <div class="mega-categories">
-                            <h4>Girls</h4>
-                            <ul>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=girls-sets">Sets</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=girls-tops">Tops</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=girls-bottoms">Bottoms</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=girls-sleepwear">Sleepwear & Underwear</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=girls-sleepwear">Dresses & Jumpsuits</a></li>
-                            </ul>
-                        </div>
+    <div class="mega-dropdown">
+        <div class="mega-content four-cols">
+            
+            <!-- Girls -->
+            <div class="mega-categories">
+                <h4>Girls</h4>
+                <ul>
+                    <li><a href="<?= SITE_URL ?>pages/setsgirl.php?gender=girls&subcategory=sets">Sets</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/topsgirl.php?gender=girls&subcategory=tops">Tops</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/bottomsgirl.php?gender=girls&subcategory=bottoms">Bottoms</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/sleepgirl.php?gender=girls&subcategory=sleepwear">Sleepwear & Underwear</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/dressesgirl.php?gender=girls&subcategory=dresses-jumpsuits">Dresses & Jumpsuits</a></li>
+                </ul>
+            </div>
 
-                        <!-- Boys -->
-                        <div class="mega-categories">
-                            <h4>Boys</h4>
-                            <ul>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=boys-sets">Sets</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=boys-tops">Tops</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=boys-bottoms">Bottoms</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/products.php?category=boys-sleepwear">Sleepwear & Underwear</a></li>
-                            </ul>
-                        </div>
+            <!-- Boys -->
+            <div class="mega-categories">
+                <h4>Boys</h4>
+                <ul>
+                    <li><a href="<?= SITE_URL ?>pages/setsboy.php?gender=boys&subcategory=sets">Sets</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/topsboy.php?gender=boys&subcategory=tops">Tops</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/bottomsboy.php.php?gender=boys&subcategory=bottoms">Bottoms</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/sleepboy.php.php?gender=boys&subcategory=sleepwear">Sleepwear & Underwear</a></li>
+                </ul>
+            </div>
 
-                        <!-- Image 1 -->
-                        <div class="mega-images">
-                            <img src="<?php echo SITE_URL; ?>uploads/kids-girls.jpg" alt="Kids Girls">
-                        </div>
+            <!-- Image 1 -->
+            <div class="mega-images">
+                <img src="<?= SITE_URL ?>uploads/kids-girls.jpg" alt="Kids Girls">
+            </div>
 
-                        <!-- Image 2 -->
-                        <div class="mega-images">
-                            <img src="<?php echo SITE_URL; ?>uploads/kids-boys.jpg" alt="Kids Boys">
-                        </div>
-                    </div>
-                </div>
-            </li>
+            <!-- Image 2 -->
+            <div class="mega-images">
+                <img src="<?= SITE_URL ?>uploads/kids-boys.jpg" alt="Kids Boys">
+            </div>
+        </div>
+    </div>
+</li>
+
 
 
 
