@@ -1,11 +1,11 @@
 <?php
-require_once __DIR__ . '/../connection/connection.php';
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../connection/connection.php';
+require_once __DIR__ . '/../../includes/header.php';
 
-// Fixed filters: Kid → Girls → Sets
+// Fixed filters: Kid → Girls → Bottoms
 $categoryGroup = 'kid';
 $gender        = 'girls';
-$subcategory   = 'sets';
+$subcategory   = 'bottoms';
 
 // Pagination setup
 $perPage = 24;
@@ -40,12 +40,12 @@ $totalPages = max(1, ceil($count / $perPage));
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Kid — Girls Sets</title>
+  <title>Kid — Girls Bottoms</title>
   <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
 </head>
 <body>
   <div class="new-header">
-    <h1 class="new-title">Kid — Girls — Sets</h1>
+    <h1 class="new-title">Girls Bottoms</h1>
   </div>
 
   <div class="product-grid">
@@ -59,7 +59,7 @@ $totalPages = max(1, ceil($count / $perPage));
         </div>
       </a>
     <?php endwhile; else: ?>
-      <p style="grid-column:1/-1; opacity:.7;">No girls sets found.</p>
+      <p style="grid-column:1/-1; opacity:.7;">No girls bottoms found.</p>
     <?php endif; ?>
   </div>
 
@@ -69,7 +69,7 @@ $totalPages = max(1, ceil($count / $perPage));
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
-          <a href="<?= SITE_URL ?>pages/setsgirl.php?page=<?= $i ?>"><?= $i ?></a>
+          <a href="<?= SITE_URL ?>pages/bottomsgirl.php?page=<?= $i ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
     </div>

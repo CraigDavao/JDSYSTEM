@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/../connection/connection.php';
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../connection/connection.php';
+require_once __DIR__ . '/../../includes/header.php';
 
 // Fixed filters: Kid → Boys → Bottoms
 $categoryGroup = 'kid';
@@ -45,7 +45,7 @@ $totalPages = max(1, ceil($count / $perPage));
 </head>
 <body>
   <div class="new-header">
-    <h1 class="new-title">Kid — Boys — Bottoms</h1>
+    <h1 class="new-title">Boys Bottoms</h1>
   </div>
 
   <div class="product-grid">

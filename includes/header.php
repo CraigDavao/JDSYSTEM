@@ -59,11 +59,11 @@ $conn->set_charset("utf8mb4");
                         <div class="mega-categories">
                             <h4>Categories</h4>
                             <ul>
-                                <li><a href="<?php echo SITE_URL; ?>pages/girls.php?category=girls">Girls</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/boys.php?category=boys">Boys</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/babygirls.php?category=baby-girls">Baby Girls</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/babyboys.php?category=baby-boys">Baby Boys</a></li>
-                                <li><a href="<?php echo SITE_URL; ?>pages/newborn.php?category=newborn">Newborn</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/new/girls.php">Girls</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/new/boys.php">Boys</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/new/babygirls.php">Baby Girls</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/new/babyboys.php">Baby Boys</a></li>
+                                <li><a href="<?php echo SITE_URL; ?>pages/new/newborn.php">Newborn</a></li>
                             </ul>
 
                         </div>
@@ -93,11 +93,11 @@ $conn->set_charset("utf8mb4");
             <div class="mega-categories">
                 <h4>Girls</h4>
                 <ul>
-                    <li><a href="<?= SITE_URL ?>pages/setsgirl.php?gender=girls&subcategory=sets">Sets</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/topsgirl.php?gender=girls&subcategory=tops">Tops</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/bottomsgirl.php?gender=girls&subcategory=bottoms">Bottoms</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/sleepgirl.php?gender=girls&subcategory=sleepwear">Sleepwear & Underwear</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/dressesgirl.php?gender=girls&subcategory=dresses-jumpsuits">Dresses & Jumpsuits</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/setsgirl.php">Sets</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/topsgirl.php">Tops</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/bottomsgirl.php">Bottoms</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/sleepgirl.php">Sleepwear & Underwear</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/dressesgirl.php">Dresses & Jumpsuits</a></li>
                 </ul>
             </div>
 
@@ -105,10 +105,10 @@ $conn->set_charset("utf8mb4");
             <div class="mega-categories">
                 <h4>Boys</h4>
                 <ul>
-                    <li><a href="<?= SITE_URL ?>pages/setsboy.php?gender=boys&subcategory=sets">Sets</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/topsboy.php?gender=boys&subcategory=tops">Tops</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/bottomsboy.php.php?gender=boys&subcategory=bottoms">Bottoms</a></li>
-                    <li><a href="<?= SITE_URL ?>pages/sleepboy.php.php?gender=boys&subcategory=sleepwear">Sleepwear & Underwear</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/setsgirl.php">Sets</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/topsboy.php">Tops</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/bottomsboy.php">Bottoms</a></li>
+                    <li><a href="<?= SITE_URL ?>pages/kid/sleepboy.php">Sleepwear & Underwear</a></li>
                 </ul>
             </div>
 

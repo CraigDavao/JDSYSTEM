@@ -1,15 +1,15 @@
 <?php
-require_once __DIR__ . '/../connection/connection.php';
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../connection/connection.php';
+require_once __DIR__ . '/../../includes/header.php';
 
 $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-/* Query for Newborn only */
+/* Query for Baby Girls only */
 $sql  = "SELECT id, name, price, image, category, created_at
          FROM products
-         WHERE is_active = 1 AND category = 'newborn'
+         WHERE is_active = 1 AND category = 'baby-girls'
          ORDER BY created_at DESC
          LIMIT ?, ?";
 $stmt = $conn->prepare($sql);
@@ -18,7 +18,7 @@ $stmt->execute();
 $products = $stmt->get_result();
 
 /* Count for pagination */
-$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active=1 AND category='newborn'";
+$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active=1 AND category='babygirls'";
 $count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
@@ -28,12 +28,12 @@ $totalPages = max(1, ceil($count / $perPage));
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/new.css?v=<?= time(); ?>">
-  <title>New Newborn</title>
+  <title>New Baby Girls</title>
 </head>
 <body>
 
   <div class="new-header">
-    <h1 class="new-title">New Newborn</h1>
+    <h1 class="new-title">New Baby Girls</h1>
   </div>
 
   <div class="product-grid">
@@ -59,7 +59,7 @@ $totalPages = max(1, ceil($count / $perPage));
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
-          <a href="<?= SITE_URL ?>pages/newborn.php?page=<?= $i ?>"><?= $i ?></a>
+          <a href="<?= SITE_URL ?>pages/babygirls.php?page=<?= $i ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
     </div>
