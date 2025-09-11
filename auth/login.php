@@ -36,7 +36,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             setcookie("remember_token", $token, time() + (86400 * 30), "/", "", false, true);
 
             header("Location: ../dashboard.php");
-            exit;
+        exit;
+
         } else {
             echo "Invalid password.";
         }

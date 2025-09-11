@@ -197,9 +197,9 @@ const subMap = {
         unisex:['sets','tops','bottoms','sleepwear','accessories']
     },
     baby: {
-        girls: ['sets','tops','bottoms','sleepwear','dresses-jumpsuits','accessories'],
+        girls: ['sets','tops','bottoms','sleepwear','accessories'],
         boys:  ['sets','tops','bottoms','sleepwear','accessories'],
-        unisex:['sets','tops','bottoms','sleepwear','dresses-jumpsuits','accessories']
+        unisex:['sets','tops','bottoms','sleepwear','accessories']
     },
     newborn: {
         unisex: ['bodysuits','essentials','sets']

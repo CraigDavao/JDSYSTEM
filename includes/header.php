@@ -105,7 +105,7 @@ $conn->set_charset("utf8mb4");
                         <div class="mega-categories">
                             <h4>Boys</h4>
                             <ul>
-                                <li><a href="<?= SITE_URL ?>pages/kid/setsgirl.php">Sets</a></li>
+                                <li><a href="<?= SITE_URL ?>pages/kid/setsboy.php">Sets</a></li>
                                 <li><a href="<?= SITE_URL ?>pages/kid/topsboy.php">Tops</a></li>
                                 <li><a href="<?= SITE_URL ?>pages/kid/bottomsboy.php">Bottoms</a></li>
                                 <li><a href="<?= SITE_URL ?>pages/kid/sleepboy.php">Sleepwear & Underwear</a></li>
@@ -267,7 +267,7 @@ $conn->set_charset("utf8mb4");
     <!-- Login Form -->
     <div class="form-container" id="login-form">
       <h2>Log in</h2>
-      <form method="POST" action="auth/login.php">
+      <form method="POST" action="../auth/login.php">
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password" required>
 
@@ -291,7 +291,7 @@ $conn->set_charset("utf8mb4");
 
     <div class="form-actions">
       <button type="submit">Register</button>
-      <a href="#" id="show-login">Already have an account? Log in</a>
+      <a href="../auth/register.php" id="show-login">Already have an account? Log in</a>
     </div>
   </form>
 </div>
