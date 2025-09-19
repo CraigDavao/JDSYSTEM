@@ -35,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             // Set cookie (valid for 30 days)
             setcookie("remember_token", $token, time() + (86400 * 30), "/", "", false, true);
 
-            header("Location: ../dashboard.php");
+            header("Location: " . SITE_URL . "dashboard.php");
         exit;
 
         } else {

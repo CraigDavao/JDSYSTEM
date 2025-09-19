@@ -52,8 +52,6 @@ $conn->set_charset("utf8mb4");
                 </svg>
                  </a>
 
-                </a>
-
                 <div class="mega-dropdown">
                     <div class="mega-content">
                         <div class="mega-categories">
@@ -267,11 +265,11 @@ $conn->set_charset("utf8mb4");
     <!-- Login Form -->
     <div class="form-container" id="login-form">
       <h2>Log in</h2>
-      <form method="POST" action="../auth/login.php">
+      <form method="POST" action="<?php echo SITE_URL; ?>auth/login.php">
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password" required>
 
-        <a href="#" id="forgot-password">Forgot your password?</a>
+        <a href="./auth/forgot.php" id="forgot-password">Forgot your password?</a>
 
         <div class="form-actions">
           <button type="submit">Log in</button>
