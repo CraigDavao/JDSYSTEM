@@ -9,7 +9,7 @@ $offset  = ($page - 1) * $perPage;
 // Category for this page
 $category = 'girls';
 
-$sql = "SELECT id, name, price, sale_price, image, category, created_at
+$sql = "SELECT id, name, price, sale_price, sale_start, sale_end, image, category, created_at
         FROM products
         WHERE is_active = 1 AND category = ?
         ORDER BY created_at DESC
@@ -20,10 +20,15 @@ $stmt->execute();
 $products = $stmt->get_result();
 
 /* Count for pagination */
-$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = '$category'";
-$count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
+$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = ?";
+$countStmt = $conn->prepare($countSql);
+$countStmt->bind_param("s", $category);
+$countStmt->execute();
+$countResult = $countStmt->get_result();
+$count = $countResult->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,26 +45,11 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <div class="product-grid">
     <?php if ($products->num_rows): ?>
-      <?php while ($p = $products->fetch_assoc()): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
         <?php
-          $hasSale = isset($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price'];
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../../includes/product-card.php';
         ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb"
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <?php if ($hasSale): ?>
-              <p class="product-price">
-                <span class="sale-price">₱<?= number_format($p['sale_price'], 2) ?></span>
-                <span class="old-price">₱<?= number_format($p['price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format($p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1;opacity:.7;">No products found.</p>

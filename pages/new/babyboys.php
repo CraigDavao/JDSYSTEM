@@ -20,46 +20,36 @@ $stmt->execute();
 $products = $stmt->get_result();
 
 /* Count for pagination */
-$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = '$category'";
-$count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
+$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = ?";
+$countStmt = $conn->prepare($countSql);
+$countStmt->bind_param("s", $category);
+$countStmt->execute();
+$countResult = $countStmt->get_result();
+$count = $countResult->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time(); ?>">
-  <title>New <?= ucwords(str_replace('-', ' ', $category)) ?></title>
+  <title><?= ucwords(str_replace('-', ' ', $category)) ?></title>
 </head>
 <body>
 
   <div class="new-header">
-    <h1 class="new-title">New <?= ucwords(str_replace('-', ' ', $category)) ?></h1>
+    <h1 class="new-title"><?= ucwords(str_replace('-', ' ', $category)) ?></h1>
   </div>
 
   <div class="product-grid">
     <?php if ($products->num_rows): ?>
-      <?php while ($p = $products->fetch_assoc()): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
         <?php
-          $hasSale = isset($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price'];
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../../includes/product-card.php';
         ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb"
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <?php if ($hasSale): ?>
-              <p class="product-price">
-                <span class="sale-price">₱<?= number_format($p['sale_price'], 2) ?></span>
-                <span class="old-price">₱<?= number_format($p['price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format($p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1;opacity:.7;">No products found.</p>
@@ -72,7 +62,7 @@ $totalPages = max(1, ceil($count / $perPage));
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
-          <a href="<?= SITE_URL ?>pages/new/<?= $category ?>.php?page=<?= $i ?>"><?= $i ?></a>
+          <a href="<?= SITE_URL ?>pages/<?= $category ?>.php?page=<?= $i ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
     </div>

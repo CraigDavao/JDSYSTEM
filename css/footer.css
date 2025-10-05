@@ -2,7 +2,7 @@
 .site-footer {
     background: #2a2a2a;
     color: #fff;
-    margin-top: auto;
+    margin-top: 50px;
 }
 
 .footer-main {
@@ -297,3 +297,4 @@
         padding: 0.8rem;
     }
 }
+

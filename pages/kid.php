@@ -3,7 +3,7 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
 $allowedGenders = ['girls','boys','unisex'];
-$allowedSub = ['sets','tops','bottoms','sleepwear','dresses-jumpsuits'];
+$allowedSub     = ['sets','tops','bottoms','sleepwear','dresses-jumpsuits'];
 
 $gender = $_GET['gender'] ?? null;
 if ($gender && !in_array($gender, $allowedGenders)) $gender = null;
@@ -12,10 +12,10 @@ $sub = $_GET['subcategory'] ?? null;
 if ($sub && !in_array($sub, $allowedSub)) $sub = null;
 
 $perPage = 24;
-$page = max(1, (int)($_GET['page'] ?? 1));
-$offset = ($page - 1) * $perPage;
+$page    = max(1, (int)($_GET['page'] ?? 1));
+$offset  = ($page - 1) * $perPage;
 
-// Main query with sale_price included
+// Build main query
 if ($gender && $sub) {
     $sql = "SELECT id,name,price,sale_price,image,created_at FROM products
             WHERE category_group='kid' AND gender=? AND subcategory=? AND (is_active IS NULL OR is_active=1)
@@ -45,29 +45,34 @@ if ($gender && $sub) {
 $stmt->execute();
 $result = $stmt->get_result();
 
-/* count total for pager */
+// Count total for pagination
 if ($gender && $sub) {
-  $countStmt = $conn->prepare("SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND gender=? AND subcategory=? AND (is_active IS NULL OR is_active=1)");
-  $countStmt->bind_param("ss",$gender,$sub);
+    $countSql = "SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND gender=? AND subcategory=? AND (is_active IS NULL OR is_active=1)";
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("ss", $gender, $sub);
 } elseif ($gender) {
-  $countStmt = $conn->prepare("SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND gender=? AND (is_active IS NULL OR is_active=1)");
-  $countStmt->bind_param("s",$gender);
+    $countSql = "SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND gender=? AND (is_active IS NULL OR is_active=1)";
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("s", $gender);
 } elseif ($sub) {
-  $countStmt = $conn->prepare("SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND subcategory=? AND (is_active IS NULL OR is_active=1)");
-  $countStmt->bind_param("s",$sub);
+    $countSql = "SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND subcategory=? AND (is_active IS NULL OR is_active=1)";
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("s", $sub);
 } else {
-  $countStmt = $conn->prepare("SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND (is_active IS NULL OR is_active=1)");
+    $countSql = "SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND (is_active IS NULL OR is_active=1)";
+    $countStmt = $conn->prepare($countSql);
 }
 
 $countStmt->execute();
 $count = $countStmt->get_result()->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Kid</title>
+<title>Kid<?= $gender ? ' — '.ucfirst($gender) : '' ?><?= $sub ? ' — ' . str_replace('-', ' ', ucfirst($sub)) : '' ?></title>
 <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
 </head>
 <body>
@@ -79,25 +84,11 @@ $totalPages = max(1, ceil($count / $perPage));
 </div>
 
 <div class="product-grid">
-  <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
+  <?php if ($result->num_rows): while ($product = $result->fetch_assoc()): ?>
     <?php
-      $isOnSale = isset($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price'];
+      $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+      include __DIR__ . '/../includes/product-card.php';
     ?>
-    <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-      <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-           alt="<?= htmlspecialchars($p['name']) ?>">
-      <div class="product-info">
-        <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-        <?php if ($isOnSale): ?>
-          <p class="product-price">
-            <span class="old-price">₱<?= number_format((float)$p['price'], 2) ?></span>
-            <span class="sale-price">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
-          </p>
-        <?php else: ?>
-          <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
-        <?php endif; ?>
-      </div>
-    </a>
   <?php endwhile; else: ?>
     <p style="grid-column:1/-1; opacity:.7;">No products found.</p>
   <?php endif; ?>

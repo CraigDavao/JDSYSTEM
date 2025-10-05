@@ -1,5 +1,4 @@
 <?php 
-// Include the header
 require_once __DIR__ . '/includes/header.php';
 
 // Fetch only 4 featured products from database for homepage
@@ -42,6 +41,14 @@ foreach ($categories as $category) {
     }
     $stmt->close();
 }
+
+// Helper function for sale condition
+function isOnSale($product) {
+    return isset($product['sale_price']) &&
+           is_numeric($product['sale_price']) &&
+           $product['sale_price'] > 0 &&
+           $product['sale_price'] < $product['price'];
+}
 ?>
 
 <!-- Hero Section -->
@@ -50,12 +57,12 @@ foreach ($categories as $category) {
         <h1 class="titlenicraig">Jolly Dolly Kids Wear</h1>
         <p>Where precious moments meet timeless style</p>
         <div class="hero-buttons">
-            <a href="<?php echo SITE_URL; ?>pages/new.php?category=all" class="btn btn-primary">Shop New Arrivals</a>
-            <a href="<?php echo SITE_URL; ?>pages/kid.php" class="btn btn-secondary">Explore Collection</a>
+            <a href="<?= SITE_URL ?>pages/new.php?category=all" class="btn btn-primary">Shop New Arrivals</a>
+            <a href="<?= SITE_URL ?>pages/kid.php" class="btn btn-secondary">Explore Collection</a>
         </div>
     </div>
     <div class="hero-image">
-        <img src="<?php echo SITE_URL; ?>uploads/hero-main.jpg" alt="Jolly Dolly Kids Fashion" onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+        <img src="<?= SITE_URL ?>uploads/hero-main.jpg" alt="Jolly Dolly Kids Fashion" onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
     </div>
 </section>
 
@@ -66,12 +73,11 @@ foreach ($categories as $category) {
             <h2 class="new-title">Shop by Category</h2>
             <p class="subtitle">Discover our carefully curated collections</p>
         </div>
-        
         <div class="categories-grid">
             <div class="category-card">
-                <a href="<?php echo SITE_URL; ?>pages/kid.php">
+                <a href="<?= SITE_URL ?>pages/kid.php">
                     <div class="category-image">
-                        <img src="<?php echo SITE_URL; ?>uploads/kids-category.jpg" alt="Kids Collection" onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+                        <img src="<?= SITE_URL ?>uploads/kids-category.jpg" alt="Kids Collection" onerror="this.src='<?= SITE_URL ?>uploads/kid.webp'">
                     </div>
                     <div class="category-content">
                         <h3>Kids Collection</h3>
@@ -80,24 +86,22 @@ foreach ($categories as $category) {
                     </div>
                 </a>
             </div>
-            
             <div class="category-card">
-                <a href="<?php echo SITE_URL; ?>pages/baby.php">
+                <a href="<?= SITE_URL ?>pages/baby.php">
                     <div class="category-image">
-                        <img src="<?php echo SITE_URL; ?>uploads/baby-category.jpg" alt="Baby Collection" onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+                        <img src="<?= SITE_URL ?>uploads/baby-category.jpg" alt="Baby Collection" onerror="this.src='<?= SITE_URL ?>uploads/baby.webp'">
                     </div>
                     <div class="category-content">
                         <h3>Baby Collection</h3>
                         <p>0-24 months</p>
                         <span class="shop-now">Shop Now →</span>
-                    </div>
+                    </div>  
                 </a>
             </div>
-            
             <div class="category-card">
-                <a href="<?php echo SITE_URL; ?>pages/accessories.php">
+                <a href="<?= SITE_URL ?>pages/accessories.php">
                     <div class="category-image">
-                        <img src="<?php echo SITE_URL; ?>uploads/accessories-category.jpg" alt="Accessories" onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+                        <img src="<?= SITE_URL ?>uploads/accessories-category.jpg" alt="Accessories" onerror="this.src='<?= SITE_URL ?>uploads/accessories.webp'">
                     </div>
                     <div class="category-content">
                         <h3>Accessories</h3>
@@ -110,36 +114,34 @@ foreach ($categories as $category) {
     </div>
 </section>
 
-<!-- New Arrivals - Only 4 Products -->
+<!-- New Arrivals -->
 <section class="new-arrivals">
     <div class="container">
         <div class="new-header">
             <h2 class="new-title">New Arrivals</h2>
             <p class="subtitle">Discover our latest additions</p>
         </div>
-        
         <?php if (!empty($featured_products)): ?>
             <div class="product-grid">
                 <?php foreach ($featured_products as $product): ?>
-                    <!-- TEMPORARY: Using # link until you create product pages -->
                     <a href="#" class="product-card" onclick="return false;">
                         <div class="product-image-container">
-                            <img src="<?php echo SITE_URL; ?>uploads/<?php echo htmlspecialchars($product['image']); ?>" 
-                                 alt="<?php echo htmlspecialchars($product['name']); ?>"
+                            <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($product['image']); ?>" 
+                                 alt="<?= htmlspecialchars($product['name']); ?>"
                                  class="product-thumb"
-                                 onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
-                            <?php if ($product['sale_price'] && $product['sale_price'] < $product['price']): ?>
+                                 onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+                            <?php if (isOnSale($product)): ?>
                                 <div class="sale-badge">Sale</div>
                             <?php endif; ?>
                         </div>
                         <div class="product-info">
-                            <h3 class="product-name"><?php echo htmlspecialchars($product['name']); ?></h3>
+                            <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
                             <div class="product-price">
-                                <?php if ($product['sale_price'] && $product['sale_price'] < $product['price']): ?>
-                                    <span class="sale-price">₱<?php echo number_format($product['sale_price'], 2); ?></span>
-                                    <span class="original-price">₱<?php echo number_format($product['price'], 2); ?></span>
+                                <?php if (isOnSale($product)): ?>
+                                    <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                                    <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
                                 <?php else: ?>
-                                    <span class="current-price">₱<?php echo number_format($product['price'], 2); ?></span>
+                                    <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -147,7 +149,7 @@ foreach ($categories as $category) {
                 <?php endforeach; ?>
             </div>
             <div class="view-all-container">
-                <a href="<?php echo SITE_URL; ?>pages/new.php?category=all" class="btn btn-outline">View All New Arrivals</a>
+                <a href="<?= SITE_URL ?>pages/new.php?category=all" class="btn btn-outline">View All New Arrivals</a>
             </div>
         <?php else: ?>
             <div class="no-products">
@@ -157,88 +159,48 @@ foreach ($categories as $category) {
     </div>
 </section>
 
-<!-- Category Sections - Also 4 Products Each -->
+<!-- Category Sections -->
 <section class="category-sections">
     <div class="container">
-        <!-- Kids Collection -->
-        <?php if (!empty($categories_products['kid'])): ?>
-        <div class="category-section">
-            <div class="new-header">
-                <h2 class="new-title">Kids Collection</h2>
-                <p class="subtitle">Perfect for ages 2-8 years</p>
-            </div>
-            <div class="product-grid">
-                <?php foreach ($categories_products['kid'] as $product): ?>
-                    <!-- TEMPORARY: Using # link until you create product pages -->
-                    <a href="#" class="product-card" onclick="return false;">
-                        <div class="product-image-container">
-                            <img src="<?php echo SITE_URL; ?>uploads/<?php echo htmlspecialchars($product['image']); ?>" 
-                                 alt="<?php echo htmlspecialchars($product['name']); ?>"
-                                 class="product-thumb"
-                                 onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
-                            <?php if ($product['sale_price'] && $product['sale_price'] < $product['price']): ?>
-                                <div class="sale-badge">Sale</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-name"><?php echo htmlspecialchars($product['name']); ?></h3>
-                            <div class="product-price">
-                                <?php if ($product['sale_price'] && $product['sale_price'] < $product['price']): ?>
-                                    <span class="sale-price">₱<?php echo number_format($product['sale_price'], 2); ?></span>
-                                    <span class="original-price">₱<?php echo number_format($product['price'], 2); ?></span>
-                                <?php else: ?>
-                                    <span class="current-price">₱<?php echo number_format($product['price'], 2); ?></span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-            <div class="view-all-container">
-                <a href="<?php echo SITE_URL; ?>pages/kid.php" class="btn btn-outline">View All Kids Collection</a>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Baby Collection -->
-        <?php if (!empty($categories_products['baby'])): ?>
-        <div class="category-section">
-            <div class="new-header">
-                <h2 class="new-title">Baby Collection</h2>
-                <p class="subtitle">For your little ones 0-24 months</p>
-            </div>
-            <div class="product-grid">
-                <?php foreach ($categories_products['baby'] as $product): ?>
-                    <!-- TEMPORARY: Using # link until you create product pages -->
-                    <a href="#" class="product-card" onclick="return false;">
-                        <div class="product-image-container">
-                            <img src="<?php echo SITE_URL; ?>uploads/<?php echo htmlspecialchars($product['image']); ?>" 
-                                 alt="<?php echo htmlspecialchars($product['name']); ?>"
-                                 class="product-thumb"
-                                 onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
-                            <?php if ($product['sale_price'] && $product['sale_price'] < $product['price']): ?>
-                                <div class="sale-badge">Sale</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-name"><?php echo htmlspecialchars($product['name']); ?></h3>
-                            <div class="product-price">
-                                <?php if ($product['sale_price'] && $product['sale_price'] < $product['price']): ?>
-                                    <span class="sale-price">₱<?php echo number_format($product['sale_price'], 2); ?></span>
-                                    <span class="original-price">₱<?php echo number_format($product['price'], 2); ?></span>
-                                <?php else: ?>
-                                    <span class="current-price">₱<?php echo number_format($product['price'], 2); ?></span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-            <div class="view-all-container">
-                <a href="<?php echo SITE_URL; ?>pages/baby.php" class="btn btn-outline">View All Baby Collection</a>
-            </div>
-        </div>
-        <?php endif; ?>
+        <?php foreach ($categories_products as $category => $products): ?>
+            <?php if (!empty($products)): ?>
+                <div class="category-section">
+                    <div class="new-header">
+                        <h2 class="new-title"><?= ucfirst($category) ?> Collection</h2>
+                        <p class="subtitle">Perfect for <?= $category === 'kid' ? 'ages 2-8 years' : 'your little ones 0-24 months' ?></p>
+                    </div>
+                    <div class="product-grid">
+                        <?php foreach ($products as $product): ?>
+                            <a href="#" class="product-card" onclick="return false;">
+                                <div class="product-image-container">
+                                    <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($product['image']); ?>" 
+                                         alt="<?= htmlspecialchars($product['name']); ?>"
+                                         class="product-thumb"
+                                         onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+                                    <?php if (isOnSale($product)): ?>
+                                        <div class="sale-badge">Sale</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="product-info">
+                                    <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
+                                    <div class="product-price">
+                                        <?php if (isOnSale($product)): ?>
+                                            <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                                            <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
+                                        <?php else: ?>
+                                            <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="view-all-container">
+                        <a href="<?= SITE_URL ?>pages/<?= $category ?>.php" class="btn btn-outline">View All <?= ucfirst($category) ?> Collection</a>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
     </div>
 </section>
 
@@ -253,7 +215,7 @@ foreach ($categories as $category) {
                 <a href="#" class="btn btn-outline">Learn More About Us</a>
             </div>
             <div class="story-image">
-                <img src="<?php echo SITE_URL; ?>uploads/brand-story.jpg" alt="Our Story" onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+                <img src="<?= SITE_URL ?>uploads/brand-story.jpg" alt="Our Story" onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
             </div>
         </div>
     </div>
@@ -265,7 +227,7 @@ foreach ($categories as $category) {
         <div class="newsletter-content">
             <h2 class="new-title">Join the Jolly Dolly Family</h2>
             <p class="subtitle">Be the first to know about new arrivals, exclusive offers, and special promotions</p>
-            <form class="newsletter-form" method="POST" action="<?php echo SITE_URL; ?>auth/newsletter.php">
+            <form class="newsletter-form" method="POST" action="<?= SITE_URL ?>auth/newsletter.php">
                 <input type="email" name="email" placeholder="Enter your email address" required>
                 <button type="submit" class="btn btn-primary">Subscribe</button>
             </form>
@@ -273,7 +235,29 @@ foreach ($categories as $category) {
     </div>
 </section>
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const backToTopButton = document.getElementById('backToTop');
+
+    if (backToTopButton) {
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });
+
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+});
+</script>
+
 <?php
-// Include footer
 include_once './includes/footer.php';
 ?>

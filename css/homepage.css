@@ -189,6 +189,7 @@
     margin: 8px 0 20px;
 }
 
+
 /* Product Grid Styles - FIXED IMAGE SIZING */
 .product-grid {
     max-width: 1440px;
@@ -214,11 +215,8 @@
 /* Image Container for Consistent Sizing */
 .product-image-container {
     width: 100%;
+    position: relative;
     height: 400px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f8f8f8;
     margin-bottom: 12px;
     overflow: hidden;
 }
@@ -456,4 +454,41 @@
 .titlenicraig {
     font-size: 20px;
     margin: 0 !important;
+}
+
+.price {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.old-price {
+    text-decoration: line-through;
+    color: #999;
+    font-size: 0.95rem;
+}
+
+.sale-price {
+    color: #d35400; /* warm accent */
+    font-weight: 700;
+    font-size: 1.15rem;
+}
+
+.sale-badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: linear-gradient(135deg, #f8b400, #e67e22);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
 }

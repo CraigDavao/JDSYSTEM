@@ -61,14 +61,10 @@ $totalPages = max(1, ceil($count / $perPage));
              alt="<?= htmlspecialchars($p['name']) ?>">
         <div class="product-info">
           <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-          <p class="product-price">
-            <?php if (!empty($p['sale_price']) && $p['sale_price'] < $p['price']): ?>
-              <span class="price-original">₱<?= number_format((float)$p['price'], 2) ?></span>
-              <span class="price-sale">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
-            <?php else: ?>
-              ₱<?= number_format((float)$p['price'], 2) ?>
-            <?php endif; ?>
-          </p>
+          <div class="price">
+                    <span class="original-price">₱<?= number_format((float)$p['price'], 2) ?></span>
+                    <span class="sale-price">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
+                </div>
         </div>
       </a>
     <?php endwhile; else: ?>

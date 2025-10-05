@@ -7,7 +7,7 @@ $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
 /* Query for Newborn only */
-$sql  = "SELECT id, name, price, image, category, created_at
+$sql  = "SELECT id, name, price, sale_price, image, created_at
          FROM products
          WHERE is_active = 1 AND category = 'newborn'
          ORDER BY created_at DESC
@@ -17,17 +17,18 @@ $stmt->bind_param("ii", $offset, $perPage);
 $stmt->execute();
 $products = $stmt->get_result();
 
-/* Count for pagination (match the same category) */
+/* Count for pagination */
 $countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = 'newborn'";
 $count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/new.css?v=<?= time(); ?>">
+  <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time(); ?>">
   <title>New Newborn</title>
 </head>
 <body>
@@ -38,15 +39,11 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <div class="product-grid">
     <?php if ($products->num_rows): ?>
-      <?php while ($p = $products->fetch_assoc()): ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
-          </div>
-        </a>
+      <?php while ($product = $products->fetch_assoc()): ?>
+        <?php
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../../includes/product-card.php';
+        ?>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1;opacity:.7;">No products found.</p>

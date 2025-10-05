@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 // Allowed filters for Baby
 $allowedGenders = ['girls','boys','newborn']; 
-$allowedSub = [
+$allowedSub     = [
     'sets','tops','bottoms','sleepwear','accessories',
     'sets','tops','bottoms','sleepwear',
     'bodysuits-sleepsuits','essentials','sets'
@@ -17,10 +17,10 @@ $sub = $_GET['subcategory'] ?? null;
 if ($sub && !in_array($sub, $allowedSub)) $sub = null;
 
 $perPage = 24;
-$page = max(1, (int)($_GET['page'] ?? 1));
-$offset = ($page - 1) * $perPage;
+$page    = max(1, (int)($_GET['page'] ?? 1));
+$offset  = ($page - 1) * $perPage;
 
-/* build query */
+/* Build main query */
 $baseQuery = "SELECT id, name, price, sale_price, image, created_at
               FROM products
               WHERE category_group='baby'
@@ -49,7 +49,7 @@ $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
 
-/* count total */
+/* Count total */
 $countQuery = "SELECT COUNT(*) AS c
                FROM products
                WHERE category_group='baby'
@@ -79,7 +79,7 @@ $totalPages = max(1, ceil($count / $perPage));
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Baby</title>
+  <title>Baby<?= $gender ? ' — ' . ucfirst($gender) : '' ?><?= $sub ? ' — ' . str_replace('-', ' ', ucfirst($sub)) : '' ?></title>
   <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
 </head>
 <body>
@@ -91,24 +91,11 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <div class="product-grid">
     <?php if ($result->num_rows): ?>
-      <?php while ($p = $result->fetch_assoc()): ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb"
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-
-            <?php if (!empty($p['sale_price']) && $p['sale_price'] > 0): ?>
-              <p class="product-price">
-                <span class="sale">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
-                <span class="original">₱<?= number_format((float)$p['price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
+      <?php while ($product = $result->fetch_assoc()): ?>
+        <?php
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../includes/product-card.php';
+        ?>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1; opacity:.7;">No products found.</p>
@@ -117,15 +104,14 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
-      <?php for ($i=1;$i <= $totalPages; $i++): ?>
+      <?php for ($i=1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
-        <?php else: ?>
-          <?php
-            $qs = '?page=' . $i;
-            if ($gender) $qs .= '&gender=' . urlencode($gender);
-            if ($sub)    $qs .= '&subcategory=' . urlencode($sub);
-          ?>
+        <?php else:
+          $qs = '?page=' . $i;
+          if ($gender) $qs .= '&gender=' . urlencode($gender);
+          if ($sub)    $qs .= '&subcategory=' . urlencode($sub);
+        ?>
           <a href="<?= SITE_URL ?>pages/baby.php<?= $qs ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>

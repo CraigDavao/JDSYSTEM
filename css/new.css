@@ -103,12 +103,6 @@
   text-transform: uppercase;
 }
 
-.product-price { 
-  font-size:16px; 
-  font-weight:600; 
-  color:#111; 
-}
-
 .pager { 
   max-width:1440px; 
   margin:40px auto; 
@@ -132,7 +126,7 @@
 }
 
 .price {
-    font-size: 1rem;
+    font-size: 1.10rem;
     font-weight: 600;
     color: #2a2a2a;
     margin-top: 0.5rem;
@@ -147,4 +141,5 @@
 .sale-price {
     color: #d35400;
     font-weight: 700;
+    margin-left: 8px;
 }

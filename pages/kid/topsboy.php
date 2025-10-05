@@ -12,7 +12,7 @@ $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Query products (include sale price)
+// Query products
 $sql = "SELECT id, name, price, sale_price, image, created_at
         FROM products
         WHERE category_group=? AND gender=? AND subcategory=?
@@ -22,7 +22,7 @@ $sql = "SELECT id, name, price, sale_price, image, created_at
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("sssii", $categoryGroup, $gender, $subcategory, $offset, $perPage);
 $stmt->execute();
-$result = $stmt->get_result();
+$products = $stmt->get_result();
 
 // Count total for pagination
 $countSql = "SELECT COUNT(*) as c
@@ -42,6 +42,11 @@ $totalPages = max(1, ceil($count / $perPage));
   <meta charset="utf-8">
   <title>Kid — Boys Tops</title>
   <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
+  <style>
+    .product-price { font-weight: 600; }
+    .price-original { text-decoration: line-through; color: #111; margin-right: 8px; }
+    .price-sale { color: red; font-weight: bold; }
+  </style>
 </head>
 <body>
   <div class="new-header">
@@ -49,25 +54,12 @@ $totalPages = max(1, ceil($count / $perPage));
   </div>
 
   <div class="product-grid">
-    <?php if ($result->num_rows): ?>
-      <?php while ($p = $result->fetch_assoc()): ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb" 
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>" 
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-
-            <?php if (!empty($p['sale_price']) && $p['sale_price'] > 0): ?>
-              <p class="product-price">
-                <span class="sale">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
-                <span class="original">₱<?= number_format((float)$p['price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
+    <?php if ($products->num_rows): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
+        <?php
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../../includes/product-card.php';
+        ?>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1; opacity:.7;">No boys tops found.</p>
@@ -85,6 +77,5 @@ $totalPages = max(1, ceil($count / $perPage));
       <?php endfor; ?>
     </div>
   <?php endif; ?>
-
 </body>
 </html>

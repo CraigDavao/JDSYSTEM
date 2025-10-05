@@ -6,10 +6,9 @@ $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// ✅ Category for this file
+// Category for this page
 $category = 'baby-girls';
 
-// Fetch products
 $sql = "SELECT id, name, price, sale_price, image, category, created_at
         FROM products
         WHERE is_active = 1 AND category = ?
@@ -20,50 +19,40 @@ $stmt->bind_param("sii", $category, $offset, $perPage);
 $stmt->execute();
 $products = $stmt->get_result();
 
-// Pagination count
-$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = '$category'";
-$count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
+/* Count for pagination */
+$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = ?";
+$countStmt = $conn->prepare($countSql);
+$countStmt->bind_param("s", $category);
+$countStmt->execute();
+$countResult = $countStmt->get_result();
+$count = $countResult->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time(); ?>">
-  <title>New <?= ucwords(str_replace('-', ' ', $category)) ?></title>
+  <title><?= ucwords(str_replace('-', ' ', $category)) ?></title>
 </head>
 <body>
 
   <div class="new-header">
-    <h1 class="new-title">New <?= ucwords(str_replace('-', ' ', $category)) ?></h1>
+    <h1 class="new-title"><?= ucwords(str_replace('-', ' ', $category)) ?></h1>
   </div>
 
   <div class="product-grid">
     <?php if ($products->num_rows): ?>
-      <?php while ($p = $products->fetch_assoc()): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
         <?php
-          $hasSale = !empty($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price'];
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../../includes/product-card.php';
         ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb"
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <?php if ($hasSale): ?>
-              <p class="product-price">
-                <span class="sale-price">₱<?= number_format($p['sale_price'], 2) ?></span>
-                <span class="old-price">₱<?= number_format($p['price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format($p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
       <?php endwhile; ?>
     <?php else: ?>
-      <p class="no-products">No products found.</p>
+      <p style="grid-column:1/-1;opacity:.7;">No products found.</p>
     <?php endif; ?>
   </div>
 

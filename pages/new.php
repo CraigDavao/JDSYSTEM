@@ -6,7 +6,6 @@ $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Page title
 $category = 'new arrivals';
 
 // Fetch latest active products
@@ -20,11 +19,15 @@ $stmt->bind_param("ii", $offset, $perPage);
 $stmt->execute();
 $products = $stmt->get_result();
 
-// Count total
+// Count total products
 $countSql = "SELECT COUNT(*) AS c FROM products WHERE (is_active IS NULL OR is_active = 1)";
-$count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
+$countStmt = $conn->prepare($countSql);
+$countStmt->execute();
+$countResult = $countStmt->get_result();
+$count = $countResult->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,26 +44,11 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <div class="product-grid">
     <?php if ($products->num_rows): ?>
-      <?php while ($p = $products->fetch_assoc()): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
         <?php
-          $hasSale = isset($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price'];
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../includes/product-card.php';
         ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb"
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <?php if ($hasSale): ?>
-              <p class="product-price">
-                <span class="sale-price">₱<?= number_format($p['sale_price'], 2) ?></span>
-                <span class="old-price">₱<?= number_format($p['price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format($p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1;opacity:.7;">No new products found.</p>

@@ -2,16 +2,17 @@
 require_once __DIR__ . '/../../connection/connection.php';
 require_once __DIR__ . '/../../includes/header.php';
 
+// Fixed filters: Accessories → Bow Ties
 $categoryGroup = 'accessories';
 $gender        = 'unisex';
 $subcategory   = 'bow-ties';
 
-// Pagination
+// Pagination setup
 $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Fetch products including sale price
+// Query products
 $sql = "SELECT id, name, price, sale_price, image, created_at
         FROM products
         WHERE category_group=? AND gender=? AND subcategory=?
@@ -21,9 +22,9 @@ $sql = "SELECT id, name, price, sale_price, image, created_at
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("sssii", $categoryGroup, $gender, $subcategory, $offset, $perPage);
 $stmt->execute();
-$result = $stmt->get_result();
+$products = $stmt->get_result();
 
-// Count total
+// Count total for pagination
 $countSql = "SELECT COUNT(*) as c
              FROM products
              WHERE category_group=? AND gender=? AND subcategory=?
@@ -41,6 +42,8 @@ $totalPages = max(1, ceil($count / $perPage));
 <meta charset="utf-8">
 <title>Bow Ties</title>
 <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
+<style>
+</style>
 </head>
 <body>
 <div class="new-header">
@@ -48,40 +51,28 @@ $totalPages = max(1, ceil($count / $perPage));
 </div>
 
 <div class="product-grid">
-<?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
-    <?php $isOnSale = !empty($p['sale_price']) && $p['sale_price'] > 0; ?>
-    <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-        <img class="product-thumb"
-             src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-             alt="<?= htmlspecialchars($p['name']) ?>">
-        <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <?php if ($isOnSale): ?>
-                <p class="product-price sale">
-                    <span class="old">₱<?= number_format((float)$p['price'], 2) ?></span>
-                    <span class="new">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
-                </p>
-            <?php else: ?>
-                <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
-            <?php endif; ?>
-        </div>
-    </a>
-<?php endwhile; else: ?>
-    <p style="grid-column:1/-1; opacity:.7;">No bow-ties found.</p>
-<?php endif; ?>
+    <?php if ($products->num_rows): ?>
+        <?php while ($product = $products->fetch_assoc()): ?>
+            <?php
+                $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+                include __DIR__ . '/../../includes/product-card.php';
+            ?>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <p style="grid-column:1/-1; opacity:.7;">No bow ties found.</p>
+    <?php endif; ?>
 </div>
 
 <?php if ($totalPages > 1): ?>
-<div class="pager">
-    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-        <?php if ($i === $page): ?>
-            <span class="current"><?= $i ?></span>
-        <?php else: ?>
-            <a href="<?= SITE_URL ?>pages/accessories/bows.php?page=<?= $i ?>"><?= $i ?></a>
-        <?php endif; ?>
-    <?php endfor; ?>
-</div>
+    <div class="pager">
+        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+            <?php if ($i === $page): ?>
+                <span class="current"><?= $i ?></span>
+            <?php else: ?>
+                <a href="<?= SITE_URL ?>pages/accessories/bows.php?page=<?= $i ?>"><?= $i ?></a>
+            <?php endif; ?>
+        <?php endfor; ?>
+    </div>
 <?php endif; ?>
-
 </body>
 </html>

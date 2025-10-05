@@ -29,6 +29,7 @@ $countStmt->execute();
 $count = $countStmt->get_result()->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
+
 <!doctype html>
 <html>
 <head>
@@ -44,26 +45,11 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <div class="product-grid">
     <?php if ($result->num_rows): ?>
-      <?php while ($p = $result->fetch_assoc()): ?>
-        <?php 
-          $isOnSale = isset($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price']; 
+      <?php while ($product = $result->fetch_assoc()): ?>
+        <?php
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../includes/product-card.php';
         ?>
-        <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-          <img class="product-thumb" 
-               src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-               alt="<?= htmlspecialchars($p['name']) ?>">
-          <div class="product-info">
-            <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <?php if ($isOnSale): ?>
-              <p class="product-price">
-                <span class="old-price">₱<?= number_format((float)$p['price'], 2) ?></span>
-                <span class="sale-price">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
-              </p>
-            <?php else: ?>
-              <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
-            <?php endif; ?>
-          </div>
-        </a>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1; opacity:.7;">No accessories found.</p>
@@ -72,7 +58,7 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
-      <?php for ($i=1; $i <= $totalPages; $i++): ?>
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
