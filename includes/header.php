@@ -25,6 +25,7 @@ $conn->set_charset("utf8mb4");
 
     <!-- CSS -->
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/style.css?v=<?= time(); ?>">
+    <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/homepage.css?v=<?= time(); ?>">
 
     <!-- Font Awesome (for icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -34,6 +35,7 @@ $conn->set_charset("utf8mb4");
 </head>
 
 <body>
+<a href="#" class="product-card" onclick="return false;">
 <nav class="site-nav">
     <div class="logo">
         <a href="<?php echo SITE_URL; ?>index.php">

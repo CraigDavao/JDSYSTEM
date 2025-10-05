@@ -12,8 +12,8 @@ $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Query products
-$sql = "SELECT id, name, price, image, created_at
+// Query products (with sale_price)
+$sql = "SELECT id, name, price, sale_price, image, created_at
         FROM products
         WHERE category_group=? AND gender=? AND subcategory=?
           AND (is_active IS NULL OR is_active=1)
@@ -42,6 +42,11 @@ $totalPages = max(1, ceil($count / $perPage));
   <meta charset="utf-8">
   <title>Kid — Girls Sleepwear</title>
   <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
+  <style>
+    .product-price { font-weight: 600; }
+    .price-original { text-decoration: line-through; color: #111; margin-right: 8px; }
+    .price-sale { color: red; font-weight: bold; }
+  </style>
 </head>
 <body>
   <div class="new-header">
@@ -51,11 +56,19 @@ $totalPages = max(1, ceil($count / $perPage));
   <div class="product-grid">
     <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
       <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-        <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
+        <img class="product-thumb"
+             src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
              alt="<?= htmlspecialchars($p['name']) ?>">
         <div class="product-info">
           <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-          <p class="product-price">₱<?= number_format((float)$p['price'],2) ?></p>
+          <p class="product-price">
+            <?php if (!empty($p['sale_price']) && $p['sale_price'] < $p['price']): ?>
+              <span class="price-original">₱<?= number_format((float)$p['price'], 2) ?></span>
+              <span class="price-sale">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
+            <?php else: ?>
+              ₱<?= number_format((float)$p['price'], 2) ?>
+            <?php endif; ?>
+          </p>
         </div>
       </a>
     <?php endwhile; else: ?>

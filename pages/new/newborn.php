@@ -17,8 +17,8 @@ $stmt->bind_param("ii", $offset, $perPage);
 $stmt->execute();
 $products = $stmt->get_result();
 
-/* Count for pagination */
-$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active=1 AND category='newborn'";
+/* Count for pagination (match the same category) */
+$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = 'newborn'";
 $count = $conn->query($countSql)->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
@@ -55,11 +55,11 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
-      <?php for ($i=1; $i <= $totalPages; $i++): ?>
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
-          <a href="<?= SITE_URL ?>pages/newborn.php?page=<?= $i ?>"><?= $i ?></a>
+          <a href="<?= SITE_URL ?>pages/new/newborn.php?page=<?= $i ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
     </div>

@@ -4,15 +4,15 @@ require_once __DIR__ . '/../../includes/header.php';
 
 $categoryGroup = 'accessories';
 $gender        = 'unisex';
-$subcategory   = 'bow-ties'; // <-- change for this page
+$subcategory   = 'bow-ties';
 
 // Pagination
 $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Fetch products
-$sql = "SELECT id, name, price, image, created_at
+// Fetch products including sale price
+$sql = "SELECT id, name, price, sale_price, image, created_at
         FROM products
         WHERE category_group=? AND gender=? AND subcategory=?
           AND (is_active IS NULL OR is_active=1)
@@ -39,7 +39,7 @@ $totalPages = max(1, ceil($count / $perPage));
 <html>
 <head>
 <meta charset="utf-8">
-<title>Bow-Ties</title>
+<title>Bow Ties</title>
 <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
 </head>
 <body>
@@ -49,12 +49,21 @@ $totalPages = max(1, ceil($count / $perPage));
 
 <div class="product-grid">
 <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
+    <?php $isOnSale = !empty($p['sale_price']) && $p['sale_price'] > 0; ?>
     <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-        <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
+        <img class="product-thumb"
+             src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
              alt="<?= htmlspecialchars($p['name']) ?>">
         <div class="product-info">
             <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-            <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
+            <?php if ($isOnSale): ?>
+                <p class="product-price sale">
+                    <span class="old">₱<?= number_format((float)$p['price'], 2) ?></span>
+                    <span class="new">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
+                </p>
+            <?php else: ?>
+                <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
+            <?php endif; ?>
         </div>
     </a>
 <?php endwhile; else: ?>
@@ -73,5 +82,6 @@ $totalPages = max(1, ceil($count / $perPage));
     <?php endfor; ?>
 </div>
 <?php endif; ?>
+
 </body>
 </html>

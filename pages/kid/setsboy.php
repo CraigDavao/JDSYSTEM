@@ -12,8 +12,8 @@ $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Query products
-$sql = "SELECT id, name, price, image, created_at
+// Query products (now includes sale_price if you have it)
+$sql = "SELECT id, name, price, sale_price, image, created_at
         FROM products
         WHERE category_group=? AND gender=? AND subcategory=?
           AND (is_active IS NULL OR is_active=1)
@@ -51,11 +51,18 @@ $totalPages = max(1, ceil($count / $perPage));
   <div class="product-grid">
     <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
       <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-        <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
+        <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>" 
              alt="<?= htmlspecialchars($p['name']) ?>">
         <div class="product-info">
           <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-          <p class="product-price">₱<?= number_format((float)$p['price'],2) ?></p>
+          <?php if (!empty($p['sale_price']) && $p['sale_price'] > 0): ?>
+            <p class="product-price">
+              <span class="old-price">₱<?= number_format((float)$p['price'], 2) ?></span>
+              <span class="sale-price">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
+            </p>
+          <?php else: ?>
+            <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
+          <?php endif; ?>
         </div>
       </a>
     <?php endwhile; else: ?>
@@ -65,7 +72,7 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
-      <?php for ($i=1; $i <= $totalPages; $i++): ?>
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>

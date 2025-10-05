@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const registerForm = document.getElementById("register-form");
   const verifyForm = document.getElementById("verify-form");
   const verifyEmailInput = document.getElementById("verify-email");
-
+  const backToTopButton = document.getElementById('backToTop');
   const showRegister = document.getElementById("show-register");
   const showLogin = document.getElementById("show-login");
 
@@ -117,5 +117,22 @@ document.addEventListener("DOMContentLoaded", () => {
         alert(result.message);
       }
     });
+
+    if (backToTopButton) {
+    window.addEventListener('scroll', () => {
+        if (window.pageYOffset > 300) {
+            backToTopButton.classList.add('visible');
+        } else {
+            backToTopButton.classList.remove('visible');
+        }
+    });
+
+    backToTopButton.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
   }
 });

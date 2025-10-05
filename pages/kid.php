@@ -15,40 +15,37 @@ $perPage = 24;
 $page = max(1, (int)($_GET['page'] ?? 1));
 $offset = ($page - 1) * $perPage;
 
+// Main query with sale_price included
 if ($gender && $sub) {
-    $sql = "SELECT id,name,price,image,created_at FROM products
+    $sql = "SELECT id,name,price,sale_price,image,created_at FROM products
+            WHERE category_group='kid' AND gender=? AND subcategory=? AND (is_active IS NULL OR is_active=1)
+            ORDER BY created_at DESC LIMIT ?,?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssii", $gender, $sub, $offset, $perPage);
+} elseif ($gender) {
+    $sql = "SELECT id,name,price,sale_price,image,created_at FROM products
+            WHERE category_group='kid' AND gender=? AND (is_active IS NULL OR is_active=1)
+            ORDER BY created_at DESC LIMIT ?,?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sii", $gender, $offset, $perPage);
+} elseif ($sub) {
+    $sql = "SELECT id,name,price,sale_price,image,created_at FROM products
+            WHERE category_group='kid' AND subcategory=? AND (is_active IS NULL OR is_active=1)
+            ORDER BY created_at DESC LIMIT ?,?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sii", $sub, $offset, $perPage);
+} else {
+    $sql = "SELECT id,name,price,sale_price,image,created_at FROM products
             WHERE category_group='kid' AND (is_active IS NULL OR is_active=1)
             ORDER BY created_at DESC LIMIT ?,?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ii", $offset, $perPage);
 }
-elseif ($gender) {
-  $sql = "SELECT id,name,price,image,created_at FROM products
-          WHERE category_group='kid' AND gender=? AND (is_active IS NULL OR is_active=1)
-          ORDER BY created_at DESC LIMIT ?,?";
-  $stmt = $conn->prepare($sql);
-  $stmt->bind_param("sii", $gender, $offset, $perPage);
-}
-elseif ($sub) {
-  $sql = "SELECT id,name,price,image,created_at FROM products
-          WHERE category_group='kid' AND subcategory=? AND (is_active IS NULL OR is_active=1)
-          ORDER BY created_at DESC LIMIT ?,?";
-  $stmt = $conn->prepare($sql);
-  $stmt->bind_param("sii", $sub, $offset, $perPage);
-}
-else {
-  $sql = "SELECT id,name,price,image,created_at FROM products
-          WHERE category_group='kid' AND (is_active IS NULL OR is_active=1)
-          ORDER BY created_at DESC LIMIT ?,?";
-  $stmt = $conn->prepare($sql);
-  $stmt->bind_param("ii", $offset, $perPage);
-}
 
 $stmt->execute();
 $result = $stmt->get_result();
 
-/* count total for pager — keep it consistent with the above filters */
-/* count total for pager — keep it consistent with the above filters */
+/* count total for pager */
 if ($gender && $sub) {
   $countStmt = $conn->prepare("SELECT COUNT(*) AS c FROM products WHERE category_group='kid' AND gender=? AND subcategory=? AND (is_active IS NULL OR is_active=1)");
   $countStmt->bind_param("ss",$gender,$sub);
@@ -66,31 +63,50 @@ $countStmt->execute();
 $count = $countStmt->get_result()->fetch_assoc()['c'] ?? 0;
 $totalPages = max(1, ceil($count / $perPage));
 ?>
-<!doctype html><html><head><meta charset="utf-8"><title>Kid</title>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Kid</title>
 <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
-</head><body>
-  <div class="new-header">
-    <h1 class="new-title">Kid<?= $gender ? ' — '.ucfirst($gender) : '' ?><?= $sub ? ' — ' . str_replace('-', ' ', ucfirst($sub)) : '' ?></h1>
-  </div>
+</head>
+<body>
 
-  <div class="product-grid">
-    <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
-      <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-        <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-             alt="<?= htmlspecialchars($p['name']) ?>">
-        <div class="product-info">
-          <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-          <p class="product-price">₱<?= number_format((float)$p['price'],2) ?></p>
-        </div>
-      </a>
-    <?php endwhile; else: ?>
-      <p style="grid-column:1/-1; opacity:.7;">No products found.</p>
-    <?php endif; ?>
-  </div>
+<div class="new-header">
+  <h1 class="new-title">
+    Kid<?= $gender ? ' — '.ucfirst($gender) : '' ?><?= $sub ? ' — ' . str_replace('-', ' ', ucfirst($sub)) : '' ?>
+  </h1>
+</div>
 
-  <?php if ($totalPages > 1): ?>
-    <div class="pager">
-      <?php for ($i=1;$i <= $totalPages; $i++): if ($i === $page): ?>
+<div class="product-grid">
+  <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
+    <?php
+      $isOnSale = isset($p['sale_price']) && $p['sale_price'] > 0 && $p['sale_price'] < $p['price'];
+    ?>
+    <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
+      <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
+           alt="<?= htmlspecialchars($p['name']) ?>">
+      <div class="product-info">
+        <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
+        <?php if ($isOnSale): ?>
+          <p class="product-price">
+            <span class="old-price">₱<?= number_format((float)$p['price'], 2) ?></span>
+            <span class="sale-price">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
+          </p>
+        <?php else: ?>
+          <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
+        <?php endif; ?>
+      </div>
+    </a>
+  <?php endwhile; else: ?>
+    <p style="grid-column:1/-1; opacity:.7;">No products found.</p>
+  <?php endif; ?>
+</div>
+
+<?php if ($totalPages > 1): ?>
+  <div class="pager">
+    <?php for ($i=1; $i <= $totalPages; $i++): ?>
+      <?php if ($i === $page): ?>
         <span class="current"><?= $i ?></span>
       <?php else:
         $qs = '?page='.$i;
@@ -98,7 +114,11 @@ $totalPages = max(1, ceil($count / $perPage));
         if ($sub)    $qs .= '&subcategory=' . urlencode($sub);
       ?>
         <a href="<?= SITE_URL ?>pages/kid.php<?= $qs ?>"><?= $i ?></a>
-      <?php endif; endfor; ?>
-    </div>
-  <?php endif; ?>
-</body></html>
+      <?php endif; ?>
+    <?php endfor; ?>
+  </div>
+<?php endif; ?>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+</body>
+</html>

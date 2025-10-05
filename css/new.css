@@ -1,15 +1,39 @@
 .new-header {
-  max-width:1440px;  
-  margin:40px auto 20px;
-  padding:0 20px;
-  text-align:center;
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-top: 2rem;
 }
 
-.new-title { 
-  font-size:32px; 
-  font-weight:600; 
-  margin:0; 
+.new-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;          /* ~40px */
+  font-weight: 600;
+  color: #2a2a2a;
+  letter-spacing: 1px;
+  margin: 0;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.5rem;
 }
+
+/* Subtle underline accent */
+.new-title::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background-color: #d9b18e;  /* soft warm accent */
+  margin: 0.75rem auto 0;
+  border-radius: 2px;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .new-title {
+    font-size: 2rem; /* smaller on small screens */
+  }
+}
+
 
 .subtitle { 
   font-size:16px; 
@@ -105,4 +129,22 @@
   background:#111; 
   color:#fff; 
   border-color:#111; 
+}
+
+.price {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-top: 0.5rem;
+}
+
+.old-price {
+    text-decoration: line-through;
+    color: #999;
+    margin-right: 8px;
+}
+
+.sale-price {
+    color: #d35400;
+    font-weight: 700;
 }

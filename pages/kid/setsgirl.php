@@ -12,8 +12,8 @@ $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Query products
-$sql = "SELECT id, name, price, image, created_at
+// Query products (includes sale_price)
+$sql = "SELECT id, name, price, sale_price, image, created_at
         FROM products
         WHERE category_group=? AND gender=? AND subcategory=?
           AND (is_active IS NULL OR is_active=1)
@@ -42,6 +42,18 @@ $totalPages = max(1, ceil($count / $perPage));
   <meta charset="utf-8">
   <title>Kid — Girls Sets</title>
   <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
+  <style>
+    /* Optional sale styling */
+    .old-price {
+      text-decoration: line-through;
+      color: #888;
+      margin-right: 6px;
+    }
+    .sale-price {
+      color: #e63946;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
   <div class="new-header">
@@ -55,7 +67,16 @@ $totalPages = max(1, ceil($count / $perPage));
              alt="<?= htmlspecialchars($p['name']) ?>">
         <div class="product-info">
           <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-          <p class="product-price">₱<?= number_format((float)$p['price'],2) ?></p>
+
+          <?php if (!empty($p['sale_price']) && $p['sale_price'] > 0): ?>
+            <p class="product-price">
+              <span class="old-price">₱<?= number_format((float)$p['price'], 2) ?></span>
+              <span class="sale-price">₱<?= number_format((float)$p['sale_price'], 2) ?></span>
+            </p>
+          <?php else: ?>
+            <p class="product-price">₱<?= number_format((float)$p['price'], 2) ?></p>
+          <?php endif; ?>
+
         </div>
       </a>
     <?php endwhile; else: ?>
@@ -65,7 +86,7 @@ $totalPages = max(1, ceil($count / $perPage));
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
-      <?php for ($i=1; $i <= $totalPages; $i++): ?>
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
