@@ -1,7 +1,7 @@
 <?php 
 require_once __DIR__ . '/includes/header.php';
 
-// Fetch only 4 featured products from database for homepage
+// Fetch only 4 featured products for homepage
 $featured_products = [];
 $new_arrivals_sql = "
     SELECT * FROM products 
@@ -10,7 +10,6 @@ $new_arrivals_sql = "
     LIMIT 4
 ";
 $new_arrivals_result = $conn->query($new_arrivals_sql);
-
 if ($new_arrivals_result && $new_arrivals_result->num_rows > 0) {
     while($row = $new_arrivals_result->fetch_assoc()) {
         $featured_products[] = $row;
@@ -32,12 +31,41 @@ foreach ($categories as $category) {
     $stmt->bind_param("s", $category);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     $categories_products[$category] = [];
     if ($result && $result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $categories_products[$category][] = $row;
         }
+    }
+    $stmt->close();
+}
+
+// Fetch a single image for each category
+$category_images = [];
+$category_names = [
+    'kid' => 'Kids Collection', 
+    'baby' => 'Baby Collection', 
+    'accessories' => 'Accessories'
+];
+
+foreach ($category_names as $category_key => $display_name) {
+    // Select a random active image for each category
+    $img_sql = "SELECT image FROM products 
+                WHERE category_group = ? AND is_active = 1 
+                ORDER BY RAND() 
+                LIMIT 1";
+
+    $stmt = $conn->prepare($img_sql);
+    $stmt->bind_param("s", $category_key);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $category_images[$category_key] = !empty($row['image']) ? $row['image'] : "empty.jpg";
+    } else {
+        $category_images[$category_key] = "empty.jpg"; // fallback image
     }
     $stmt->close();
 }
@@ -74,10 +102,11 @@ function isOnSale($product) {
             <p class="subtitle">Discover our carefully curated collections</p>
         </div>
         <div class="categories-grid">
+            <!-- Kids Collection -->
             <div class="category-card">
                 <a href="<?= SITE_URL ?>pages/kid.php">
                     <div class="category-image">
-                        <img src="<?= SITE_URL ?>uploads/kids-category.jpg" alt="Kids Collection" onerror="this.src='<?= SITE_URL ?>uploads/kid.webp'">
+                        <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($category_images['kid']) ?>" alt="Kids Collection" onerror="this.src='<?= SITE_URL ?>uploads/empty.jpg'">
                     </div>
                     <div class="category-content">
                         <h3>Kids Collection</h3>
@@ -86,10 +115,12 @@ function isOnSale($product) {
                     </div>
                 </a>
             </div>
+
+            <!-- Baby Collection -->
             <div class="category-card">
                 <a href="<?= SITE_URL ?>pages/baby.php">
                     <div class="category-image">
-                        <img src="<?= SITE_URL ?>uploads/baby-category.jpg" alt="Baby Collection" onerror="this.src='<?= SITE_URL ?>uploads/baby.webp'">
+                        <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($category_images['baby']) ?>" alt="Baby Collection" onerror="this.src='<?= SITE_URL ?>uploads/empty.jpg'">
                     </div>
                     <div class="category-content">
                         <h3>Baby Collection</h3>
@@ -98,10 +129,12 @@ function isOnSale($product) {
                     </div>  
                 </a>
             </div>
+
+            <!-- Accessories -->
             <div class="category-card">
                 <a href="<?= SITE_URL ?>pages/accessories.php">
                     <div class="category-image">
-                        <img src="<?= SITE_URL ?>uploads/accessories-category.jpg" alt="Accessories" onerror="this.src='<?= SITE_URL ?>uploads/accessories.webp'">
+                        <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($category_images['accessories']) ?>" alt="Accessories" onerror="this.src='<?= SITE_URL ?>uploads/empty.jpg'">
                     </div>
                     <div class="category-content">
                         <h3>Accessories</h3>
@@ -238,7 +271,6 @@ function isOnSale($product) {
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const backToTopButton = document.getElementById('backToTop');
-
     if (backToTopButton) {
         window.addEventListener('scroll', () => {
             if (window.pageYOffset > 300) {
@@ -247,12 +279,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 backToTopButton.classList.remove('visible');
             }
         });
-
         backToTopButton.addEventListener('click', () => {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
 });

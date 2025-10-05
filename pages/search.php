@@ -1,72 +1,55 @@
 <?php
-include '../connection/connection.php';
+require_once __DIR__ . '/../connection/connection.php';
+require_once __DIR__ . '/../includes/header.php';
 
+$search = trim($_GET['query'] ?? '');
+$products = null;
 
-if (isset($_GET['query'])) {
-    $search = trim($_GET['query']);
-    $stmt = $conn->prepare("SELECT * FROM products WHERE name LIKE ?");
+if ($search !== '') {
     $like = "%" . $search . "%";
+    $sql = "SELECT id, name, price, sale_price, sale_start, sale_end, image, category, created_at
+            FROM products
+            WHERE is_active = 1 AND name LIKE ?
+            ORDER BY created_at DESC";
+    $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $like);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $products = $stmt->get_result();
 }
 ?>
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Search results for "<?php echo htmlspecialchars($search); ?>"</title>
-  <link rel="stylesheet" href="../css/search.css?v=<?= time(); ?>">
+  <title>Search results for "<?= htmlspecialchars($search) ?>"</title>
+  <link rel="stylesheet" href="<?= SITE_URL; ?>css/search.css?v=<?= time(); ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
-    <a href="<?php echo SITE_URL; ?>" class="close-btn" title="Back to Home">
-    <i class="fa-solid fa-xmark"></i>
-    </a>
-  <div class="search-header">
-    <h1 class="search-title">Search results for "<?php echo htmlspecialchars($search); ?>"</h1>
-    <p class="subtitle">Showing products that match your search</p>
+  <div class="new-header">
+    <h1 class="new-title">Search results for "<?= htmlspecialchars($search) ?>"</h1>
   </div>
 
- <div class="product-grid">
-    <?php if (!empty($result) && $result->num_rows > 0): ?>
-        <?php while ($row = $result->fetch_assoc()): ?>
-            <a href="#" class="product-card">
-                <div class="product-image">
-                    <img src="../uploads/<?php echo htmlspecialchars($row['image']); ?>" 
-                         alt="<?php echo htmlspecialchars($row['name']); ?>"
-                         onerror="this.style.display='none'; this.parentElement.classList.add('missing-image')">
-                </div>
-                <h2><?php echo htmlspecialchars($row['name']); ?></h2>
-                <p class="price">$<?php echo htmlspecialchars($row['price']); ?></p>
-            </a>
-        <?php endwhile; ?>
+  <div class="product-grid">
+    <?php if ($products && $products->num_rows): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
+        <?php
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          include __DIR__ . '/../includes/product-card.php';
+        ?>
+      <?php endwhile; ?>
     <?php else: ?>
-        <p class="no-results">No products found matching your search.</p>
+      <p style="grid-column:1/-1;opacity:.7;">No products found matching your search.</p>
     <?php endif; ?>
-</div>
+  </div>
 
+  <div style="text-align:center;margin:40px 0;">
+    <a href="<?= SITE_URL ?>" class="close-btn" title="Back to Home">
+      <i class="fa-solid fa-xmark"></i>
+    </a>
+  </div>
 
-  <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle missing product images
-    const productImages = document.querySelectorAll('.product-image img');
-    
-    productImages.forEach(img => {
-        // Check if image fails to load
-        img.addEventListener('error', function() {
-            this.style.display = 'none';
-            this.parentElement.classList.add('missing-image');
-        });
-        
-        // Check if image src is empty or undefined
-        if (!img.src || img.src.includes('undefined')) {
-            img.style.display = 'none';
-            img.parentElement.classList.add('missing-image');
-        }
-    });
-});
-</script>
 </body>
 </html>
