@@ -51,4 +51,39 @@ document.addEventListener("DOMContentLoaded", () => {
       loginModal.style.display = "none";
     }
   });
+  // After successfully adding to cart, update the badge
+async function updateCartAfterAdd() {
+    try {
+        const res = await fetch(SITE_URL + "actions/cart-fetch.php");
+        const data = await res.json();
+        
+        if (data.status === "success") {
+            const cartCount = document.getElementById("cart-count");
+            if (cartCount) {
+                cartCount.textContent = data.cart.length;
+            }
+        }
+    } catch (e) {
+        console.error("Error updating cart badge:", e);
+    }
+}
+
+// After successfully adding an item to cart
+async function handleAddToCart() {
+    // Your existing add to cart code...
+    
+    // Then update the badge
+    if (window.updateCartBadgeGlobal) {
+        await window.updateCartBadgeGlobal();
+    } else {
+        // Fallback: reload the badge
+        const res = await fetch(SITE_URL + "actions/cart-count.php");
+        const data = await res.json();
+        const cartCount = document.getElementById("cart-count");
+        if (cartCount) {
+            cartCount.textContent = data.count || 0;
+        }
+    }
+}
+// Call this after adding an item to cart
 });

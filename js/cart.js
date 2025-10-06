@@ -169,28 +169,26 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("cart-total").innerHTML = `<h3>Total: ₱${calculateTotal()}</h3>`;
     }
 
-    function updateCartCount(cart) {
-        const cartCount = document.getElementById("cart-count");
-        if (cartCount) {
-            let totalQuantity = 0;
-            cart.forEach(item => {
-                totalQuantity += parseInt(item.quantity);
-            });
-            cartCount.textContent = totalQuantity;
+        function updateCartCount(cart) {
+            const cartCount = document.getElementById("cart-count");
+            if (cartCount) {
+                cartCount.textContent = cart.length; // counts unique products
+            }
         }
-    }
+
 
     async function updateCartBadge() {
-        try {
-            const res = await fetch(SITE_URL + "actions/cart-fetch.php");
-            const data = await res.json();
-            if (data.status === "success") {
-                updateCartCount(data.cart);
-            }
-        } catch (e) {
-            console.error("Error updating cart badge", e);
+    try {
+        const res = await fetch(SITE_URL + "actions/cart-fetch.php");
+        const data = await res.json();
+        if (data.status === "success") {
+            updateCartCount(data.cart);
         }
+    } catch (e) {
+        console.error("Error updating cart badge", e);
     }
+}
+
 
     function updateCartCountFromPage() {
         const cartCount = document.getElementById("cart-count");

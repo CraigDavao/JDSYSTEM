@@ -5,7 +5,7 @@ require_once __DIR__ . '/../connection/connection.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['status' => 'error', 'cart' => []]);
+    echo json_encode(['status' => 'error', 'cart' => [], 'message' => 'Not logged in']);
     exit;
 }
 
@@ -23,8 +23,24 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 $cart = [];
+$totalQuantity = 0;
 while ($row = $result->fetch_assoc()) {
     $cart[] = $row;
+    $totalQuantity += $row['quantity'];
 }
 
-echo json_encode(['status' => 'success', 'cart' => $cart]);
+// Debug information
+echo json_encode([
+    'status' => 'success', 
+    'cart' => $cart,
+    'unique_items_count' => count($cart),
+    'total_quantity' => $totalQuantity,
+    'debug' => [
+        'user_id' => $user_id,
+        'cart_items' => count($cart)
+    ]
+]);
+
+$stmt->close();
+$conn->close();
+?>

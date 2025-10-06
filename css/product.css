@@ -146,16 +146,18 @@
 }
 
 .wishlist-btn {
-    background: #fff;
+    background: #f8f8f8;
     color: #2a2a2a;
-    border: 1px solid #e8e8e8;
+    border: 1px solid #e0e0e0;
     flex: 1;
+    transition: all 0.3s ease;
 }
 
 .wishlist-btn:hover {
-    background: #f8f8f8;
+    background: #f8f4f0;
     border-color: #8b5a2b;
     color: #8b5a2b;
+    transform: translateY(-1px);
 }
 
 /* Product Details Accordion */
@@ -242,6 +244,7 @@
     display: block;
     animation: fadeIn 0.3s ease;
 }
+
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }

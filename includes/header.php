@@ -259,8 +259,7 @@ $conn->set_charset("utf8mb4");
         <?php endif; ?>
 
         <a href="<?php echo SITE_URL; ?>pages/favorites.php" title="Wishlist"><i class="fa-regular fa-heart"></i><span class="badge">0</span></a>
-        <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart"><i class="fa-solid fa-bag-shopping"></i><span id="cart-count" class="badge">0</span>
-
+        <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart"><i class="fa-solid fa-bag-shopping"></i><span class="badge">0</span></a>
     </div>
 </nav>
 
