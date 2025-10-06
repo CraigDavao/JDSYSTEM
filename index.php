@@ -157,7 +157,7 @@ function isOnSale($product) {
         <?php if (!empty($featured_products)): ?>
             <div class="product-grid">
                 <?php foreach ($featured_products as $product): ?>
-                    <a href="#" class="product-card" onclick="return false;">
+                    <a href="<?= SITE_URL ?>pages/product.php?id=<?= $product['id'] ?>" class="product-card">
                         <div class="product-image-container">
                             <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($product['image']); ?>" 
                                  alt="<?= htmlspecialchars($product['name']); ?>"
@@ -204,7 +204,7 @@ function isOnSale($product) {
                     </div>
                     <div class="product-grid">
                         <?php foreach ($products as $product): ?>
-                            <a href="#" class="product-card" onclick="return false;">
+                            <a href="<?= SITE_URL ?>pages/product.php?id=<?= $product['id'] ?>" class="product-card">
                                 <div class="product-image-container">
                                     <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($product['image']); ?>" 
                                          alt="<?= htmlspecialchars($product['name']); ?>"

@@ -33,6 +33,10 @@ $conn->set_charset("utf8mb4");
 
     <!-- JS -->
     <script src="<?php echo SITE_URL; ?>js/script.js?v=<?= time(); ?>" defer></script>
+    <script>
+    const SITE_URL = "<?= SITE_URL ?>";
+    </script>
+
 </head>
 
 <body>
@@ -255,7 +259,8 @@ $conn->set_charset("utf8mb4");
         <?php endif; ?>
 
         <a href="<?php echo SITE_URL; ?>pages/favorites.php" title="Wishlist"><i class="fa-regular fa-heart"></i><span class="badge">0</span></a>
-        <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart"><i class="fa-solid fa-bag-shopping"></i><span class="badge">0</span></a>
+        <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart"><i class="fa-solid fa-bag-shopping"></i><span id="cart-count" class="badge">0</span>
+
     </div>
 </nav>
 
@@ -310,3 +315,4 @@ $conn->set_charset("utf8mb4");
   </div>
 </div>
 
+<script src="./js/header.js?v=<?= time(); ?>"></script>

@@ -15,19 +15,45 @@ document.addEventListener("DOMContentLoaded", () => {
   const profileModal = document.getElementById("profile-modal");
   const closeModal = document.getElementById("close-modal");
 
+  async function updateCartBadge() {
+    try {
+        const res = await fetch(SITE_URL + "actions/cart-fetch.php");
+        const data = await res.json();
+        if (data.status === "success") {
+            const cartCount = document.getElementById("cart-count");
+            if (cartCount) {
+                let totalQuantity = 0;
+                data.cart.forEach(item => totalQuantity += parseInt(item.quantity));
+                cartCount.textContent = totalQuantity;
+            }
+        }
+    } catch (e) {
+        console.error("Error updating cart badge", e);
+    }
+}
+
+// Call updateCartBadge() whenever cart changes
+document.addEventListener("click", async (e) => {
+    if (e.target.matches(".add-to-cart, .remove-item, .quantity-input, .size-select")) {
+        setTimeout(updateCartBadge, 300); // small delay for server update
+    }
+});
+
+
+  updateCartBadge(); // Run immediately on page load
+
   // Close modal on X button click
   closeModal.addEventListener("click", () => {
     profileModal.style.display = "none";
   });
 
-  // Optional: Close modal when clicking outside the modal-box
   profileModal.addEventListener("click", (e) => {
     if (e.target === profileModal) {
       profileModal.style.display = "none";
     }
   });
 
-  // --- Dropdown hover handling ---
+  // Dropdown hover handling
   dropdownParents.forEach(parent => {
     let hideTimeout;
 
@@ -43,22 +69,21 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.classList.remove("no-scroll");
       }, 100);
     });
-
-    // Search icon open
-    searchIcon.addEventListener("click", (e) => {
-      e.preventDefault();
-      searchDropdown.classList.add("open");
-    });
-
-    // Close search when clicking outside
-    searchDropdown.addEventListener("click", (e) => {
-      if (e.target === searchDropdown) {
-        searchDropdown.classList.remove("open");
-      }
-    });
   });
 
-  // --- Profile Modal ---
+  // Search icon open
+  searchIcon.addEventListener("click", (e) => {
+    e.preventDefault();
+    searchDropdown.classList.add("open");
+  });
+
+  searchDropdown.addEventListener("click", (e) => {
+    if (e.target === searchDropdown) {
+      searchDropdown.classList.remove("open");
+    }
+  });
+
+  // Profile Modal
   profileIcon.addEventListener("click", (e) => {
     e.preventDefault();
     modal.style.display = "flex";
@@ -70,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- Switch to Register ---
+  // Switch to Register
   showRegister.addEventListener("click", (e) => {
     e.preventDefault();
     loginForm.classList.add("hidden");
@@ -78,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
     verifyForm.classList.add("hidden");
   });
 
-  // --- Switch back to Login ---
+  // Switch back to Login
   showLogin.addEventListener("click", (e) => {
     e.preventDefault();
     registerForm.classList.add("hidden");
@@ -86,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     verifyForm.classList.add("hidden");
   });
 
-  // --- Handle registration via AJAX ---
+  // Handle registration via AJAX
   if (registerForm) {
     registerForm.querySelector("form").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -107,32 +132,31 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (result.status === "success") {
-        // Hide register and show verify
         registerForm.classList.add("hidden");
         verifyForm.classList.remove("hidden");
         verifyEmailInput.value = result.email;
-
         alert(result.message);
       } else {
         alert(result.message);
       }
     });
+  }
 
-    if (backToTopButton) {
+  // Back to Top button
+  if (backToTopButton) {
     window.addEventListener('scroll', () => {
-        if (window.pageYOffset > 300) {
-            backToTopButton.classList.add('visible');
-        } else {
-            backToTopButton.classList.remove('visible');
-        }
+      if (window.pageYOffset > 300) {
+        backToTopButton.classList.add('visible');
+      } else {
+        backToTopButton.classList.remove('visible');
+      }
     });
 
     backToTopButton.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
     });
-}
   }
 });
