@@ -1,10 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
     let checkboxStates = {};
 
+    // Unified badge update (counts total quantities)
     async function updateCartBadge() {
         try {
             const res = await fetch(SITE_URL + "actions/cart-fetch.php");
             const data = await res.json();
+
             if (data.status === "success") {
                 const cartCount = document.getElementById("cart-count");
                 if (cartCount) {
@@ -20,17 +22,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Always update badge on every page
-    updateCartBadge();
-
-    if (document.getElementById("cart-items")) {
-        loadCart();
-    }
-
+    // Load cart items
     async function loadCart() {
         const cartItems = document.getElementById("cart-items");
         const cartTotal = document.getElementById("cart-total");
-
         cartItems.innerHTML = '<div class="cart-loading">Loading cart...</div>';
 
         try {
@@ -59,13 +54,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         <p>Quantity: <input type="number" class="quantity-input" value="${item.quantity}" min="1"></p>
                         <p>Subtotal: ₱<span class="item-subtotal">${item.subtotal}</span></p>
                         <button class="remove-item">Remove</button>
-                    </div>
-                    `;
+                    </div>`;
                 });
 
                 cartItems.innerHTML = html;
                 cartTotal.innerHTML = `<h3>Total: ₱${calculateTotal()}</h3>`;
-                attachCartEvents(); // <-- Attach listeners every time cart reloads
+                attachCartEvents();
             } else {
                 updateCartCount([]);
                 cartItems.innerHTML = `<div class="cart-empty"><h3>Your cart is empty</h3></div>`;
@@ -76,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Attach cart item event listeners
     function attachCartEvents() {
         document.querySelectorAll(".quantity-input").forEach(input => {
             input.addEventListener("change", async () => {
@@ -86,8 +81,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 cartItem.classList.add('updating');
                 await updateCart(cartId, quantity, size);
-                updateSubtotal(cartId, quantity, size);
-                updateCartCountFromPage();
+                updateSubtotal(cartId, quantity);
+                updateCartBadge();
                 setTimeout(() => cartItem.classList.remove('updating'), 600);
             });
         });
@@ -127,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Update cart item
     async function updateCart(cartId, quantity, size) {
         await fetch(SITE_URL + "actions/cart-update.php", {
             method: "POST",
@@ -136,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateCartBadge();
     }
 
+    // Remove cart item
     async function removeCartItem(cartId) {
         await fetch(SITE_URL + "actions/cart-remove.php", {
             method: "POST",
@@ -145,13 +142,15 @@ document.addEventListener("DOMContentLoaded", () => {
         updateCartBadge();
     }
 
-    function updateSubtotal(cartId, quantity, size) {
+    // Update subtotal
+    function updateSubtotal(cartId, quantity) {
         const cartItem = document.querySelector(`.cart-item[data-cart-id="${cartId}"]`);
         const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("₱", ""));
         cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
         updateTotalOnSelection();
     }
 
+    // Calculate total
     function calculateTotal() {
         let total = 0;
         document.querySelectorAll(".cart-item").forEach(item => {
@@ -169,35 +168,10 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("cart-total").innerHTML = `<h3>Total: ₱${calculateTotal()}</h3>`;
     }
 
-        function updateCartCount(cart) {
-            const cartCount = document.getElementById("cart-count");
-            if (cartCount) {
-                cartCount.textContent = cart.length; // counts unique products
-            }
-        }
-
-
-    async function updateCartBadge() {
-    try {
-        const res = await fetch(SITE_URL + "actions/cart-fetch.php");
-        const data = await res.json();
-        if (data.status === "success") {
-            updateCartCount(data.cart);
-        }
-    } catch (e) {
-        console.error("Error updating cart badge", e);
-    }
-}
-
-
-    function updateCartCountFromPage() {
+    function updateCartCount(cart) {
         const cartCount = document.getElementById("cart-count");
         if (cartCount) {
-            let totalQuantity = 0;
-            document.querySelectorAll(".quantity-input").forEach(input => {
-                totalQuantity += parseInt(input.value) || 1;
-            });
-            cartCount.textContent = totalQuantity;
+            cartCount.textContent = cart.length; // unique product count
         }
     }
 
@@ -221,6 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // Initial load
     updateCartBadge();
     if (document.getElementById("cart-items")) {
         loadCart();

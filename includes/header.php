@@ -259,7 +259,11 @@ $conn->set_charset("utf8mb4");
         <?php endif; ?>
 
         <a href="<?php echo SITE_URL; ?>pages/favorites.php" title="Wishlist"><i class="fa-regular fa-heart"></i><span class="badge">0</span></a>
-        <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart"><i class="fa-solid fa-bag-shopping"></i><span class="badge">0</span></a>
+       <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart">
+    <i class="fa-solid fa-bag-shopping"></i>
+    <span class="badge" id="cart-count">0</span>
+</a>
+
     </div>
 </nav>
 
@@ -315,3 +319,25 @@ $conn->set_charset("utf8mb4");
 </div>
 
 <script src="./js/header.js?v=<?= time(); ?>"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    let lastScrollY = window.scrollY;
+    const navbar = document.querySelector("nav.site-nav");
+
+    window.addEventListener("scroll", () => {
+      if (!navbar) return;
+      
+      if (window.scrollY > lastScrollY && window.scrollY > 80) {
+        navbar.classList.add("hidden"); // Hide when scrolling down
+      } else {
+        navbar.classList.remove("hidden"); // Show when scrolling up
+      }
+      lastScrollY = window.scrollY;
+    });
+  });
+</script>
+
+
+ </body>
+</html>

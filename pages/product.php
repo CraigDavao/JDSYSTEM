@@ -39,14 +39,15 @@ if (!$product) {
   <div class="product-info">
     <h1><?= htmlspecialchars($product['name']) ?></h1>
 
-    <?php if (!empty($product['sale_price'])): ?>
-      <p class="price">
-        <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
-        <span class="old">₱<?= number_format($product['price'], 2) ?></span>
-      </p>
-    <?php else: ?>
-      <p class="price">₱<?= number_format($product['price'], 2) ?></p>
-    <?php endif; ?>
+   <?php if ($product['sale_price'] !== null && $product['sale_price'] > 0): ?>
+  <p class="price">
+    <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
+    <span class="old">₱<?= number_format($product['price'], 2) ?></span>
+  </p>
+<?php else: ?>
+  <p class="price">₱<?= number_format($product['price'], 2) ?></p>
+<?php endif; ?>
+
 
     <p>Category: <?= ucfirst($product['category']) ?></p>
     <p>Gender: <?= ucfirst($product['gender']) ?></p>

@@ -78,6 +78,16 @@ nav.site-nav {
     transition: transform 0.4s ease-in-out;
 }
 
+/* Navbar hide/show animation */
+nav.site-nav {
+  transition: transform 0.4s ease-in-out;
+}
+
+nav.site-nav.hidden {
+  transform: translateY(-100%);
+}
+
+
 nav.site-nav.hidden {
   transform: translateY(-100%);
 }

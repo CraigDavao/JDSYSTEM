@@ -32,38 +32,115 @@ if (!isset($_SESSION['user_id'])) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Dashboard</title>
+  <title>My Account | Jolly Dolly</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/profile.css?v=<?= time(); ?>">
 </head>
 <body>
   <div class="dashboard-container">
-    <div class="dashboard-sidebar">
-      <ul>
-        <li class="active"><i class="fas fa-th-large"></i> Dashboard</li>
-        <li><i class="fas fa-map-marker-alt"></i> Address</li>
-        <li><i class="fas fa-heart"></i> Favorites</li>
-        <li><a href="<?php echo SITE_URL; ?>auth/logout.php" style="color:inherit;text-decoration:none;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    <!-- Sidebar Navigation -->
+    <nav class="dashboard-sidebar">
+      <div class="user-welcome">
+        <h3>Hello, <?php echo htmlspecialchars($_SESSION['user_name']); ?></h3>
+        <p>Manage your account</p>
+      </div>
+      
+      <ul class="sidebar-nav">
+        <li class="nav-item active">
+          <i class="fas fa-user-circle"></i>
+          <span>Account Overview</span>
+        </li>
+        <li class="nav-item">
+          <i class="fas fa-map-marker-alt"></i>
+          <span>Address Book</span>
+        </li>
+        <li class="nav-item">
+          <i class="fas fa-heart"></i>
+          <span>Wishlist</span>
+        </li>
+        <li class="nav-item">
+          <i class="fas fa-shopping-bag"></i>
+          <span>Order History</span>
+        </li>
+        <li class="nav-item logout-item">
+          <a href="<?php echo SITE_URL; ?>auth/logout.php">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Sign Out</span>
+          </a>
+        </li>
       </ul>
-    </div>
+    </nav>
 
-    <div class="dashboard-content">
-      <p>Hello <?php echo htmlspecialchars($_SESSION['user_name']); ?> 
-      (not <?php echo htmlspecialchars($_SESSION['user_name']); ?>? 
-      <a class="logout-link" href="<?php echo SITE_URL; ?>auth/logout.php">Log out</a>)</p>
-
-      <div class="order-box">
-        <i class="fas fa-check-circle"></i> 
-        <a href="#">MAKE YOUR FIRST ORDER</a> You haven't placed any orders yet.
+    <!-- Main Content -->
+    <main class="dashboard-content">
+      <div class="content-header">
+        <h1>Account Dashboard</h1>
+        <p class="welcome-message">
+          Welcome back, <?php echo htmlspecialchars($_SESSION['user_name']); ?>! 
+          <span class="logout-notice">
+            Not you? <a href="<?php echo SITE_URL; ?>auth/logout.php" class="logout-link">Sign out</a>
+          </span>
+        </p>
       </div>
 
-      <table>
-        <tr><td>Name</td><td><?php echo htmlspecialchars($_SESSION['user_name']); ?></td></tr>
-        <tr><td>Email</td><td><?php echo htmlspecialchars($_SESSION['user_email']); ?></td></tr>
-        <tr><td>Address 1</td><td></td></tr>
-        <tr><td>Address 2</td><td></td></tr>
-      </table>
-    </div>
+      <!-- First Order CTA -->
+      <div class="order-cta-card">
+        <div class="cta-icon">
+          <i class="fas fa-shopping-cart"></i>
+        </div>
+        <div class="cta-content">
+          <h3>Ready for your first order?</h3>
+          <p>Discover our latest collections and start shopping today.</p>
+          <a href="<?php echo SITE_URL; ?>pages/new.php" class="cta-button">Start Shopping</a>
+        </div>
+      </div>
+
+      <!-- Account Information -->
+      <div class="account-info-section">
+        <h2>Account Information</h2>
+        <div class="info-card">
+          <div class="info-row">
+            <div class="info-label">Full Name</div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['user_name']); ?></div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Email Address</div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['user_email']); ?></div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Default Shipping Address</div>
+            <div class="info-value empty">Not set</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Default Billing Address</div>
+            <div class="info-value empty">Not set</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-grid">
+          <a href="<?php echo SITE_URL; ?>pages/new.php" class="action-card">
+            <i class="fas fa-bag-shopping"></i>
+            <span>Continue Shopping</span>
+          </a>
+          <a href="#" class="action-card">
+            <i class="fas fa-heart"></i>
+            <span>View Wishlist</span>
+          </a>
+          <a href="#" class="action-card">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Manage Addresses</span>
+          </a>
+          <a href="#" class="action-card">
+            <i class="fas fa-user-edit"></i>
+            <span>Edit Profile</span>
+          </a>
+        </div>
+      </div>
+    </main>
   </div>
 </body>
 </html>
