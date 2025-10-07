@@ -13,6 +13,11 @@ if ($id <= 0) {
     header('Location: products.php');
     exit;
 }
+$sql = "UPDATE products 
+        SET price = ?, sale_price = ?, sale_start = ?, sale_end = ?, description = ?, is_active = ?
+        WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("dsssiii", $price, $sale_price, $sale_start, $sale_end, $description, $is_active, $id);
 
 $sql = "SELECT * FROM products WHERE id = ?";
 $stmt = $conn->prepare($sql);
@@ -433,6 +438,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <span class="regular-price">₱<?= number_format($product['price'], 2) ?></span>
                     <?php endif; ?>
                 </div>
+
+                <div class="form-group">
+                <label for="description">Product Description</label>
+                <textarea id="description" name="description" class="form-control" rows="4"><?= htmlspecialchars($product['description'] ?? '') ?></textarea>
+                </div>
+
                 
                 <?php if (!empty($product['sale_start']) && !empty($product['sale_end'])): ?>
                     <div class="sale-dates">

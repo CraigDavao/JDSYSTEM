@@ -7,7 +7,8 @@ if ($id <= 0) {
     die('<p>Invalid product ID.</p>');
 }
 
-$sql = "SELECT id, name, price, sale_price, image, category, gender, subcategory, created_at 
+// ✅ Include the `description` column
+$sql = "SELECT id, name, price, sale_price, image, description, created_at 
         FROM products 
         WHERE id = ? AND (is_active IS NULL OR is_active = 1)
         LIMIT 1";
@@ -39,28 +40,33 @@ if (!$product) {
   <div class="product-info">
     <h1><?= htmlspecialchars($product['name']) ?></h1>
 
-   <?php if ($product['sale_price'] !== null && $product['sale_price'] > 0): ?>
-  <p class="price">
-    <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
-    <span class="old">₱<?= number_format($product['price'], 2) ?></span>
-  </p>
-<?php else: ?>
-  <p class="price">₱<?= number_format($product['price'], 2) ?></p>
-<?php endif; ?>
+    <?php if (!empty($product['sale_price']) && $product['sale_price'] > 0): ?>
+      <p class="price">
+        <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
+        <span class="old">₱<?= number_format($product['price'], 2) ?></span>
+      </p>
+    <?php else: ?>
+      <p class="price">₱<?= number_format($product['price'], 2) ?></p>
+    <?php endif; ?>
 
-
-    <p>Category: <?= ucfirst($product['category']) ?></p>
-    <p>Gender: <?= ucfirst($product['gender']) ?></p>
-    <p>Subcategory: <?= ucfirst(str_replace('-', ' ', $product['subcategory'])) ?></p>
+    <!-- ✅ Product Description (from DB) -->
+    <div class="product-description">
+      <h3>Description</h3>
+      <p>
+        <?= !empty($product['description']) 
+            ? nl2br(htmlspecialchars($product['description'])) 
+            : 'No description available for this product.' ?>
+      </p>
+    </div>
 
     <div class="action-buttons">
-    <?php if (isset($_SESSION['user_id'])): ?>
+      <?php if (isset($_SESSION['user_id'])): ?>
         <button class="add-to-cart" data-id="<?= $product['id'] ?>">Add to Cart</button>
         <button class="wishlist-btn">♡ Add to Wishlist</button>
-    <?php else: ?>
+      <?php else: ?>
         <button class="add-to-cart require-login">Add to Cart</button>
         <button class="wishlist-btn require-login">♡ Add to Wishlist</button>
-    <?php endif; ?>
+      <?php endif; ?>
     </div>
   </div>
 </div>

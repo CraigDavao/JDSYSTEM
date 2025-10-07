@@ -4,11 +4,8 @@ require_once __DIR__ . '/../connection/connection.php';
 $allowedGroups  = ['kid','baby','newborn','accessories']; 
 $allowedGenders = ['girls','boys','unisex']; 
 $allowedSubs    = [
-    // kid + baby
     'sets','tops','bottoms','sleepwear','dresses-jumpsuits','accessories',
-    // newborn
     'bodysuits','essentials','sets',
-    // accessories main
     'hair-accessories','bags-hats','bow-ties','toys-gifts'
 ];
 
@@ -17,25 +14,22 @@ $success = '';
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $name = trim($_POST['name'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     $category_group = $_POST['category_group'] ?? 'kid';
     $gender = $_POST['gender'] ?? null;
     $subcategory = $_POST['subcategory'] ?? null;
     $price = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
-    $sale_price = isset($_POST['sale_price']) ? (float)$_POST['sale_price'] : null; // new
+    $sale_price = isset($_POST['sale_price']) ? (float)$_POST['sale_price'] : null;
     $is_active = isset($_POST['is_active']) ? 1 : 1;
 
     if ($name === '') $errors[] = "Name is required.";
     if (!in_array($category_group, $allowedGroups)) $errors[] = "Invalid category group.";
-    
-    // Accessories are always unisex
-    if($category_group === 'accessories') $gender = 'unisex';
-
+    if ($category_group === 'accessories') $gender = 'unisex';
     if ($gender !== null && $gender !== '' && !in_array($gender, $allowedGenders)) $errors[] = "Invalid gender.";
     if ($subcategory !== null && $subcategory !== '' && !in_array($subcategory, $allowedSubs)) $errors[] = "Invalid subcategory.";
-    
-    // sale price cannot be higher than regular price
-    if($sale_price !== null && $sale_price >= $price) $errors[] = "Sale price must be less than regular price.";
+    if ($sale_price !== null && $sale_price >= $price) $errors[] = "Sale price must be less than regular price.";
 
+    // Image handling
     $image = null; 
     if (!empty($_FILES['image']['name'])) {
         $targetDir = __DIR__ . '/../uploads/';
@@ -60,13 +54,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         elseif ($category_group === 'accessories') $category = 'accessories';
         else $category = $gender ?: $category_group;
 
-        $sql = "INSERT INTO products (name, category, price, sale_price, image, category_group, gender, subcategory, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // ✅ Final and only insert query
+        $sql = "INSERT INTO products 
+                (name, category, price, sale_price, image, category_group, gender, subcategory, description, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
             $errors[] = "Prepare failed: " . $conn->error;
         } else {
-            $stmt->bind_param("ssddssssi",
+            $stmt->bind_param("ssddsssssi",
                 $name,
                 $category,
                 $price,
@@ -75,12 +71,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $category_group,
                 $gender,
                 $subcategory,
+                $description,
                 $is_active
             );
 
             if ($stmt->execute()) {
-                $success = "Product added successfully.";
-                $name = $price = $sale_price = $image = '';
+                $success = "✅ Product added successfully!";
+                $name = $price = $sale_price = $image = $description = '';
                 $category_group = 'kid';
                 $gender = $subcategory = '';
             } else {
@@ -102,7 +99,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background:#fff; color:#111
 form { max-width:760px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 label { display:block; font-weight:600; margin-bottom:6px; }
 .full { grid-column: 1 / -1; }
-input, select { padding:10px; border:1px solid #ccc; border-radius:6px; width:100%; box-sizing:border-box; }
+input, select, textarea { padding:10px; border:1px solid #ccc; border-radius:6px; width:100%; box-sizing:border-box; }
 button { padding:12px 16px; background:#111; color:#fff; border:none; border-radius:6px; cursor:pointer; }
 .notes { font-size:13px; color:#666; margin-top:6px; }
 .msg { padding:10px; border-radius:6px; margin-bottom:12px; }
@@ -135,20 +132,25 @@ button { padding:12px 16px; background:#111; color:#fff; border:none; border-rad
     <div>
         <label for="category_group">Category Group</label>
         <select id="category_group" name="category_group" required>
-            <option value="kid" <?= (isset($category_group) && $category_group==='kid') ? 'selected' : '' ?>>Kid</option>
-            <option value="baby" <?= (isset($category_group) && $category_group==='baby') ? 'selected' : '' ?>>Baby</option>
-            <option value="newborn" <?= (isset($category_group) && $category_group==='newborn') ? 'selected' : '' ?>>Newborn</option>
-            <option value="accessories" <?= (isset($category_group) && $category_group==='accessories') ? 'selected' : '' ?>>Accessories</option>
+            <option value="kid" <?= ($category_group ?? '')==='kid' ? 'selected' : '' ?>>Kid</option>
+            <option value="baby" <?= ($category_group ?? '')==='baby' ? 'selected' : '' ?>>Baby</option>
+            <option value="newborn" <?= ($category_group ?? '')==='newborn' ? 'selected' : '' ?>>Newborn</option>
+            <option value="accessories" <?= ($category_group ?? '')==='accessories' ? 'selected' : '' ?>>Accessories</option>
         </select>
+    </div>
+
+    <div class="full">
+        <label for="description">Product Description</label>
+        <textarea id="description" name="description" rows="4" placeholder="Enter product details..."><?= htmlspecialchars($description ?? '') ?></textarea>
     </div>
 
     <div>
         <label for="gender">Gender</label>
         <select id="gender" name="gender">
             <option value="">-- none / unisex --</option>
-            <option value="girls" <?= (isset($gender) && $gender==='girls') ? 'selected' : '' ?>>Girls</option>
-            <option value="boys"  <?= (isset($gender) && $gender==='boys')  ? 'selected' : '' ?>>Boys</option>
-            <option value="unisex" <?= (isset($gender) && $gender==='unisex') ? 'selected' : '' ?>>Unisex</option>
+            <option value="girls" <?= ($gender ?? '')==='girls' ? 'selected' : '' ?>>Girls</option>
+            <option value="boys"  <?= ($gender ?? '')==='boys' ? 'selected' : '' ?>>Boys</option>
+            <option value="unisex" <?= ($gender ?? '')==='unisex' ? 'selected' : '' ?>>Unisex</option>
         </select>
     </div>
 
@@ -173,13 +175,11 @@ button { padding:12px 16px; background:#111; color:#fff; border:none; border-rad
     <div>
         <label for="image">Image (optional)</label>
         <input id="image" name="image" type="file" accept="image/*">
-        <div class="notes">Uploaded file will be saved to <code>/uploads/</code>.</div>
     </div>
 
     <div class="full">
         <label>
-            <input type="checkbox" name="is_active" value="1" <?= (isset($is_active) && $is_active==1) ? 'checked' : 'checked' ?>>
-            Active (visible on site)
+            <input type="checkbox" name="is_active" value="1" checked> Active (visible on site)
         </label>
     </div>
 
@@ -215,11 +215,9 @@ const subSelect = document.getElementById('subcategory');
 function populateSubs() {
     const group = groupSelect.value;
     let gender = genderSelect.value || 'unisex';
-
     if(group === 'accessories') gender = 'unisex';
 
     const list = (subMap[group] && subMap[group][gender]) ? subMap[group][gender] : [];
-
     const current = subSelect.value;
     subSelect.innerHTML = '<option value="">-- choose subcategory --</option>';
     list.forEach(s => {
