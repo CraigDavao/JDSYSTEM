@@ -120,6 +120,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateTotalOnSelection();
             });
         });
+
+        
     }
 
     // Update cart item

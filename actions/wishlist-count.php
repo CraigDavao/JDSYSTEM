@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../connection/connection.php';
 
 header('Content-Type: application/json');
@@ -11,13 +13,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT product_id) AS item_count FROM cart WHERE user_id = ?");
+$sql = "SELECT COUNT(DISTINCT product_id) AS total FROM wishlist WHERE user_id = ?";
+$stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
-$result = $stmt->get_result();
-$row = $result->fetch_assoc();
+$result = $stmt->get_result()->fetch_assoc();
 
-echo json_encode(['count' => (int)$row['item_count']]);
+echo json_encode(['count' => (int)($result['total'] ?? 0)]);
 
 $stmt->close();
 $conn->close();

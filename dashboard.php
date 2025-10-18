@@ -126,7 +126,7 @@ if (!isset($_SESSION['user_id'])) {
             <i class="fas fa-bag-shopping"></i>
             <span>Continue Shopping</span>
           </a>
-          <a href="#" class="action-card">
+          <a href="<?= SITE_URL ?>pages/wishlist.php" class="action-card">
             <i class="fas fa-heart"></i>
             <span>View Wishlist</span>
           </a>

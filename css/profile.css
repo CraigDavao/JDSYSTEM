@@ -40,7 +40,7 @@ body {
 }
 
 .user-welcome h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
   font-size: 1.4rem;
   font-weight: 500;
   color: #1f1f1f;
@@ -116,7 +116,7 @@ body {
 }
 
 .content-header h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
   font-size: 2.1rem;
   font-weight: 500;
   color: #1f1f1f;
@@ -193,7 +193,7 @@ body {
   font-weight: 600;
   color: #1f1f1f;
   margin: 0 0 1.2rem 0;
-  font-family: 'Playfair Display', serif;
+  font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
 }
 
 .info-card {
@@ -237,7 +237,7 @@ body {
   font-weight: 600;
   color: #1f1f1f;
   margin: 0 0 1.2rem 0;
-  font-family: 'Playfair Display', serif;
+  font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
 }
 
 .action-grid {
