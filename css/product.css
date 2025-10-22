@@ -147,3 +147,28 @@
     width: 100%;
   }
 }
+.checkout-btn {
+  background: #8b5a2b;              /* Elegant brown-gold tone */
+  color: #fff;
+  border: none;
+  padding: 1rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  font-family: 'Montserrat', sans-serif;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.checkout-btn:hover {
+  background: #2a2a2a;              /* Smooth dark hover */
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.action-button {
+  text-align: center;
+}

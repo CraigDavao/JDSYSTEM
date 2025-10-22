@@ -7,9 +7,25 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="cart-dashboard">
     <h2>My Cart</h2>
+    
+    <!-- Cart Actions -->
+    <div class="cart-actions">
+        <label class="select-all-label">
+            <input type="checkbox" id="select-all"> Select All
+        </label>
+        <button class="btn-remove-selected" id="remove-selected">Remove Selected</button>
+    </div>
+    
     <div id="cart-items"></div>
-    <div id="cart-total"></div>
-    <button id="checkout-btn">Checkout Selected</button>
+    
+    <!-- Cart Summary -->
+    <div class="cart-summary">
+        <div id="cart-total"></div>
+        <div class="shipping-notice">
+            <p>🚚 Free shipping on orders over ₱500</p>
+        </div>
+        <button id="checkout-btn" class="checkout-btn">Proceed to Checkout</button>
+    </div>
 </div>
 
 <script src="<?php echo SITE_URL; ?>js/cart.js?v=<?= time(); ?>"></script>
@@ -32,26 +48,56 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="cart-item" data-cart-id="${item.cart_id}">
                     <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
                     <img src="${SITE_URL}uploads/${item.image}" alt="${item.name}" width="80">
-                    <h3>${item.name}</h3>
-                    <p class="item-price">Price: ₱${item.price}</p>
-                    <p>Size: 
-                        <select class="size-select">
-                            <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
-                            <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
-                            <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
-                        </select>
-                    </p>
-                    <p>Quantity: <input type="number" class="quantity-input" value="${item.quantity}" min="1"></p>
-                    <p>Subtotal: ₱<span class="item-subtotal">${item.subtotal}</span></p>
-                    <button class="remove-item">Remove</button>
+                    <div class="item-details">
+                        <h3>${item.name}</h3>
+                        <p class="item-price">Price: ₱${item.price}</p>
+                        <div class="item-controls">
+                            <div class="control-group">
+                                <label>Size:</label>
+                                <select class="size-select">
+                                    <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
+                                    <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
+                                    <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
+                                    <option value="XL" ${item.size === "XL" ? "selected" : ""}>XL</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label>Quantity:</label>
+                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
+                            </div>
+                        </div>
+                        <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${item.subtotal}</span></p>
+                    </div>
+                    <button class="remove-item">× Remove</button>
                 </div>
                 `;
             });
 
             cartItems.innerHTML = html;
-            cartTotal.innerHTML = `<h3>Total: ₱${calculateTotal()}</h3>`;
+            
+            const total = calculateTotal();
+            const shipping = total > 500 ? 0 : 50;
+            const grandTotal = total + shipping;
+            
+            cartTotal.innerHTML = `
+                <div class="total-breakdown">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>₱${total.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Shipping:</span>
+                        <span>${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span>Total:</span>
+                        <span>₱${grandTotal.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
 
             attachCartEvents();
+            updateSelectAllState();
         }
     }
 
@@ -90,8 +136,53 @@ document.addEventListener("DOMContentLoaded", () => {
             checkbox.addEventListener("change", () => {
                 checkboxStates[checkbox.dataset.cartId] = checkbox.checked;
                 updateTotalOnSelection();
+                updateSelectAllState();
             });
         });
+
+        // Select All functionality
+        document.getElementById("select-all").addEventListener("change", function() {
+            const checkboxes = document.querySelectorAll(".select-item");
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+                checkboxStates[checkbox.dataset.cartId] = this.checked;
+            });
+            updateTotalOnSelection();
+        });
+
+        // Remove Selected functionality
+        document.getElementById("remove-selected").addEventListener("click", async () => {
+            const selectedItems = getSelectedCartIds();
+            if (selectedItems.length === 0) {
+                alert("Please select items to remove.");
+                return;
+            }
+
+            if (confirm(`Are you sure you want to remove ${selectedItems.length} item(s) from your cart?`)) {
+                for (const cartId of selectedItems) {
+                    await removeCartItem(cartId);
+                    delete checkboxStates[cartId];
+                }
+                loadCart();
+            }
+        });
+    }
+
+    function updateSelectAllState() {
+        const checkboxes = document.querySelectorAll(".select-item");
+        const selectAll = document.getElementById("select-all");
+        if (checkboxes.length > 0) {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            selectAll.checked = allChecked;
+        }
+    }
+
+    function getSelectedCartIds() {
+        const selectedItems = [];
+        document.querySelectorAll(".select-item:checked").forEach(checkbox => {
+            selectedItems.push(checkbox.dataset.cartId);
+        });
+        return selectedItems;
     }
 
     async function updateCart(cartId, quantity, size) {
@@ -127,24 +218,41 @@ document.addEventListener("DOMContentLoaded", () => {
                 total += price * qty;
             }
         });
-        return total.toFixed(2);
+        return total;
     }
 
     function updateTotalOnSelection() {
-        document.getElementById("cart-total").innerHTML = `<h3>Total: ₱${calculateTotal()}</h3>`;
+        const total = calculateTotal();
+        const shipping = total > 500 ? 0 : 50;
+        const grandTotal = total + shipping;
+        
+        document.getElementById("cart-total").innerHTML = `
+            <div class="total-breakdown">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>₱${total.toFixed(2)}</span>
+                </div>
+                <div class="total-row">
+                    <span>Shipping:</span>
+                    <span>${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
+                </div>
+                <div class="total-row grand-total">
+                    <span>Total:</span>
+                    <span>₱${grandTotal.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
     }
 
     document.getElementById("checkout-btn").addEventListener("click", () => {
-        const selectedItems = [];
-        document.querySelectorAll(".select-item:checked").forEach(checkbox => {
-            selectedItems.push(checkbox.dataset.cartId);
-        });
+        const selectedItems = getSelectedCartIds();
 
         if (selectedItems.length === 0) {
             alert("Please select at least one item to checkout.");
             return;
         }
 
+        // Store selected items in session for checkout
         fetch(SITE_URL + "actions/cart-checkout.php", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },

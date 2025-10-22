@@ -1,19 +1,15 @@
 <?php
-if (isset($_POST['product_id']) || isset($_POST['wishlist_action'])) {
-    // This is an API call, don't render the page
-    exit;
-}
+$sql = "INSERT INTO wishlist (user_id, product_id, added_at) VALUES (?, ?, NOW())";
 
 ob_start();
 
-// ✅ Correct paths for pages/product.php
 require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
 // ✅ Get product ID from URL
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
-    die('<p>Invalid product ID.</p>');
+  die('<p>Invalid product ID.</p>');
 }
 
 // ✅ Fetch product details
@@ -27,81 +23,98 @@ $stmt->execute();
 $product = $stmt->get_result()->fetch_assoc();
 
 if (!$product) {
-    die('<p>Product not found.</p>');
+  die('<p>Product not found.</p>');
 }
-?>
-
-<?php
-// Temporary debug version
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-echo "<!-- Debug: Starting product.php -->";
-
-// Test connection.php first
-require_once __DIR__ . '/../connection/connection.php';
-echo "<!-- Debug: Connection loaded -->";
-
-// Test header.php
-require_once __DIR__ . '/../includes/header.php';
-echo "<!-- Debug: Header loaded -->";
-
-// Rest of your code...
 ?>
 
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <title><?= htmlspecialchars($product['name']) ?> | Jolly Dolly</title>
-  <!-- ✅ Update CSS paths too -->
   <link rel="stylesheet" href="../css/new.css?v=<?= time() ?>">
   <link rel="stylesheet" href="../css/product.css?v=<?= time() ?>">
 </head>
+
 <body>
 
-<div class="product-page">
-  <div class="product-image">
-    <!-- ✅ Update image path -->
-    <img src="../uploads/<?= htmlspecialchars($product['image']) ?>" 
-         alt="<?= htmlspecialchars($product['name']) ?>">
-  </div>
+  <div class="product-page">
+    <div class="product-image">
+      <!-- ✅ Image from uploads folder -->
+      <img src="../uploads/<?= htmlspecialchars($product['image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+    </div>
 
-  <div class="product-info">
-    <h1><?= htmlspecialchars($product['name']) ?></h1>
+    <div class="product-info">
+      <h1><?= htmlspecialchars($product['name']) ?></h1>
 
-    <?php if (!empty($product['sale_price']) && $product['sale_price'] > 0): ?>
-      <p class="price">
-        <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
-        <span class="old">₱<?= number_format($product['price'], 2) ?></span>
-      </p>
-    <?php else: ?>
-      <p class="price">₱<?= number_format($product['price'], 2) ?></p>
-    <?php endif; ?>
+      <?php if (!empty($product['sale_price']) && $product['sale_price'] > 0): ?>
+        <p class="price">
+          <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
+          <span class="old">₱<?= number_format($product['price'], 2) ?></span>
+        </p>
+      <?php else: ?>
+        <p class="price">₱<?= number_format($product['price'], 2) ?></p>
+      <?php endif; ?>
 
-    <div class="product-description">
-      <h3>Description</h3>
-      <p>
-        <?= !empty($product['description']) 
-            ? nl2br(htmlspecialchars($product['description'])) 
+      <div class="product-description">
+        <h3>Description</h3>
+        <p>
+          <?= !empty($product['description'])
+            ? nl2br(htmlspecialchars($product['description']))
             : 'No description available for this product.' ?>
-      </p>
-    </div>
+        </p>
+      </div>
 
-    <div class="action-buttons">
-      <!-- Always show buttons, let JavaScript handle login state -->
-      <button class="add-to-cart" data-id="<?= $product['id'] ?>">Add to Cart</button>
-      <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
+      <!-- ✅ Quantity Selector -->
+      <div class="quantity-selector">
+        <button type="button" class="quantity-btn" id="minus-btn">−</button>
+        <input type="number" id="quantity" name="quantity" value="1" min="1" class="quantity-input">
+        <button type="button" class="quantity-btn" id="plus-btn">+</button>
+      </div>
+
+      <div class="action-buttons">
+        <button class="add-to-cart" data-id="<?= $product['id'] ?>">Add to Cart</button>
+        <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
+      </div>
+
+      <div class="action-button">
+        <form action="<?php echo SITE_URL; ?>actions/buy_now.php" method="POST" style="display:inline;">
+          <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+          <input type="hidden" name="quantity" id="buy-now-quantity" value="1">
+          <button type="submit" class="checkout-btn">Buy Now</button>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+  <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
-<script>
-  const SITE_URL = "<?= SITE_URL ?>";
-</script>
-<script src="../js/product.js?v=<?= time() ?>"></script>
+  <script>
+    // ✅ Quantity logic for + / − buttons
+    const minusBtn = document.getElementById('minus-btn');
+    const plusBtn = document.getElementById('plus-btn');
+    const quantityInput = document.getElementById('quantity');
+    const buyNowQuantity = document.getElementById('buy-now-quantity');
 
+    minusBtn.addEventListener('click', () => {
+      let val = parseInt(quantityInput.value);
+      if (val > 1) quantityInput.value = val - 1;
+      buyNowQuantity.value = quantityInput.value;
+    });
+
+    plusBtn.addEventListener('click', () => {
+      let val = parseInt(quantityInput.value);
+      quantityInput.value = val + 1;
+      buyNowQuantity.value = quantityInput.value;
+    });
+
+    quantityInput.addEventListener('change', () => {
+      buyNowQuantity.value = quantityInput.value;
+    });
+  </script>
+
+  <script src="../js/product.js?v=<?= time() ?>"></script>
+  <script src="../js/checkout.js?v=<?= time() ?>"></script>
 </body>
 </html>

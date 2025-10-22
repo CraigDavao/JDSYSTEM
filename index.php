@@ -90,7 +90,7 @@ function isOnSale($product) {
         </div>
     </div>
     <div class="hero-image">
-        <img src="<?= SITE_URL ?>uploads/hero-main.png" alt="Jolly Dolly Kids Fashion" onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+        <img src="<?= SITE_URL ?>uploads/hero-main.png" alt="Jolly Dolly Kids Fashion" onerror="this.src='<?= SITE_URL ?>uploads/hero-main.jpg'">
     </div>
 </section>
 
@@ -162,7 +162,7 @@ function isOnSale($product) {
                             <img src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($product['image']); ?>" 
                                  alt="<?= htmlspecialchars($product['name']); ?>"
                                  class="product-thumb"
-                                 onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+                                 onerror="this.src='<?= SITE_URL ?>uploads/una.jpg'">
                             <?php if (isOnSale($product)): ?>
                                 <div class="sale-badge">Sale</div>
                             <?php endif; ?>
@@ -248,7 +248,7 @@ function isOnSale($product) {
                 <a href="#" class="btn btn-outline">Learn More About Us</a>
             </div>
             <div class="story-image">
-                <img src="<?= SITE_URL ?>uploads/brand-story.jpg" alt="Our Story" onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+                <img src="<?= SITE_URL ?>uploads/brand-story.jpg" alt="Our Story" onerror="this.src='<?= SITE_URL ?>uploads/una.jpg'">
             </div>
         </div>
     </div>

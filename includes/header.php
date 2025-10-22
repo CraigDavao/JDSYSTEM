@@ -75,8 +75,8 @@ $conn->set_charset("utf8mb4");
                         </div>
 
                         <div class="mega-images">
-                            <img src="<?php echo SITE_URL; ?>uploads/sample1.jpg" alt="Sample 1">
-                            <img src="<?php echo SITE_URL; ?>uploads/sample1.jpg" alt="Sample 2">
+                            <img src="<?php echo SITE_URL; ?>uploads/una.jpg" alt="Sample 1">
+                            <img src="<?php echo SITE_URL; ?>uploads/pangalawa.jpg" alt="Sample 2">
                             <img src="<?php echo SITE_URL; ?>uploads/sample1.jpg" alt="Sample 3">
                         </div>
                     </div>
@@ -120,12 +120,12 @@ $conn->set_charset("utf8mb4");
 
                         <!-- Image 1 -->
                         <div class="mega-images">
-                            <img src="<?= SITE_URL ?>uploads/kids-girls.jpg" alt="Kids Girls">
+                            <img src="<?= SITE_URL ?>uploads/" alt="Kids Girls">
                         </div>
 
                         <!-- Image 2 -->
                         <div class="mega-images">
-                            <img src="<?= SITE_URL ?>uploads/kids-boys.jpg" alt="Kids Boys">
+                            <img src="<?= SITE_URL ?>uploads/kid.webp" alt="Kids Boys">
                         </div>
                     </div>
                 </div>

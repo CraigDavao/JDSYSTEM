@@ -8,7 +8,7 @@ $offset  = ($page - 1) * $perPage;
 
 $category = 'sale items';
 
-// Fetch sale products (with proper sale conditions)
+// Fetch sale products
 $sql = "SELECT id, name, price, sale_price, sale_start, sale_end, image, created_at
         FROM products
         WHERE is_active = 1
@@ -20,7 +20,7 @@ $sql = "SELECT id, name, price, sale_price, sale_start, sale_end, image, created
         ORDER BY created_at DESC
         LIMIT ?, ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $offset, $perPage);
+$stmt->bind_param('ii', $offset, $perPage);
 $stmt->execute();
 $products = $stmt->get_result();
 
@@ -54,7 +54,7 @@ $totalPages = max(1, ceil($count / $perPage));
     <h1 class="new-title"><?= ucwords($category) ?></h1>
   </div>
 
-  <div class="product-grid">
+  <div class="product-grid left-align">
     <?php if ($products->num_rows): ?>
       <?php while ($product = $products->fetch_assoc()): ?>
         <?php
