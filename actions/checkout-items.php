@@ -46,7 +46,7 @@ if (isset($_SESSION['buy_now_product'])) {
 else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
     $cart_ids = implode(',', array_map('intval', $_SESSION['checkout_items']));
     
-    // Updated query to match your products table structure
+    // Updated query to handle blob images properly
     $stmt = $conn->prepare("
         SELECT 
             cart.id AS cart_id,
@@ -56,12 +56,16 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
             products.price,
             products.sale_price,
             products.actual_sale_price,
-            products.image,
+            products.description,
             cart.quantity,
-            cart.size
+            cart.size,
+            product_images.image,
+            product_images.image_format
         FROM cart 
         INNER JOIN products ON cart.product_id = products.id 
+        LEFT JOIN product_images ON products.id = product_images.product_id
         WHERE cart.id IN ($cart_ids) AND cart.user_id = ?
+        GROUP BY cart.id
     ");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -75,12 +79,17 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
             continue;
         }
 
-        // Handle image
-        $image_data = $row['image'] ? $row['image'] : 'sample1.jpg';
+        // 🟣 Handle blob image properly
+        if (!empty($row['image'])) {
+            $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
+            $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
+        } else {
+            $image_data = 'sample1.jpg';
+        }
         
-        // Calculate price
+        // 🟣 Calculate CORRECT price
         $displayPrice = !empty($row['actual_sale_price']) ? $row['actual_sale_price'] : 
-                       (!empty($row['sale_price']) && $row['sale_price'] > 0 ? $row['sale_price'] : $row['price']);
+                       (!empty($row['sale_price']) ? $row['sale_price'] : $row['price']);
         
         $itemSubtotal = $displayPrice * $row['quantity'];
         $subtotal += $itemSubtotal;

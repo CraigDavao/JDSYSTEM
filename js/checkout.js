@@ -1,161 +1,141 @@
-<?php
-$sql = "INSERT INTO wishlist (user_id, product_id, added_at) VALUES (?, ?, NOW())";
-
-ob_start();
-
-require_once __DIR__ . '/../connection/connection.php';
-require_once __DIR__ . '/../includes/header.php';
-
-// ✅ Get product ID from URL
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) {
-  die('<p>Invalid product ID.</p>');
-}
-
-// ✅ Fetch product details
-$sql = "SELECT id, name, price, sale_price, image, description, created_at 
-        FROM products 
-        WHERE id = ? AND (is_active IS NULL OR is_active = 1)
-        LIMIT 1";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$product = $stmt->get_result()->fetch_assoc();
-
-if (!$product) {
-  die('<p>Product not found.</p>');
-}
-?>
-
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <title><?= htmlspecialchars($product['name']) ?> | Jolly Dolly</title>
-  <link rel="stylesheet" href="../css/new.css?v=<?= time() ?>">
-  <link rel="stylesheet" href="../css/product.css?v=<?= time() ?>">
-</head>
-
-<body>
-
-  <div class="product-page">
-    <div class="product-image">
-      <!-- ✅ Image from uploads folder -->
-      <img src="../uploads/<?= htmlspecialchars($product['image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
-    </div>
-
-    <div class="product-info">
-      <h1><?= htmlspecialchars($product['name']) ?></h1>
-
-      <?php if (!empty($product['sale_price']) && $product['sale_price'] > 0): ?>
-        <p class="price">
-          <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
-          <span class="old">₱<?= number_format($product['price'], 2) ?></span>
-        </p>
-      <?php else: ?>
-        <p class="price">₱<?= number_format($product['price'], 2) ?></p>
-      <?php endif; ?>
-
-      <div class="product-description">
-        <h3>Description</h3>
-        <p>
-          <?= !empty($product['description'])
-            ? nl2br(htmlspecialchars($product['description']))
-            : 'No description available for this product.' ?>
-        </p>
-      </div>
-
-      <!-- ✅ Quantity Selector -->
-      <div class="quantity-selector">
-        <button type="button" class="quantity-btn" id="minus-btn">−</button>
-        <input type="number" id="quantity" name="quantity" value="1" min="1" class="quantity-input">
-        <button type="button" class="quantity-btn" id="plus-btn">+</button>
-      </div>
-
-      <div class="action-buttons">
-        <button class="add-to-cart" data-id="<?= $product['id'] ?>">Add to Cart</button>
-        <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
-      </div>
-
-<div class="action-button">
-   <form id="buy-now-form" action="<?= SITE_URL ?>pages/checkout.php" method="POST" style="display:inline;">
-    <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
-    <input type="hidden" name="quantity" value="1">
-    <button type="submit" class="checkout-btn">Buy Now</button>
-</form>
-
-
-</div>
-
-<script>
 document.addEventListener("DOMContentLoaded", () => {
-    const buyNowForm = document.getElementById('buy-now-form');
-    const buyNowBtn = document.getElementById('buy-now-btn');
+    console.log('Checkout page loaded');
 
-    if (buyNowForm && buyNowBtn) {
-        buyNowForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Stop normal submission temporarily
-
-            // Disable button to prevent double click
-            buyNowBtn.disabled = true;
-
-            // Create a FormData object to send
-            const formData = new FormData(buyNowForm);
-
-            // Send POST request via fetch
-            fetch(buyNowForm.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text()) // Assuming your PHP just processes the add-to-checkout
-            .then(data => {
-                // After success, redirect to checkout
-                window.location.href = "<?php echo SITE_URL; ?>pages/checkout.php";
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                buyNowBtn.disabled = false;
-                alert('Something went wrong. Please try again.');
-            });
-        });
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    if (!placeOrderBtn) {
+        console.error('Place order button not found.');
+        return;
     }
+
+    // Parse items & totals from button dataset
+    const checkoutItems = JSON.parse(placeOrderBtn.dataset.items || "[]");
+    const orderTotals = JSON.parse(placeOrderBtn.dataset.totals || "{}");
+    const isBuyNow = placeOrderBtn.dataset.isBuyNow === "1" || placeOrderBtn.dataset.isBuyNow === "true";
+
+    console.log('Checkout Items:', checkoutItems);
+    console.log('Order Totals:', orderTotals);
+    console.log('Buy Now Mode:', isBuyNow);
+
+    // Default order data object
+    let orderData = {
+        items: checkoutItems,
+        subtotal: orderTotals.subtotal || 0,
+        shipping: orderTotals.shipping || 0,
+        total: orderTotals.total || 0,
+        paymentMethod: 'cod',
+        shippingInfo: {}
+    };
+
+    // 🟣 Payment method toggle
+    document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            orderData.paymentMethod = this.value;
+            console.log('Payment method changed:', orderData.paymentMethod);
+        });
+    });
+
+    // 🟣 Place Order button
+    placeOrderBtn.addEventListener('click', () => {
+        console.log('Place order clicked');
+
+        if (!validateShippingForm()) return;
+
+        if (!orderData.items || orderData.items.length === 0) {
+            alert('No items to checkout. Please add items to your cart first.');
+            return;
+        }
+
+        // Collect shipping details
+        orderData.shippingInfo = {
+            fullname: getValue('fullname'),
+            email: getValue('email'),
+            phone: getValue('phone'),
+            address: getValue('address'),
+            city: getValue('city'),
+            province: getValue('province'),
+            zipcode: getValue('zipcode'),
+            notes: getValue('notes')
+        };
+
+        console.log('Final orderData to send:', orderData);
+
+        // Disable button while submitting
+        placeOrderBtn.innerHTML = 'Placing Order...';
+        placeOrderBtn.disabled = true;
+
+        // Send to backend
+        fetch(SITE_URL + 'actions/place-order.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        })
+        .then(res => res.json())
+        .then(result => {
+            console.log('Server response:', result);
+
+            if (result.status === 'success') {
+                // 🟣 If Buy Now → clear session
+                if (isBuyNow) {
+                    fetch(SITE_URL + 'actions/clear-buy-now.php', { method: 'POST' });
+                }
+
+                window.location.href = SITE_URL + 'pages/order-confirmation.php?order_id=' + result.order_id;
+            } else {
+                alert(result.message || 'Failed to place order. Please try again.');
+                placeOrderBtn.innerHTML = 'Place Order';
+                placeOrderBtn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Network error:', err);
+            alert('Network error. Please check your connection.');
+            placeOrderBtn.innerHTML = 'Place Order';
+            placeOrderBtn.disabled = false;
+        });
+    });
+
+    // Helper: Get trimmed value
+    function getValue(id) {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    }
+
+    // 🟣 Form validation
+    function validateShippingForm() {
+        const required = [
+            {id: 'fullname', label: 'Full Name'},
+            {id: 'email', label: 'Email'},
+            {id: 'phone', label: 'Phone Number'},
+            {id: 'address', label: 'Address'},
+            {id: 'city', label: 'City'},
+            {id: 'province', label: 'Province'},
+            {id: 'zipcode', label: 'ZIP Code'}
+        ];
+
+        for (let field of required) {
+            const value = getValue(field.id);
+            if (!value) {
+                alert(`Please fill in the ${field.label}.`);
+                document.getElementById(field.id).focus();
+                return false;
+            }
+        }
+
+        const email = getValue('email');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Please enter a valid email address.');
+            document.getElementById('email').focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    // 🟣 Fallback image handling
+    document.querySelectorAll('.checkout-item img').forEach(img => {
+        img.addEventListener('error', () => {
+            img.src = SITE_URL + 'uploads/sample1.jpg';
+        });
+    });
 });
-</script>
-
-
-
-
-    </div>
-  </div>
-
-  <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
-  <script>
-    // ✅ Quantity logic for + / − buttons
-    const minusBtn = document.getElementById('minus-btn');
-    const plusBtn = document.getElementById('plus-btn');
-    const quantityInput = document.getElementById('quantity');
-    const buyNowQuantity = document.getElementById('buy-now-quantity');
-
-    minusBtn.addEventListener('click', () => {
-      let val = parseInt(quantityInput.value);
-      if (val > 1) quantityInput.value = val - 1;
-      buyNowQuantity.value = quantityInput.value;
-    });
-
-    plusBtn.addEventListener('click', () => {
-      let val = parseInt(quantityInput.value);
-      quantityInput.value = val + 1;
-      buyNowQuantity.value = quantityInput.value;
-    });
-
-    quantityInput.addEventListener('change', () => {
-      buyNowQuantity.value = quantityInput.value;
-    });
-  </script>
-
-  <script src="../js/product.js?v=<?= time() ?>"></script>
-  <script src="../js/checkout.js?v=<?= time() ?>"></script>
-</body>
-</html>

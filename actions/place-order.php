@@ -1,12 +1,12 @@
 <?php
 session_start();
 require_once __DIR__ . '/../connection/connection.php';
-
 header('Content-Type: application/json');
 
-// Enable error reporting for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/../logs/order_errors.log');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method']);
@@ -14,43 +14,35 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $user_id = $_SESSION['user_id'] ?? 0;
-error_log("User ID: " . $user_id);
-
 if (!$user_id) {
     echo json_encode(['status' => 'error', 'message' => 'User not logged in']);
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
-error_log("Input received: " . print_r($input, true));
+$raw = file_get_contents('php://input');
+$input = json_decode($raw, true);
 
-if (!$input) {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid input data']);
+if (json_last_error() !== JSON_ERROR_NONE || !$input) {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid JSON payload']);
     exit;
 }
 
 try {
-    // Start transaction
     $conn->begin_transaction();
-    error_log("Transaction started");
 
-    // 1. Create order - using your EXACT table structure
-    $shippingInfo = $input['shippingInfo'];
-    error_log("Shipping info: " . print_r($shippingInfo, true));
-    
-    // Generate order number
-    $order_number = 'ORD' . date('YmdHis') . mt_rand(100, 999);
-    
-    // Calculate total quantity from items
-    $total_quantity = 0;
-    foreach ($input['items'] as $item) {
-        $total_quantity += intval($item['quantity']);
+    $shippingInfo = $input['shippingInfo'] ?? [];
+    $items = $input['items'] ?? [];
+
+    if (empty($items)) {
+        throw new Exception('No items provided for this order.');
     }
-    
-    error_log("Order details - Number: $order_number, Quantity: $total_quantity");
-    error_log("Financials - Subtotal: {$input['subtotal']}, Shipping: {$input['shipping']}, Total: {$input['total']}");
-    
-    // Insert into orders table with your exact column names
+
+    // Generate unique order number
+    $order_number = 'ORD' . date('YmdHis') . mt_rand(100, 999);
+    $total_quantity = array_sum(array_map(fn($i) => intval($i['quantity']), $items));
+    $notes = $shippingInfo['notes'] ?? '';
+
+    // Insert main order
     $stmt = $conn->prepare("
         INSERT INTO orders (
             user_id, order_number, subtotal, shipping_fee, total_amount, 
@@ -58,14 +50,9 @@ try {
             zipcode, notes, status, quantity
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
     ");
-    
-    if (!$stmt) {
-        throw new Exception('Failed to prepare order statement: ' . $conn->error);
-    }
-    
-    $notes = $shippingInfo['notes'] ?? '';
-    
-    $stmt->bind_param("isdddsssssssssi", 
+
+    $stmt->bind_param(
+        "isdddsssssssssi",
         $user_id,
         $order_number,
         $input['subtotal'],
@@ -82,36 +69,24 @@ try {
         $notes,
         $total_quantity
     );
-    
-    $result = $stmt->execute();
-    
-    if (!$result) {
-        throw new Exception('Failed to execute order statement: ' . $stmt->error);
-    }
-    
+
+    if (!$stmt->execute()) throw new Exception('Failed to create order: ' . $stmt->error);
     $order_id = $conn->insert_id;
     $stmt->close();
-    
-    error_log("Order created successfully. Order ID: $order_id");
 
-    // 2. Add order items
+    // Insert order items
     $stmt = $conn->prepare("
         INSERT INTO order_items (order_id, product_id, product_name, quantity, size, price, subtotal)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
 
-    if (!$stmt) {
-        throw new Exception('Failed to prepare order items statement: ' . $conn->error);
-    }
-
-    foreach ($input['items'] as $index => $item) {
-        error_log("Processing item $index: " . print_r($item, true));
-        
-        if (!isset($item['product_id']) || $item['product_id'] <= 0) {
-            throw new Exception('Invalid product_id in order items at index ' . $index);
+    foreach ($items as $index => $item) {
+        if (empty($item['product_id']) || $item['product_id'] <= 0) {
+            throw new Exception("Invalid product_id at index $index");
         }
-        
-        $stmt->bind_param("iisisd",
+
+        $stmt->bind_param(
+            "iisisdd",
             $order_id,
             $item['product_id'],
             $item['name'],
@@ -120,39 +95,24 @@ try {
             $item['price'],
             $item['subtotal']
         );
-        
-        $result = $stmt->execute();
-        
-        if (!$result) {
-            throw new Exception('Failed to execute order item statement: ' . $stmt->error);
+
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to insert order item: ' . $stmt->error);
         }
-        
-        error_log("Order item added: {$item['name']}");
     }
     $stmt->close();
 
-    // 3. Handle session cleanup based on order type
-    $is_buy_now = !empty($input['items'][0]['is_buy_now']);
-    error_log("Is buy now order: " . ($is_buy_now ? 'yes' : 'no'));
-    
+    // Cleanup sessions
+    $is_buy_now = !empty($items[0]['is_buy_now']);
     if ($is_buy_now) {
-        // Clear buy now session
         unset($_SESSION['buy_now_product']);
-        error_log("Buy now session cleared");
-    } else if (isset($_SESSION['checkout_items'])) {
-        // Clear cart items that were checked out
+    } elseif (!empty($_SESSION['checkout_items'])) {
         $cart_ids = implode(',', array_map('intval', $_SESSION['checkout_items']));
-        $delete_result = $conn->query("DELETE FROM cart WHERE id IN ($cart_ids) AND user_id = $user_id");
-        if ($delete_result) {
-            error_log("Cart items deleted: " . $conn->affected_rows . " items");
-        }
+        $conn->query("DELETE FROM cart WHERE id IN ($cart_ids) AND user_id = $user_id");
         unset($_SESSION['checkout_items']);
-        error_log("Checkout session cleared");
     }
 
-    // Commit transaction
     $conn->commit();
-    error_log("Transaction committed successfully");
 
     echo json_encode([
         'status' => 'success',
@@ -162,12 +122,10 @@ try {
     ]);
 
 } catch (Exception $e) {
-    // Rollback transaction on error
     $conn->rollback();
-    error_log("ERROR in place-order: " . $e->getMessage());
-    
+    error_log("Order Error: " . $e->getMessage());
     echo json_encode([
-        'status' => 'error', 
+        'status' => 'error',
         'message' => 'Failed to place order: ' . $e->getMessage()
     ]);
 }

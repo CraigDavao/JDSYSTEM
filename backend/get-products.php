@@ -86,6 +86,10 @@ function getProducts($filters = [])
     $types .= 'ii';
 
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception('Failed to prepare statement: ' . $conn->error);
+    }
+    
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $products = $stmt->get_result();
@@ -192,3 +196,4 @@ function getSaleProducts($filters = [])
         'count' => $count
     ];
 }
+?>

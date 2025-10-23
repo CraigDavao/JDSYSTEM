@@ -48,8 +48,25 @@ if (isset($_SESSION['user_id'])) {
         }
         
         // 🟣 Use sale price if available
-        $displayPrice = !empty($row['actual_sale_price']) ? $row['actual_sale_price'] : 
-                       (!empty($row['sale_price']) && $row['sale_price'] > 0 ? $row['sale_price'] : $row['price']);
+       // 🟣 Normalize all price fields as float to avoid string/NULL issues
+        $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
+        $salePrice  = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
+        $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
+
+        // 🟣 Determine which price to use
+        if ($actualSale > 0) {
+            $displayPrice = $actualSale;
+        } elseif ($salePrice > 0) {
+            $displayPrice = $salePrice;
+        } else {
+            $displayPrice = $regularPrice;
+        }
+
+        // 🟣 Update subtotal correctly
+        $row['price'] = $displayPrice;
+        $row['subtotal'] = $displayPrice * (int)$row['quantity'];
+
+
         
         // 🟣 Update subtotal with correct price
         $row['price'] = $displayPrice;
