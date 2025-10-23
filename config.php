@@ -1,5 +1,5 @@
 <?php
-define("SITE_URL", "http://localhost/JDSystem/");
+define("SITE_URL", getenv('SITE_URL') ?: '/');
 // define("DB_HOST", "localhost");
 // define("DB_USER", "root");
 // define("DB_PASS", "");
