@@ -1,155 +1,161 @@
+<?php
+$sql = "INSERT INTO wishlist (user_id, product_id, added_at) VALUES (?, ?, NOW())";
+
+ob_start();
+
+require_once __DIR__ . '/../connection/connection.php';
+require_once __DIR__ . '/../includes/header.php';
+
+// ✅ Get product ID from URL
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($id <= 0) {
+  die('<p>Invalid product ID.</p>');
+}
+
+// ✅ Fetch product details
+$sql = "SELECT id, name, price, sale_price, image, description, created_at 
+        FROM products 
+        WHERE id = ? AND (is_active IS NULL OR is_active = 1)
+        LIMIT 1";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$product = $stmt->get_result()->fetch_assoc();
+
+if (!$product) {
+  die('<p>Product not found.</p>');
+}
+?>
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title><?= htmlspecialchars($product['name']) ?> | Jolly Dolly</title>
+  <link rel="stylesheet" href="../css/new.css?v=<?= time() ?>">
+  <link rel="stylesheet" href="../css/product.css?v=<?= time() ?>">
+</head>
+
+<body>
+
+  <div class="product-page">
+    <div class="product-image">
+      <!-- ✅ Image from uploads folder -->
+      <img src="../uploads/<?= htmlspecialchars($product['image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+    </div>
+
+    <div class="product-info">
+      <h1><?= htmlspecialchars($product['name']) ?></h1>
+
+      <?php if (!empty($product['sale_price']) && $product['sale_price'] > 0): ?>
+        <p class="price">
+          <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
+          <span class="old">₱<?= number_format($product['price'], 2) ?></span>
+        </p>
+      <?php else: ?>
+        <p class="price">₱<?= number_format($product['price'], 2) ?></p>
+      <?php endif; ?>
+
+      <div class="product-description">
+        <h3>Description</h3>
+        <p>
+          <?= !empty($product['description'])
+            ? nl2br(htmlspecialchars($product['description']))
+            : 'No description available for this product.' ?>
+        </p>
+      </div>
+
+      <!-- ✅ Quantity Selector -->
+      <div class="quantity-selector">
+        <button type="button" class="quantity-btn" id="minus-btn">−</button>
+        <input type="number" id="quantity" name="quantity" value="1" min="1" class="quantity-input">
+        <button type="button" class="quantity-btn" id="plus-btn">+</button>
+      </div>
+
+      <div class="action-buttons">
+        <button class="add-to-cart" data-id="<?= $product['id'] ?>">Add to Cart</button>
+        <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
+      </div>
+
+<div class="action-button">
+   <form id="buy-now-form" action="<?= SITE_URL ?>pages/checkout.php" method="POST" style="display:inline;">
+    <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+    <input type="hidden" name="quantity" value="1">
+    <button type="submit" class="checkout-btn">Buy Now</button>
+</form>
+
+
+</div>
+
+<script>
 document.addEventListener("DOMContentLoaded", () => {
-    let orderData = {
-        items: [],
-        subtotal: 0,
-        shipping: 0,
-        total: 0,
-        shippingInfo: {},
-        paymentMethod: 'cod'
-    };
+    const buyNowForm = document.getElementById('buy-now-form');
+    const buyNowBtn = document.getElementById('buy-now-btn');
 
-    // Load checkout items
-    async function loadCheckoutItems() {
-        try {
-            const response = await fetch(SITE_URL + 'actions/checkout-items.php');
-            const data = await response.json();
+    if (buyNowForm && buyNowBtn) {
+        buyNowForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Stop normal submission temporarily
 
-            if (data.status === 'success') {
-                orderData.items = data.items;
-                orderData.subtotal = data.totals.subtotal;
-                orderData.shipping = data.totals.shipping;
-                orderData.total = data.totals.total;
+            // Disable button to prevent double click
+            buyNowBtn.disabled = true;
 
-                displayCheckoutItems();
-                displayOrderTotals();
-            } else {
-                alert('Error loading checkout items');
-                window.location.href = SITE_URL + 'pages/cart.php';
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error loading checkout items');
-        }
-    }
+            // Create a FormData object to send
+            const formData = new FormData(buyNowForm);
 
-    // Display checkout items
-    function displayCheckoutItems() {
-        const itemsContainer = document.getElementById('checkout-items');
-        let html = '';
-
-        orderData.items.forEach(item => {
-            html += `
-                <div class="checkout-item">
-                    <img src="${SITE_URL}uploads/${item.image}" alt="${item.name}">
-                    <div class="item-info">
-                        <h4>${item.name}</h4>
-                        <p>Size: ${item.size} | Qty: ${item.quantity}</p>
-                        <p class="item-price">₱${item.price} × ${item.quantity} = ₱${item.subtotal}</p>
-                    </div>
-                </div>
-            `;
-        });
-
-        itemsContainer.innerHTML = html;
-    }
-
-    // Display order totals
-    function displayOrderTotals() {
-        const totalsContainer = document.getElementById('order-totals');
-        const html = `
-            <div class="totals-breakdown">
-                <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>₱${orderData.subtotal.toFixed(2)}</span>
-                </div>
-                <div class="total-row">
-                    <span>Shipping:</span>
-                    <span>${orderData.shipping === 0 ? 'FREE' : '₱' + orderData.shipping.toFixed(2)}</span>
-                </div>
-                <div class="total-row grand-total">
-                    <span>Total:</span>
-                    <span>₱${orderData.total.toFixed(2)}</span>
-                </div>
-            </div>
-        `;
-        totalsContainer.innerHTML = html;
-    }
-
-    // Handle payment method selection
-    document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            orderData.paymentMethod = this.value;
-        });
-    });
-
-    // Place order
-    document.getElementById('place-order-btn').addEventListener('click', async function() {
-        const btn = this;
-        const originalText = btn.innerHTML;
-        
-        // Validate shipping form
-        if (!validateShippingForm()) {
-            alert('Please fill in all required shipping information.');
-            return;
-        }
-
-        // Collect shipping information
-        orderData.shippingInfo = {
-            fullname: document.getElementById('fullname').value,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value,
-            city: document.getElementById('city').value,
-            province: document.getElementById('province').value,
-            zipcode: document.getElementById('zipcode').value,
-            notes: document.getElementById('notes').value
-        };
-
-        btn.innerHTML = 'Placing Order...';
-        btn.disabled = true;
-
-        try {
-            const response = await fetch(SITE_URL + 'actions/place-order.php', {
+            // Send POST request via fetch
+            fetch(buyNowForm.action, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(orderData)
+                body: formData
+            })
+            .then(response => response.text()) // Assuming your PHP just processes the add-to-checkout
+            .then(data => {
+                // After success, redirect to checkout
+                window.location.href = "<?php echo SITE_URL; ?>pages/checkout.php";
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                buyNowBtn.disabled = false;
+                alert('Something went wrong. Please try again.');
             });
+        });
+    }
+});
+</script>
 
-            const result = await response.json();
 
-            if (result.status === 'success') {
-                // Redirect to order confirmation page
-                window.location.href = SITE_URL + 'pages/order-confirmation.php?order_id=' + result.order_id;
-            } else {
-                alert('Error placing order: ' + result.message);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error placing order. Please try again.');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
+
+
+    </div>
+  </div>
+
+  <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
+  <script>
+    // ✅ Quantity logic for + / − buttons
+    const minusBtn = document.getElementById('minus-btn');
+    const plusBtn = document.getElementById('plus-btn');
+    const quantityInput = document.getElementById('quantity');
+    const buyNowQuantity = document.getElementById('buy-now-quantity');
+
+    minusBtn.addEventListener('click', () => {
+      let val = parseInt(quantityInput.value);
+      if (val > 1) quantityInput.value = val - 1;
+      buyNowQuantity.value = quantityInput.value;
     });
 
-    // Validate shipping form
-    function validateShippingForm() {
-        const requiredFields = ['fullname', 'email', 'phone', 'address', 'city', 'province', 'zipcode'];
-        
-        for (const field of requiredFields) {
-            const input = document.getElementById(field);
-            if (!input.value.trim()) {
-                input.focus();
-                return false;
-            }
-        }
-        
-        return true;
-    }
+    plusBtn.addEventListener('click', () => {
+      let val = parseInt(quantityInput.value);
+      quantityInput.value = val + 1;
+      buyNowQuantity.value = quantityInput.value;
+    });
 
-    // Initialize checkout
-    loadCheckoutItems();
-});
+    quantityInput.addEventListener('change', () => {
+      buyNowQuantity.value = quantityInput.value;
+    });
+  </script>
+
+  <script src="../js/product.js?v=<?= time() ?>"></script>
+  <script src="../js/checkout.js?v=<?= time() ?>"></script>
+</body>
+</html>

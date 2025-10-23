@@ -11,8 +11,9 @@ $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
 // 🟣 Fetch products using reusable function
+// Use 'category' filter since your products have category='newborn'
 $data = getProducts([
-    'category' => $category,
+    'category' => $category,  // Filter by category field, not gender
     'limit' => $perPage,
     'offset' => $offset,
     'orderBy' => 'p.created_at DESC'
@@ -44,6 +45,9 @@ $totalPages = max(1, ceil($count / $perPage));
           $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
           $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
 
+          // Use actual_sale_price if available, otherwise use sale_price
+          $displaySalePrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
+
           // 🩵 Use product_image directly (already Base64 from get-products.php)
           $imageSrc = !empty($product['product_image']) 
               ? htmlspecialchars($product['product_image']) 
@@ -65,8 +69,15 @@ $totalPages = max(1, ceil($count / $perPage));
             <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
             <div class="product-price">
               <?php if ($hasSale): ?>
-                <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                <span class="sale-price">₱<?= number_format($displaySalePrice, 2); ?></span>
                 <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
+                <?php 
+                  // Calculate and display discount percentage
+                  $discountPercent = round((($product['price'] - $displaySalePrice) / $product['price']) * 100);
+                  if ($discountPercent > 0): 
+                ?>
+                  <span class="discount-percent">-<?= $discountPercent ?>%</span>
+                <?php endif; ?>
               <?php else: ?>
                 <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
               <?php endif; ?>
@@ -75,19 +86,33 @@ $totalPages = max(1, ceil($count / $perPage));
         </a>
       <?php endwhile; ?>
     <?php else: ?>
-      <p style="grid-column:1/-1;opacity:.7;">No products found.</p>
+      <p style="grid-column:1/-1;opacity:.7;text-align:center;padding:2rem;">
+        No newborn products found.
+        <?php
+        // Debug information
+        echo "<br><small>Debug: Count = " . $count . ", Category filter = " . $category . "</small>";
+        ?>
+      </p>
     <?php endif; ?>
   </div>
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
+      <?php if ($page > 1): ?>
+        <a href="?page=<?= $page - 1 ?>">Previous</a>
+      <?php endif; ?>
+      
       <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
-          <a href="<?= SITE_URL ?>pages/new/newborn.php?page=<?= $i ?>"><?= $i ?></a>
+          <a href="?page=<?= $i ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
+      
+      <?php if ($page < $totalPages): ?>
+        <a href="?page=<?= $page + 1 ?>">Next</a>
+      <?php endif; ?>
     </div>
   <?php endif; ?>
 

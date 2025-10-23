@@ -15,12 +15,21 @@ if (isset($_SESSION['user_id'])) {
             cart.product_id, 
             products.name, 
             products.price, 
-            products.image, 
+            products.sale_price,
+            products.actual_sale_price,
             cart.quantity, 
             cart.size, 
-            (products.price * cart.quantity) AS subtotal
+            (products.price * cart.quantity) AS subtotal,
+            pi.image,
+            pi.image_format
         FROM cart 
         INNER JOIN products ON cart.product_id = products.id 
+        LEFT JOIN product_images pi ON products.id = pi.product_id 
+            AND pi.id = (
+                SELECT MIN(pi2.id) 
+                FROM product_images pi2 
+                WHERE pi2.product_id = products.id
+            )
         WHERE cart.user_id = ?
     ");
     $stmt->bind_param("i", $userId);
@@ -29,6 +38,23 @@ if (isset($_SESSION['user_id'])) {
 
     $cart = [];
     while ($row = $result->fetch_assoc()) {
+        // 🟣 Handle blob image conversion
+        if (!empty($row['image'])) {
+            // Convert blob to Base64
+            $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
+            $row['image'] = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
+        } else {
+            $row['image'] = null;
+        }
+        
+        // 🟣 Use sale price if available
+        $displayPrice = !empty($row['actual_sale_price']) ? $row['actual_sale_price'] : 
+                       (!empty($row['sale_price']) && $row['sale_price'] > 0 ? $row['sale_price'] : $row['price']);
+        
+        // 🟣 Update subtotal with correct price
+        $row['price'] = $displayPrice;
+        $row['subtotal'] = $displayPrice * $row['quantity'];
+        
         $cart[] = $row;
     }
 

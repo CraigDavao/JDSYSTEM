@@ -12,10 +12,13 @@ if ($id <= 0) {
   die('<p>Invalid product ID.</p>');
 }
 
-// ✅ Fetch product details
-$sql = "SELECT id, name, price, sale_price, image, description, created_at 
-        FROM products 
-        WHERE id = ? AND (is_active IS NULL OR is_active = 1)
+// ✅ Fetch product details with image from product_images table
+$sql = "SELECT p.id, p.name, p.price, p.sale_price, p.actual_sale_price, 
+               p.description, p.created_at,
+               pi.image, pi.image_format
+        FROM products p
+        LEFT JOIN product_images pi ON p.id = pi.product_id
+        WHERE p.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
         LIMIT 1";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id);
@@ -25,6 +28,18 @@ $product = $stmt->get_result()->fetch_assoc();
 if (!$product) {
   die('<p>Product not found.</p>');
 }
+
+// 🟣 Handle blob image conversion
+if (!empty($product['image'])) {
+    $mimeType = !empty($product['image_format']) ? $product['image_format'] : 'image/jpeg';
+    $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($product['image']);
+} else {
+    $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+}
+
+// Use actual_sale_price if available, otherwise use sale_price
+$displaySalePrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
+$hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
 ?>
 
 <!doctype html>
@@ -41,17 +56,26 @@ if (!$product) {
 
   <div class="product-page">
     <div class="product-image">
-      <!-- ✅ Image from uploads folder -->
-      <img src="../uploads/<?= htmlspecialchars($product['image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+      <!-- ✅ Image from blob data -->
+      <img src="<?= $imageSrc ?>" 
+           alt="<?= htmlspecialchars($product['name']) ?>"
+           onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
     </div>
 
     <div class="product-info">
       <h1><?= htmlspecialchars($product['name']) ?></h1>
 
-      <?php if (!empty($product['sale_price']) && $product['sale_price'] > 0): ?>
+      <?php if ($hasSale): ?>
         <p class="price">
-          <span class="sale">₱<?= number_format($product['sale_price'], 2) ?></span>
+          <span class="sale">₱<?= number_format($displaySalePrice, 2) ?></span>
           <span class="old">₱<?= number_format($product['price'], 2) ?></span>
+          <?php 
+            // Calculate and display discount percentage
+            $discountPercent = round((($product['price'] - $displaySalePrice) / $product['price']) * 100);
+            if ($discountPercent > 0): 
+          ?>
+            <span class="discount-percent">-<?= $discountPercent ?>%</span>
+          <?php endif; ?>
         </p>
       <?php else: ?>
         <p class="price">₱<?= number_format($product['price'], 2) ?></p>
@@ -78,53 +102,44 @@ if (!$product) {
         <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
       </div>
 
+<!-- Buy Now Button -->
 <div class="action-button">
-   <form id="buy-now-form" action="<?= SITE_URL ?>pages/checkout.php" method="POST" style="display:inline;">
-    <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
-    <input type="hidden" name="quantity" value="1">
-    <button type="submit" class="checkout-btn">Buy Now</button>
-</form>
-
-
+    <form id="buy-now-form" action="<?= SITE_URL ?>actions/buy_now.php" method="POST" style="display:inline;">
+        <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+        <input type="hidden" name="quantity" value="1" id="buy-now-quantity">
+        <input type="hidden" name="size" value="M" id="selected-size">
+        <button type="submit" class="checkout-btn" id="buy-now-btn">Buy Now</button>
+    </form>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const buyNowForm = document.getElementById('buy-now-form');
     const buyNowBtn = document.getElementById('buy-now-btn');
+    const selectedSizeInput = document.getElementById('selected-size');
+
+    // Update size if user selects different size
+    const sizeButtons = document.querySelectorAll('.size-option');
+    sizeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            selectedSizeInput.value = this.getAttribute('data-size');
+        });
+    });
 
     if (buyNowForm && buyNowBtn) {
-        buyNowForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Stop normal submission temporarily
-
+        buyNowForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
             // Disable button to prevent double click
             buyNowBtn.disabled = true;
+            buyNowBtn.innerHTML = 'Processing...';
 
-            // Create a FormData object to send
-            const formData = new FormData(buyNowForm);
-
-            // Send POST request via fetch
-            fetch(buyNowForm.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text()) // Assuming your PHP just processes the add-to-checkout
-            .then(data => {
-                // After success, redirect to checkout
-                window.location.href = "<?php echo SITE_URL; ?>pages/checkout.php";
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                buyNowBtn.disabled = false;
-                alert('Something went wrong. Please try again.');
-            });
+            // Submit the form
+            this.submit();
         });
     }
 });
 </script>
-
-
-
 
     </div>
   </div>
@@ -141,17 +156,17 @@ document.addEventListener("DOMContentLoaded", () => {
     minusBtn.addEventListener('click', () => {
       let val = parseInt(quantityInput.value);
       if (val > 1) quantityInput.value = val - 1;
-      buyNowQuantity.value = quantityInput.value;
+      if (buyNowQuantity) buyNowQuantity.value = quantityInput.value;
     });
 
     plusBtn.addEventListener('click', () => {
       let val = parseInt(quantityInput.value);
       quantityInput.value = val + 1;
-      buyNowQuantity.value = quantityInput.value;
+      if (buyNowQuantity) buyNowQuantity.value = quantityInput.value;
     });
 
     quantityInput.addEventListener('change', () => {
-      buyNowQuantity.value = quantityInput.value;
+      if (buyNowQuantity) buyNowQuantity.value = quantityInput.value;
     });
   </script>
 

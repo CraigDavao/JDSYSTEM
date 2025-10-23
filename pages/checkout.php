@@ -1,48 +1,43 @@
 <?php
-    // Start output buffering at the very beginning
-    ob_start();
+ob_start();
+require_once __DIR__ . '/../connection/connection.php';
+require_once __DIR__ . '/../includes/header.php';
 
-    require_once __DIR__ . '/../connection/connection.php';
-    require_once __DIR__ . '/../includes/header.php';
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    ob_end_clean();
+    header("Location: " . SITE_URL . "auth/login.php");
+    exit;
+}
 
-    // Check if user is logged in
-    if (!isset($_SESSION['user_id'])) {
-        // Clear any output that might have been sent
-        ob_end_clean();
-        header("Location: " . SITE_URL . "auth/login.php");
-        exit;
-    }
+// Initialize user data with safe defaults
+$fullname = '';
+$email = '';
+$phone = '';
 
-    // Get checkout items from session
-    $checkout_items = isset($_SESSION['checkout_items']) ? $_SESSION['checkout_items'] : [];
-
-    if (empty($checkout_items)) {
-        ob_end_clean();
-        header("Location: " . SITE_URL . "pages/cart.php");
-        exit;
-    }
-
-    // Get user details with proper error handling
-    $user_id = $_SESSION['user_id'];
+// Get user details with proper error handling
+$user_id = $_SESSION['user_id'];
+try {
     $stmt = $conn->prepare("SELECT fullname, email, number FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $user_result = $stmt->get_result();
-    $user = $user_result->fetch_assoc();
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $user_result = $stmt->get_result();
+        $user = $user_result->fetch_assoc();
 
-    // Initialize user data with safe defaults
-    $fullname = '';
-    $email = '';
-    $phone = '';
-
-    if ($user) {
-        $fullname = htmlspecialchars($user['fullname'] ?? '');
-        $email = htmlspecialchars($user['email'] ?? '');
-        $phone = htmlspecialchars($user['number'] ?? '');
+        if ($user) {
+            $fullname = htmlspecialchars($user['fullname'] ?? '');
+            $email = htmlspecialchars($user['email'] ?? '');
+            $phone = htmlspecialchars($user['number'] ?? '');
+        }
+        $stmt->close();
     }
-
-    // Now we can safely output content
+} catch (Exception $e) {
+    // Silently continue with default values
+}
 ?>
+
+<!-- THE REST OF YOUR HTML REMAINS EXACTLY THE SAME -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,6 +50,11 @@
 
 <div class="checkout-dashboard">
     <h2>Checkout</h2>
+    
+    <!-- Buy Now Notice (will be shown via JavaScript if applicable) -->
+    <div id="buy-now-notice" class="buy-now-notice" style="display: none;">
+        ⚡ You are purchasing this item directly (Buy Now)
+    </div>
     
     <div class="checkout-container">
         <!-- Left Column: Shipping & Payment -->
@@ -126,14 +126,6 @@
                             <small>Pay using GCash mobile app</small>
                         </span>
                     </label>
-                    
-                    <label class="payment-option">
-                        <input type="radio" name="payment_method" value="card">
-                        <span class="payment-label">
-                            <strong>Credit/Debit Card</strong>
-                            <small>Pay with your card securely</small>
-                        </span>
-                    </label>
                 </div>
             </div>
 
@@ -151,6 +143,7 @@
             <h3>Order Summary</h3>
             <div id="checkout-items">
                 <!-- Items will be loaded via JavaScript -->
+                <div class="loading">Loading items...</div>
             </div>
             <div id="order-totals">
                 <!-- Totals will be calculated via JavaScript -->
@@ -159,14 +152,13 @@
     </div>
 </div>
 
-<script src="<?php echo SITE_URL; ?>js/checkout.js?v=<?= time(); ?>"></script>
-
 <script>
 const SITE_URL = "<?php echo SITE_URL; ?>";
 </script>
 
-<?php 
-    require_once __DIR__ . '/../includes/footer.php'; 
+<script src="<?php echo SITE_URL; ?>js/checkout.js?v=<?= time(); ?>"></script>
 
-    ob_end_flush();
+<?php 
+require_once __DIR__ . '/../includes/footer.php'; 
+ob_end_flush();
 ?>

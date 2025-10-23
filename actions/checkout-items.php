@@ -1,69 +1,115 @@
 <?php
 session_start();
-require_once '../connection/connection.php';
+require_once __DIR__ . '/../connection/connection.php';
 
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Not logged in']);
+header('Content-Type: application/json');
+
+$user_id = $_SESSION['user_id'] ?? 0;
+
+if (!$user_id) {
+    echo json_encode(['status' => 'error', 'message' => 'User not logged in']);
     exit;
 }
 
-$checkout_items = $_SESSION['checkout_items'] ?? [];
+$response = [
+    'status' => 'success',
+    'items' => [],
+    'totals' => [
+        'subtotal' => 0,
+        'shipping' => 0,
+        'total' => 0
+    ]
+];
 
-if (empty($checkout_items)) {
-    echo json_encode(['status' => 'error', 'message' => 'No items to checkout']);
-    exit;
-}
-
-$items = [];
-$subtotal = 0;
-
-// Case 1: If session contains numeric cart IDs (from cart checkout)
-if (is_numeric($checkout_items[0])) {
-    $cart_ids = implode(',', array_map('intval', $checkout_items));
-    $sql = "SELECT c.id as cart_id, p.id, p.name, p.price, p.image, c.quantity, c.size,
-                   (p.price * c.quantity) as subtotal
-            FROM cart c 
-            JOIN products p ON c.product_id = p.id 
-            WHERE c.id IN ($cart_ids) AND c.user_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $_SESSION['user_id']);
+// 🟣 Check for buy now product first
+if (isset($_SESSION['buy_now_product'])) {
+    $buyNowProduct = $_SESSION['buy_now_product'];
+    
+    if (!isset($buyNowProduct['product_id']) || $buyNowProduct['product_id'] <= 0) {
+        $response['status'] = 'error';
+        $response['message'] = 'Invalid product in buy now session';
+    } else {
+        $response['items'] = [$buyNowProduct];
+        
+        // Calculate totals
+        $subtotal = $buyNowProduct['price'] * $buyNowProduct['quantity'];
+        $shipping = $subtotal > 500 ? 0 : 50;
+        $total = $subtotal + $shipping;
+        
+        $response['totals']['subtotal'] = $subtotal;
+        $response['totals']['shipping'] = $shipping;
+        $response['totals']['total'] = $total;
+    }
+    
+} 
+// 🟣 Otherwise check for cart items
+else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
+    $cart_ids = implode(',', array_map('intval', $_SESSION['checkout_items']));
+    
+    // Updated query to match your products table structure
+    $stmt = $conn->prepare("
+        SELECT 
+            cart.id AS cart_id,
+            cart.product_id,
+            products.id, 
+            products.name,
+            products.price,
+            products.sale_price,
+            products.actual_sale_price,
+            products.image,
+            cart.quantity,
+            cart.size
+        FROM cart 
+        INNER JOIN products ON cart.product_id = products.id 
+        WHERE cart.id IN ($cart_ids) AND cart.user_id = ?
+    ");
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    while ($row = $result->fetch_assoc()) {
-        $items[] = $row;
-        $subtotal += $row['subtotal'];
-    }
-}
+    $items = [];
+    $subtotal = 0;
 
-// Case 2: If session contains direct product data (from Buy Now)
-else {
-    foreach ($checkout_items as $item) {
-        $subtotal += $item['price'] * $item['quantity'];
+    while ($row = $result->fetch_assoc()) {
+        if (!isset($row['product_id']) || $row['product_id'] <= 0) {
+            continue;
+        }
+
+        // Handle image
+        $image_data = $row['image'] ? $row['image'] : 'sample1.jpg';
+        
+        // Calculate price
+        $displayPrice = !empty($row['actual_sale_price']) ? $row['actual_sale_price'] : 
+                       (!empty($row['sale_price']) && $row['sale_price'] > 0 ? $row['sale_price'] : $row['price']);
+        
+        $itemSubtotal = $displayPrice * $row['quantity'];
+        $subtotal += $itemSubtotal;
+        
         $items[] = [
-            'id' => $item['product_id'],
-            'cart_id' => null,
-            'name' => $item['name'],
-            'price' => $item['price'],
-            'image' => $item['image'],
-            'quantity' => $item['quantity'],
-            'size' => $item['size'] ?? 'N/A',
-            'subtotal' => $item['price'] * $item['quantity']
+            'cart_id' => $row['cart_id'],
+            'product_id' => intval($row['product_id']),
+            'name' => $row['name'],
+            'price' => floatval($displayPrice),
+            'quantity' => intval($row['quantity']),
+            'size' => $row['size'],
+            'image' => $image_data,
+            'subtotal' => $itemSubtotal,
+            'is_buy_now' => false
         ];
     }
+    
+    $shipping = $subtotal > 500 ? 0 : 50;
+    $total = $subtotal + $shipping;
+    
+    $response['items'] = $items;
+    $response['totals']['subtotal'] = $subtotal;
+    $response['totals']['shipping'] = $shipping;
+    $response['totals']['total'] = $total;
+} 
+else {
+    $response['status'] = 'error';
+    $response['message'] = 'No items to checkout';
 }
 
-$shipping = $subtotal > 500 ? 0 : 50;
-$total = $subtotal + $shipping;
-
-header('Content-Type: application/json');
-echo json_encode([
-    'status' => 'success',
-    'items' => $items,
-    'totals' => [
-        'subtotal' => $subtotal,
-        'shipping' => $shipping,
-        'total' => $total
-    ]
-]);
+echo json_encode($response);
 ?>
