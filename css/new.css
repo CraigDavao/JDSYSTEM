@@ -144,3 +144,53 @@
     margin-left: 8px;
 }
 
+/* Container */
+.quantity-selector {
+  display: flex;
+  align-items: center;
+  width: 120px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f9f9f9;
+}
+
+/* Buttons */
+.quantity-btn {
+  background-color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  transition: background 0.2s, color 0.2s;
+}
+
+.quantity-btn:hover {
+  background-color: #e0e0e0;
+}
+
+/* Input */
+.quantity-input {
+  width: 40px;
+  text-align: center;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  background-color: #f9f9f9;
+}
+
+/* Remove input number arrows in Chrome, Edge, Safari */
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Remove input number arrows in Firefox */
+.quantity-input[type=number] {
+  -moz-appearance: textfield;
+}

@@ -78,13 +78,54 @@ if (!$product) {
         <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
       </div>
 
-      <div class="action-button">
-        <form action="<?php echo SITE_URL; ?>actions/buy_now.php" method="POST" style="display:inline;">
-          <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
-          <input type="hidden" name="quantity" id="buy-now-quantity" value="1">
-          <button type="submit" class="checkout-btn">Buy Now</button>
-        </form>
-      </div>
+<div class="action-button">
+   <form id="buy-now-form" action="<?= SITE_URL ?>pages/checkout.php" method="POST" style="display:inline;">
+    <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+    <input type="hidden" name="quantity" value="1">
+    <button type="submit" class="checkout-btn">Buy Now</button>
+</form>
+
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const buyNowForm = document.getElementById('buy-now-form');
+    const buyNowBtn = document.getElementById('buy-now-btn');
+
+    if (buyNowForm && buyNowBtn) {
+        buyNowForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Stop normal submission temporarily
+
+            // Disable button to prevent double click
+            buyNowBtn.disabled = true;
+
+            // Create a FormData object to send
+            const formData = new FormData(buyNowForm);
+
+            // Send POST request via fetch
+            fetch(buyNowForm.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text()) // Assuming your PHP just processes the add-to-checkout
+            .then(data => {
+                // After success, redirect to checkout
+                window.location.href = "<?php echo SITE_URL; ?>pages/checkout.php";
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                buyNowBtn.disabled = false;
+                alert('Something went wrong. Please try again.');
+            });
+        });
+    }
+});
+</script>
+
+
+
+
     </div>
   </div>
 

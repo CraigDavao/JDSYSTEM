@@ -1,78 +1,105 @@
 <?php
-require_once __DIR__ . '/../../connection/connection.php';
 require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../backend/get-products.php';
 
-// Fixed filters: Kid → Girls → Sleepwear
+// 🩷 Fixed filters for this page
 $categoryGroup = 'kid';
-$gender        = 'girls';
-$subcategory   = 'sleepwear';
+$gender = 'girls';
 
-// Pagination setup
+// 🟢 Optional subcategory filter
+$allowedSub = ['sets', 'tops', 'bottoms', 'sleepwear', 'dresses-jumpsuits'];
+$subcategory = $_GET['subcategory'] ?? 'dresses-jumpsuits';
+if ($subcategory && !in_array($subcategory, $allowedSub)) {
+    $subcategory = 'dresses-jumpsuits';
+}
+
+// 🟢 Pagination setup
 $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Query products
-$sql = "SELECT id, name, price, image, created_at
-        FROM products
-        WHERE category_group=? AND gender=? AND subcategory=?
-          AND (is_active IS NULL OR is_active=1)
-        ORDER BY created_at DESC
-        LIMIT ?, ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("sssii", $categoryGroup, $gender, $subcategory, $offset, $perPage);
-$stmt->execute();
-$result = $stmt->get_result();
+// 🟣 Fetch products using reusable function
+$data = getProducts([
+    'category_group' => $categoryGroup,
+    'gender' => $gender,
+    'subcategory' => $subcategory,
+    'limit' => $perPage,
+    'offset' => $offset,
+    'orderBy' => 'p.created_at DESC'
+]);
 
-// Count total for pagination
-$countSql = "SELECT COUNT(*) as c
-             FROM products
-             WHERE category_group=? AND gender=? AND subcategory=?
-               AND (is_active IS NULL OR is_active=1)";
-$countStmt = $conn->prepare($countSql);
-$countStmt->bind_param("sss", $categoryGroup, $gender, $subcategory);
-$countStmt->execute();
-$count = $countStmt->get_result()->fetch_assoc()['c'] ?? 0;
+$products = $data['products'];
+$count = $data['count'];
 $totalPages = max(1, ceil($count / $perPage));
 ?>
 
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Kid — Girls Sleepwear</title>
-  <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time(); ?>">
+  <title>Girls <?= ucfirst(str_replace('-', ' ', $subcategory)) ?></title>
 </head>
 <body>
+
   <div class="new-header">
-    <h1 class="new-title">Girls Sleepwear</h1>
+    <h1 class="new-title">Girls <?= ucfirst(str_replace('-', ' ', $subcategory)) ?></h1>
   </div>
 
   <div class="product-grid">
-    <?php if ($result->num_rows): while ($p = $result->fetch_assoc()): ?>
-      <a class="product-card" href="<?= SITE_URL ?>pages/product.php?id=<?= (int)$p['id'] ?>">
-        <img class="product-thumb" src="<?= SITE_URL ?>uploads/<?= htmlspecialchars($p['image'] ?: 'sample1.jpg') ?>"
-             alt="<?= htmlspecialchars($p['name']) ?>">
-        <div class="product-info">
-          <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
-          <p class="product-price">₱<?= number_format((float)$p['price'],2) ?></p>
-        </div>
-      </a>
-    <?php endwhile; else: ?>
-      <p style="grid-column:1/-1; opacity:.7;">No girls sleepwear found.</p>
+    <?php if ($products->num_rows): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
+        <?php
+          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
+          $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
+
+          // 🩵 Use product_image directly (already Base64 from get-products.php)
+          $imageSrc = !empty($product['product_image']) 
+              ? htmlspecialchars($product['product_image']) 
+              : SITE_URL . 'uploads/sample1.jpg';
+        ?>
+        <a href="<?= htmlspecialchars($product_link) ?>" class="product-card">
+          <div class="product-image-container">
+            <img src="<?= $imageSrc ?>" 
+                 alt="<?= htmlspecialchars($product['name']); ?>" 
+                 class="product-thumb"
+                 onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
+
+            <?php if ($hasSale): ?>
+              <div class="sale-badge">Sale</div>
+            <?php endif; ?>
+          </div>
+
+          <div class="product-info">
+            <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
+            <div class="product-price">
+              <?php if ($hasSale): ?>
+                <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
+              <?php else: ?>
+                <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+              <?php endif; ?>
+            </div>
+          </div>
+        </a>
+      <?php endwhile; ?>
+    <?php else: ?>
+      <p style="grid-column:1/-1;opacity:.7;">No girls <?= htmlspecialchars($subcategory) ?> found.</p>
     <?php endif; ?>
   </div>
 
   <?php if ($totalPages > 1): ?>
     <div class="pager">
-      <?php for ($i=1; $i <= $totalPages; $i++): ?>
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
         <?php if ($i === $page): ?>
           <span class="current"><?= $i ?></span>
         <?php else: ?>
-          <a href="<?= SITE_URL ?>pages/sleepgirl.php?page=<?= $i ?>"><?= $i ?></a>
+          <a href="<?= SITE_URL ?>pages/<?= $gender ?>.php?page=<?= $i ?>&subcategory=<?= urlencode($subcategory) ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
     </div>
   <?php endif; ?>
+
 </body>
 </html>

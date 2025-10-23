@@ -1,31 +1,25 @@
 <?php
-require_once __DIR__ . '/../../connection/connection.php';
 require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../backend/get-products.php';
 
+// 👶 Category for this page
+$category = 'baby-girls';
+
+// 🟢 Pagination setup
 $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Category for this page
-$category = 'baby-girls';
+// 🟣 Fetch products using reusable backend function
+$data = getProducts([
+    'category' => $category,
+    'limit' => $perPage,
+    'offset' => $offset,
+    'orderBy' => 'p.created_at DESC'
+]);
 
-$sql = "SELECT id, name, price, sale_price, image, category, created_at
-        FROM products
-        WHERE is_active = 1 AND category = ?
-        ORDER BY created_at DESC
-        LIMIT ?, ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("sii", $category, $offset, $perPage);
-$stmt->execute();
-$products = $stmt->get_result();
-
-/* Count for pagination */
-$countSql = "SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND category = ?";
-$countStmt = $conn->prepare($countSql);
-$countStmt->bind_param("s", $category);
-$countStmt->execute();
-$countResult = $countStmt->get_result();
-$count = $countResult->fetch_assoc()['c'] ?? 0;
+$products = $data['products'];
+$count = $data['count'];
 $totalPages = max(1, ceil($count / $perPage));
 ?>
 
@@ -48,8 +42,37 @@ $totalPages = max(1, ceil($count / $perPage));
       <?php while ($product = $products->fetch_assoc()): ?>
         <?php
           $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
-          include __DIR__ . '/../../includes/product-card.php';
+          $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
+
+          // 🩷 Base64 image already provided by get-products.php
+          $imageSrc = !empty($product['product_image']) 
+              ? htmlspecialchars($product['product_image'])
+              : SITE_URL . 'uploads/sample1.jpg';
         ?>
+        <a href="<?= htmlspecialchars($product_link) ?>" class="product-card">
+          <div class="product-image-container">
+            <img src="<?= $imageSrc ?>" 
+                 alt="<?= htmlspecialchars($product['name']); ?>" 
+                 class="product-thumb"
+                 onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
+
+            <?php if ($hasSale): ?>
+              <div class="sale-badge">Sale</div>
+            <?php endif; ?>
+          </div>
+
+          <div class="product-info">
+            <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
+            <div class="product-price">
+              <?php if ($hasSale): ?>
+                <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
+              <?php else: ?>
+                <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+              <?php endif; ?>
+            </div>
+          </div>
+        </a>
       <?php endwhile; ?>
     <?php else: ?>
       <p style="grid-column:1/-1;opacity:.7;">No products found.</p>

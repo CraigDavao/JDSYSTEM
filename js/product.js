@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("🔧 product.js loaded - Starting initialization");
     
     // Automatically detect your local base URL
-   const SITE_URL = window.location.origin + "/JDSystem/"; // e.g., "http://localhost/JDSystem/"
+    const SITE_URL = window.location.origin + "/JDSystem/"; // e.g., "http://localhost/JDSystem/"
     console.log("🌐 SITE_URL detected:", SITE_URL);
     
     const loginModal = document.getElementById("profile-modal");
@@ -119,86 +119,53 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 💖 WISHLIST FEATURE - EXTENSIVE DEBUGGING
+    // 💖 WISHLIST FEATURE - NOW AJAX ONLY, NO REDIRECT
     function initializeWishlist() {
         console.log("💖 Initializing wishlist functionality...");
-        
-        // Find all wishlist buttons
+
         const wishlistButtons = document.querySelectorAll(".wishlist-btn");
         console.log("🔍 Found wishlist buttons:", wishlistButtons.length);
-        
-        // Debug each button found
-        wishlistButtons.forEach((btn, index) => {
-            console.log(`   Button ${index + 1}:`, {
-                text: btn.textContent,
-                id: btn.dataset.id,
-                classes: btn.className,
-                disabled: btn.disabled
-            });
-        });
 
         if (wishlistButtons.length === 0) {
             console.error("❌ NO WISHLIST BUTTONS FOUND! Check your HTML class names.");
             return;
         }
 
-        // Add event listeners to each wishlist button
         wishlistButtons.forEach((btn) => {
             btn.addEventListener("click", async function (event) {
-                console.log("💖 Wishlist button CLICKED!", {
-                    productId: this.dataset.id,
-                    text: this.textContent,
-                    event: event
-                });
-                
+                console.log("💖 Wishlist button CLICKED!", { productId: this.dataset.id });
+
                 event.preventDefault();
                 event.stopPropagation();
 
                 const productId = this.dataset.id;
-                if (!productId) {
-                    console.error("❌ No product ID found in data-id attribute");
-                    return;
-                }
+                if (!productId) return;
 
                 const originalText = this.textContent;
                 this.disabled = true;
                 this.textContent = "Adding...";
-                console.log("💖 Button state updated: disabled=true, text='Adding...'");
 
                 try {
-                    console.log("💖 Sending request to:", SITE_URL + "actions/wishlist-add.php");
-                    console.log("💖 Request data:", { product_id: productId });
-                    
                     const res = await fetch(SITE_URL + "actions/wishlist-add.php", {
                         method: "POST",
-                        headers: { 
-                            "Content-Type": "application/x-www-form-urlencoded" 
-                        },
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
                         body: "product_id=" + encodeURIComponent(productId),
                         credentials: "include",
                     });
 
-                    console.log("💖 Response status:", res.status, res.statusText);
                     const data = await res.json();
                     console.log("💖 Wishlist API response:", data);
 
                     if (data.status === "success") {
-                        console.log("✅ SUCCESS: Product added to wishlist, redirecting...");
-                        // ✅ SUCCESS: Redirect to wishlist page
-                        window.location.href = SITE_URL + "pages/wishlist.php";
+                        this.textContent = "✓ Added";
+                        updateWishlistCount();
                     } else if (data.status === "exists") {
-                        console.log("ℹ️ EXISTS: Product already in wishlist, redirecting...");
-                        // ✅ ALREADY EXISTS: Redirect to wishlist page
-                        window.location.href = SITE_URL + "pages/wishlist.php";
+                        this.textContent = "✓ Already in wishlist";
                     } else if (data.status === "not_logged_in" || data.message === "not_logged_in") {
-                        console.log("🔐 NOT LOGGED IN: Showing login modal");
-                        // ❌ NOT LOGGED IN: Show login modal
                         showLoginModal();
                         this.textContent = originalText;
                         this.disabled = false;
                     } else {
-                        console.error("❌ OTHER ERROR:", data.message);
-                        // ❌ OTHER ERROR: Show message
                         alert(data.message || "⚠️ Something went wrong.");
                         this.textContent = originalText;
                         this.disabled = false;
@@ -217,20 +184,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 💌 UPDATE WISHLIST BADGE
     function updateWishlistCount() {
-        console.log("💌 Updating wishlist count...");
-        fetch(SITE_URL + "actions/wishlist-count.php", {
-            credentials: "include",
-        })
+        fetch(SITE_URL + "actions/wishlist-count.php", { credentials: "include" })
             .then((res) => res.json())
             .then((data) => {
-                console.log("💌 Wishlist count response:", data);
                 const badge = document.getElementById("wishlist-count");
-                if (badge) {
-                    badge.textContent = data.count ?? 0;
-                    console.log("💌 Wishlist badge updated to:", data.count);
-                } else {
-                    console.warn("💌 Wishlist count badge element not found");
-                }
+                if (badge) badge.textContent = data.count ?? 0;
             })
             .catch((err) => console.error("💌 Error updating wishlist badge:", err));
     }

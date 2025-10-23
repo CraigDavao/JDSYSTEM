@@ -1,41 +1,32 @@
 <?php
-require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../backend/get-products.php';
 
-// Pagination setup
+// 🟢 Pagination setup
 $perPage = 24;
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $offset  = ($page - 1) * $perPage;
 
-// Query all products under Accessories (any gender, any subcategory)
-$sql = "SELECT id, name, price, sale_price, image, created_at
-        FROM products
-        WHERE category_group='accessories'
-          AND (is_active IS NULL OR is_active=1)
-        ORDER BY created_at DESC
-        LIMIT ?, ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $offset, $perPage);
-$stmt->execute();
-$result = $stmt->get_result();
+// 🟣 Fetch products using reusable function
+$data = getProducts([
+    'category_group' => 'accessories',
+    'limit' => $perPage,
+    'offset' => $offset,
+    'orderBy' => 'p.created_at DESC'
+]);
 
-// Count total for pagination
-$countSql = "SELECT COUNT(*) as c
-             FROM products
-             WHERE category_group='accessories'
-               AND (is_active IS NULL OR is_active=1)";
-$countStmt = $conn->prepare($countSql);
-$countStmt->execute();
-$count = $countStmt->get_result()->fetch_assoc()['c'] ?? 0;
+$products = $data['products'];
+$count = $data['count'];
 $totalPages = max(1, ceil($count / $perPage));
 ?>
 
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time(); ?>">
   <title>Accessories</title>
-  <link rel="stylesheet" href="<?= SITE_URL ?>css/new.css?v=<?= time() ?>">
 </head>
 <body>
 
@@ -44,15 +35,44 @@ $totalPages = max(1, ceil($count / $perPage));
   </div>
 
   <div class="product-grid">
-    <?php if ($result->num_rows): ?>
-      <?php while ($product = $result->fetch_assoc()): ?>
+    <?php if ($products->num_rows): ?>
+      <?php while ($product = $products->fetch_assoc()): ?>
         <?php
           $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
-          include __DIR__ . '/../includes/product-card.php';
+          $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
+
+          // 🩵 Use product_image directly (already Base64 from get-products.php)
+          $imageSrc = !empty($product['product_image']) 
+              ? htmlspecialchars($product['product_image']) 
+              : SITE_URL . 'uploads/sample1.jpg';
         ?>
+        <a href="<?= htmlspecialchars($product_link) ?>" class="product-card">
+          <div class="product-image-container">
+            <img src="<?= $imageSrc ?>" 
+                 alt="<?= htmlspecialchars($product['name']); ?>" 
+                 class="product-thumb"
+                 onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
+
+            <?php if ($hasSale): ?>
+              <div class="sale-badge">Sale</div>
+            <?php endif; ?>
+          </div>
+
+          <div class="product-info">
+            <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
+            <div class="product-price">
+              <?php if ($hasSale): ?>
+                <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
+              <?php else: ?>
+                <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+              <?php endif; ?>
+            </div>
+          </div>
+        </a>
       <?php endwhile; ?>
     <?php else: ?>
-      <p style="grid-column:1/-1; opacity:.7;">No accessories found.</p>
+      <p style="grid-column:1/-1;opacity:.7;">No accessories found.</p>
     <?php endif; ?>
   </div>
 
