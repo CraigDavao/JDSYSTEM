@@ -38,39 +38,39 @@ if (isset($_SESSION['user_id'])) {
 
     $cart = [];
     while ($row = $result->fetch_assoc()) {
-        // 🟣 Handle blob image conversion
+        // 🟣 Handle blob image conversion for cart display
         if (!empty($row['image'])) {
-            // Convert blob to Base64
+            // Convert blob to Base64 data URL
             $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
             $row['image'] = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
         } else {
-            $row['image'] = null;
+            // Fallback to sample image
+            $row['image'] = 'sample1.jpg';
         }
         
-        // 🟣 Use sale price if available
-       // 🟣 Normalize all price fields as float to avoid string/NULL issues
-        $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
-        $salePrice  = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
+        // 🟣 FIXED: Better price calculation logic
         $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
+        $salePrice = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
+        $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
 
         // 🟣 Determine which price to use
-        if ($actualSale > 0) {
+        $displayPrice = $regularPrice; // Default to regular price
+
+        // Only use sale prices if they're valid and lower than regular price
+        if ($actualSale > 0 && $actualSale < $regularPrice) {
             $displayPrice = $actualSale;
-        } elseif ($salePrice > 0) {
+        } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
             $displayPrice = $salePrice;
-        } else {
+        }
+
+        // 🟣 Safety check: if displayPrice is 0, fallback to regular price
+        if ($displayPrice <= 0) {
             $displayPrice = $regularPrice;
         }
 
-        // 🟣 Update subtotal correctly
+        // 🟣 Update price and subtotal with correct price
         $row['price'] = $displayPrice;
         $row['subtotal'] = $displayPrice * (int)$row['quantity'];
-
-
-        
-        // 🟣 Update subtotal with correct price
-        $row['price'] = $displayPrice;
-        $row['subtotal'] = $displayPrice * $row['quantity'];
         
         $cart[] = $row;
     }

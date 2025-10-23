@@ -286,21 +286,45 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    document.getElementById("checkout-btn")?.addEventListener("click", () => {
+    document.getElementById("checkout-btn").addEventListener("click", async () => {
         const selectedItems = getSelectedCartIds();
 
+        console.log("🛒 Selected items for checkout:", selectedItems);
+        console.log("🛒 Selected items count:", selectedItems.length);
+        
         if (selectedItems.length === 0) {
             alert("Please select at least one item to checkout.");
             return;
         }
 
-        fetch(SITE_URL + "actions/cart-checkout.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `cart_ids=${selectedItems.join(",")}`
-        }).then(() => {
-            window.location.href = SITE_URL + "pages/checkout.php";
-        });
+        try {
+            // Store selected items in session for checkout
+            const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_ids=${selectedItems.join(",")}`
+            });
+            
+            const result = await response.json();
+            console.log("🛒 Checkout API response:", result);
+            
+            if (result.status === "success") {
+                console.log(`🛒 Success! Redirecting to checkout with ${result.count} items`);
+                console.log(`🛒 Item IDs:`, result.items);
+                
+                // Optional: Verify session data before redirect
+                setTimeout(() => {
+                    window.location.href = SITE_URL + "pages/checkout.php";
+                }, 100);
+                
+            } else {
+                console.error("🛒 Checkout failed:", result.message);
+                alert("Error: " + (result.message || "Failed to proceed to checkout"));
+            }
+        } catch (error) {
+            console.error("🛒 Checkout error:", error);
+            alert("Network error. Please try again.");
+        }
     });
 
     // Initial load

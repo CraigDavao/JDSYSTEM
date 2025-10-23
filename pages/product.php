@@ -35,10 +35,19 @@ if (!empty($product['image'])) {
     $imageSrc = SITE_URL . 'uploads/sample1.jpg';
 }
 
-// Use actual_sale_price if available, otherwise use sale_price, otherwise use regular price
-$displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : 
-               (!empty($product['sale_price']) ? $product['sale_price'] : $product['price']);
-$hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
+// ✅ FIXED: Better price calculation logic
+$hasSale = false;
+$displayPrice = $product['price']; // Default to regular price
+
+// Check if product is on sale
+if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price']) {
+    $hasSale = true;
+    // Use actual_sale_price if available, otherwise use sale_price
+    $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
+}
+
+// Debug output (you can remove this after testing)
+error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$product['sale_price']}, Actual Sale: {$product['actual_sale_price']}, Display: {$displayPrice}, Has Sale: " . ($hasSale ? 'Yes' : 'No'));
 ?>
 
 <!doctype html>
@@ -76,6 +85,7 @@ $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $prod
           <?php endif; ?>
         </div>
       <?php else: ?>
+        <!-- ✅ FIXED: Show regular price when not on sale -->
         <p class="price">₱<?= number_format($displayPrice, 2) ?></p>
       <?php endif; ?>
 

@@ -1,124 +1,70 @@
 <?php
 session_start();
-require_once __DIR__ . '/../connection/connection.php';
+require_once '../connection/connection.php';
 
 header('Content-Type: application/json');
 
-$user_id = $_SESSION['user_id'] ?? 0;
-
-if (!$user_id) {
-    echo json_encode(['status' => 'error', 'message' => 'User not logged in']);
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['status' => 'error', 'message' => 'Not logged in']);
     exit;
 }
 
-$response = [
-    'status' => 'success',
-    'items' => [],
-    'totals' => [
-        'subtotal' => 0,
-        'shipping' => 0,
-        'total' => 0
-    ]
-];
-
-// 🟣 Check for buy now product first
-if (isset($_SESSION['buy_now_product'])) {
-    $buyNowProduct = $_SESSION['buy_now_product'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cart_ids'])) {
+    // Clear any previous buy now session
+    unset($_SESSION['buy_now_product']);
     
-    if (!isset($buyNowProduct['product_id']) || $buyNowProduct['product_id'] <= 0) {
-        $response['status'] = 'error';
-        $response['message'] = 'Invalid product in buy now session';
-    } else {
-        $response['items'] = [$buyNowProduct];
-        
-        // Calculate totals
-        $subtotal = $buyNowProduct['price'] * $buyNowProduct['quantity'];
-        $shipping = $subtotal > 500 ? 0 : 50;
-        $total = $subtotal + $shipping;
-        
-        $response['totals']['subtotal'] = $subtotal;
-        $response['totals']['shipping'] = $shipping;
-        $response['totals']['total'] = $total;
+    $cart_ids = explode(',', $_POST['cart_ids']);
+    
+    // Validate and sanitize cart IDs
+    $valid_cart_ids = [];
+    foreach ($cart_ids as $cart_id) {
+        $cart_id = (int)trim($cart_id);
+        if ($cart_id > 0) {
+            $valid_cart_ids[] = $cart_id;
+        }
     }
     
-} 
-// 🟣 Otherwise check for cart items
-else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
-    $cart_ids = implode(',', array_map('intval', $_SESSION['checkout_items']));
+    if (empty($valid_cart_ids)) {
+        echo json_encode(['status' => 'error', 'message' => 'No valid cart items selected']);
+        exit;
+    }
     
-    // Updated query to handle blob images properly
+    // Verify these cart items belong to the current user
+    $user_id = $_SESSION['user_id'];
+    $placeholders = str_repeat('?,', count($valid_cart_ids) - 1) . '?';
     $stmt = $conn->prepare("
-        SELECT 
-            cart.id AS cart_id,
-            cart.product_id,
-            products.id, 
-            products.name,
-            products.price,
-            products.sale_price,
-            products.actual_sale_price,
-            products.description,
-            cart.quantity,
-            cart.size,
-            product_images.image,
-            product_images.image_format
-        FROM cart 
-        INNER JOIN products ON cart.product_id = products.id 
-        LEFT JOIN product_images ON products.id = product_images.product_id
-        WHERE cart.id IN ($cart_ids) AND cart.user_id = ?
-        GROUP BY cart.id
+        SELECT id FROM cart 
+        WHERE id IN ($placeholders) AND user_id = ?
     ");
-    $stmt->bind_param("i", $user_id);
+    
+    $types = str_repeat('i', count($valid_cart_ids)) . 'i';
+    $params = array_merge($valid_cart_ids, [$user_id]);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
-
-    $items = [];
-    $subtotal = 0;
-
+    
+    $verified_cart_ids = [];
     while ($row = $result->fetch_assoc()) {
-        if (!isset($row['product_id']) || $row['product_id'] <= 0) {
-            continue;
-        }
-
-        // 🟣 Handle blob image properly
-        if (!empty($row['image'])) {
-            $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
-            $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
-        } else {
-            $image_data = 'sample1.jpg';
-        }
-        
-        // 🟣 Calculate CORRECT price
-        $displayPrice = !empty($row['actual_sale_price']) ? $row['actual_sale_price'] : 
-                       (!empty($row['sale_price']) ? $row['sale_price'] : $row['price']);
-        
-        $itemSubtotal = $displayPrice * $row['quantity'];
-        $subtotal += $itemSubtotal;
-        
-        $items[] = [
-            'cart_id' => $row['cart_id'],
-            'product_id' => intval($row['product_id']),
-            'name' => $row['name'],
-            'price' => floatval($displayPrice),
-            'quantity' => intval($row['quantity']),
-            'size' => $row['size'],
-            'image' => $image_data,
-            'subtotal' => $itemSubtotal,
-            'is_buy_now' => false
-        ];
+        $verified_cart_ids[] = $row['id'];
     }
     
-    $shipping = $subtotal > 500 ? 0 : 50;
-    $total = $subtotal + $shipping;
+    if (empty($verified_cart_ids)) {
+        echo json_encode(['status' => 'error', 'message' => 'No valid cart items found']);
+        exit;
+    }
     
-    $response['items'] = $items;
-    $response['totals']['subtotal'] = $subtotal;
-    $response['totals']['shipping'] = $shipping;
-    $response['totals']['total'] = $total;
-} 
-else {
-    $response['status'] = 'error';
-    $response['message'] = 'No items to checkout';
+    // Store in session
+    $_SESSION['checkout_items'] = $verified_cart_ids;
+    
+    // Debug log
+    error_log("🛒 Checkout - User $user_id selected " . count($verified_cart_ids) . " items: " . implode(',', $verified_cart_ids));
+    
+    echo json_encode([
+        'status' => 'success', 
+        'count' => count($verified_cart_ids),
+        'items' => $verified_cart_ids
+    ]);
+} else {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid request']);
 }
-
-echo json_encode($response);
 ?>

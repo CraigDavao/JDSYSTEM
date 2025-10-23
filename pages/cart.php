@@ -44,13 +44,24 @@ document.addEventListener("DOMContentLoaded", () => {
             let html = "";
             data.cart.forEach(item => {
                 const isChecked = checkboxStates[item.cart_id] ?? true;
+                
+                // 🟣 FIXED: Handle image source properly
+                let imageSrc = item.image;
+                
+                // Check if it's already a data URL (starts with 'data:')
+                if (!imageSrc.startsWith('data:')) {
+                    // It's a filename, prepend the uploads path
+                    imageSrc = SITE_URL + 'uploads/' + imageSrc;
+                }
+                
                 html += `
                 <div class="cart-item" data-cart-id="${item.cart_id}">
                     <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
-                    <img src="${SITE_URL}uploads/${item.image}" alt="${item.name}" width="80">
+                    <img src="${imageSrc}" alt="${item.name}" width="80" 
+                         onerror="this.src='${SITE_URL}uploads/sample1.jpg'">
                     <div class="item-details">
                         <h3>${item.name}</h3>
-                        <p class="item-price">Price: ₱${item.price}</p>
+                        <p class="item-price">Price: ₱${item.price.toFixed(2)}</p>
                         <div class="item-controls">
                             <div class="control-group">
                                 <label>Size:</label>
@@ -66,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
                             </div>
                         </div>
-                        <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${item.subtotal}</span></p>
+                        <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${item.subtotal.toFixed(2)}</span></p>
                     </div>
                     <button class="remove-item">× Remove</button>
                 </div>
@@ -244,22 +255,54 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     }
 
-    document.getElementById("checkout-btn").addEventListener("click", () => {
+    document.getElementById("checkout-btn").addEventListener("click", async () => {
         const selectedItems = getSelectedCartIds();
 
+        console.log("🛒 Selected items for checkout:", selectedItems);
+        console.log("🛒 Selected items count:", selectedItems.length);
+        
         if (selectedItems.length === 0) {
             alert("Please select at least one item to checkout.");
             return;
         }
 
-        // Store selected items in session for checkout
-        fetch(SITE_URL + "actions/cart-checkout.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `cart_ids=${selectedItems.join(",")}`
-        }).then(() => {
-            window.location.href = SITE_URL + "pages/checkout.php";
-        });
+        try {
+            // 🟣 IMPORTANT: Clear any existing Buy Now session first
+            await fetch(SITE_URL + "actions/clear-buy-now.php", {
+                method: "POST",
+                credentials: "include"
+            });
+
+            console.log("🛒 Sending to cart-checkout.php:", selectedItems.join(","));
+            
+            // Store selected items in session for checkout
+            const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_ids=${selectedItems.join(",")}`,
+                credentials: "include"
+            });
+            
+            const result = await response.json();
+            console.log("🛒 Checkout API response:", result);
+            
+            if (result.status === "success") {
+                console.log(`🛒 Success! Redirecting to checkout with ${result.count} items`);
+                console.log(`🛒 Item IDs:`, result.items);
+                
+                // Add a small delay to ensure session is saved
+                setTimeout(() => {
+                    window.location.href = SITE_URL + "pages/checkout.php";
+                }, 500);
+                
+            } else {
+                console.error("🛒 Checkout failed:", result.message);
+                alert("Error: " + (result.message || "Failed to proceed to checkout"));
+            }
+        } catch (error) {
+            console.error("🛒 Checkout error:", error);
+            alert("Network error. Please try again.");
+        }
     });
 
     loadCart();

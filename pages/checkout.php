@@ -1,7 +1,21 @@
 <?php
+// checkout.php
 ob_start();
 require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
+
+// 🟣 TEMPORARY DEBUG - Check what's in session
+// echo "<div style='background: yellow; padding: 10px; margin: 10px; border: 2px solid red;'>";
+// echo "<h3>🛒 SESSION DEBUG</h3>";
+// echo "checkout_items: ";
+// if (isset($_SESSION['checkout_items'])) {
+//     echo implode(', ', $_SESSION['checkout_items']) . " (Count: " . count($_SESSION['checkout_items']) . ")";
+// } else {
+//     echo "Not set";
+// }
+// echo "<br>buy_now_product: ";
+// echo isset($_SESSION['buy_now_product']) ? 'Set' : 'Not set';
+// echo "</div>";
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -46,6 +60,29 @@ if (isset($_SESSION['buy_now_product'])) {
     $buyNowProduct = $_SESSION['buy_now_product'];
     
     if (isset($buyNowProduct['product_id']) && $buyNowProduct['product_id'] > 0) {
+        // 🟣 FIXED: Ensure price is valid
+        if (!isset($buyNowProduct['price']) || $buyNowProduct['price'] <= 0) {
+            // Fetch the correct price from database if needed
+            $priceStmt = $conn->prepare("SELECT price, sale_price, actual_sale_price FROM products WHERE id = ?");
+            $priceStmt->bind_param("i", $buyNowProduct['product_id']);
+            $priceStmt->execute();
+            $priceResult = $priceStmt->get_result()->fetch_assoc();
+            
+            if ($priceResult) {
+                $regularPrice = (float)$priceResult['price'];
+                $salePrice = (float)$priceResult['sale_price'];
+                $actualSale = (float)$priceResult['actual_sale_price'];
+                
+                // Use the same price logic as above
+                $buyNowProduct['price'] = $regularPrice;
+                if ($actualSale > 0 && $actualSale < $regularPrice) {
+                    $buyNowProduct['price'] = $actualSale;
+                } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
+                    $buyNowProduct['price'] = $salePrice;
+                }
+            }
+        }
+        
         $checkout_items = [$buyNowProduct];
         $is_buy_now = true;
         
@@ -59,89 +96,112 @@ if (isset($_SESSION['buy_now_product'])) {
         $totals['total'] = $total;
     }
 } 
-// Check for cart checkout items
-else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
-    $cart_ids = implode(',', array_map('intval', $_SESSION['checkout_items']));
-    
-    $stmt = $conn->prepare("
-        SELECT 
-            cart.id AS cart_id,
-            cart.product_id,
-            products.id, 
-            products.name,
-            products.price,
-            products.sale_price,
-            products.actual_sale_price,
-            products.description,
-            cart.quantity,
-            cart.size,
-            product_images.image,
-            product_images.image_format
-        FROM cart 
-        INNER JOIN products ON cart.product_id = products.id 
-        LEFT JOIN product_images ON products.id = product_images.product_id
-        WHERE cart.id IN ($cart_ids) AND cart.user_id = ?
-        GROUP BY cart.id
-    ");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // Check for cart checkout items
+    else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
+        // Fix: Use proper parameter binding for IN clause
+        if (!empty($_SESSION['checkout_items'])) {
+            $placeholders = str_repeat('?,', count($_SESSION['checkout_items']) - 1) . '?';
+            
+            // 🟣 FIXED: Added GROUP BY to avoid duplicate products with multiple images
+            $sql = "
+                SELECT 
+                    cart.id AS cart_id,
+                    cart.product_id,
+                    products.id, 
+                    products.name,
+                    products.price,
+                    products.sale_price,
+                    products.actual_sale_price,
+                    products.description,
+                    cart.quantity,
+                    cart.size,
+                    product_images.image,
+                    product_images.image_format
+                FROM cart 
+                INNER JOIN products ON cart.product_id = products.id 
+                LEFT JOIN product_images ON products.id = product_images.product_id
+                WHERE cart.id IN ($placeholders) AND cart.user_id = ?
+                GROUP BY cart.id, products.id, cart.size
+            ";
+            
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                // Bind parameters dynamically
+                $types = str_repeat('i', count($_SESSION['checkout_items'])) . 'i';
+                $params = array_merge($_SESSION['checkout_items'], [$user_id]);
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                // Debug: Check how many items were fetched
+                $fetched_count = $result->num_rows;
+                error_log("🛒 Checkout - Fetched $fetched_count items from database");
+                
+                $subtotal = 0; // ✅ MOVED THIS LINE HERE
 
-    $subtotal = 0;
+                while ($row = $result->fetch_assoc()) {
+                    if (!isset($row['product_id']) || $row['product_id'] <= 0) {
+                        continue;
+                    }
 
-    while ($row = $result->fetch_assoc()) {
-        if (!isset($row['product_id']) || $row['product_id'] <= 0) {
-            continue;
+                    // Handle blob image
+                    if (!empty($row['image'])) {
+                        $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
+                        $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
+                    } else {
+                        $image_data = SITE_URL . 'uploads/sample1.jpg';
+                    }
+                    
+                    // 🟣 FIXED: Better price calculation logic
+                    $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
+                    $salePrice = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
+                    $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
+
+                    // 🟣 Determine which price to use - FIXED LOGIC
+                    $displayPrice = $regularPrice; // Default to regular price
+
+                    // Only use sale prices if they're valid and lower than regular price
+                    if ($actualSale > 0 && $actualSale < $regularPrice) {
+                        $displayPrice = $actualSale;
+                    } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
+                        $displayPrice = $salePrice;
+                    }
+
+                    // 🟣 Safety check: if displayPrice is 0, fallback to regular price
+                    if ($displayPrice <= 0) {
+                        $displayPrice = $regularPrice;
+                    }
+
+                    // Debug logging (remove after testing)
+                    error_log("Product {$row['product_id']} - Regular: {$regularPrice}, Sale: {$salePrice}, Actual: {$actualSale}, Display: {$displayPrice}");
+
+                    $itemSubtotal = $displayPrice * $row['quantity'];
+                    $subtotal += $itemSubtotal;
+                    
+                    $checkout_items[] = [
+                        'cart_id' => $row['cart_id'],
+                        'product_id' => intval($row['product_id']),
+                        'name' => $row['name'],
+                        'price' => floatval($displayPrice),
+                        'quantity' => intval($row['quantity']),
+                        'size' => $row['size'],
+                        'image' => $image_data,
+                        'subtotal' => $itemSubtotal,
+                        'is_buy_now' => false
+                    ];
+                }
+                
+                $shipping = $subtotal > 500 ? 0 : 50;
+                $total = $subtotal + $shipping;
+                
+                $totals['subtotal'] = $subtotal;
+                $totals['shipping'] = $shipping;
+                $totals['total'] = $total;
+            } else {
+                die("Database error: " . $conn->error);
+            }
         }
-
-        // Handle blob image
-        if (!empty($row['image'])) {
-            $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
-            $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
-        } else {
-            $image_data = SITE_URL . 'uploads/sample1.jpg';
-        }
-        
-        // Calculate correct price
-      // 🟣 Normalize all price fields as float
-        $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
-        $salePrice  = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
-        $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
-
-        // 🟣 Determine which price to use
-        if ($actualSale > 0) {
-            $displayPrice = $actualSale;
-        } elseif ($salePrice > 0) {
-            $displayPrice = $salePrice;
-        } else {
-            $displayPrice = $regularPrice;
-        }
-
-
-        
-        $itemSubtotal = $displayPrice * $row['quantity'];
-        $subtotal += $itemSubtotal;
-        
-        $checkout_items[] = [
-            'cart_id' => $row['cart_id'],
-            'product_id' => intval($row['product_id']),
-            'name' => $row['name'],
-            'price' => floatval($displayPrice),
-            'quantity' => intval($row['quantity']),
-            'size' => $row['size'],
-            'image' => $image_data,
-            'subtotal' => $itemSubtotal,
-            'is_buy_now' => false
-        ];
     }
-    
-    $shipping = $subtotal > 500 ? 0 : 50;
-    $total = $subtotal + $shipping;
-    
-    $totals['subtotal'] = $subtotal;
-    $totals['shipping'] = $shipping;
-    $totals['total'] = $total;
-}
 
 // If no items, redirect to cart
 if (empty($checkout_items)) {
@@ -292,15 +352,42 @@ if (empty($checkout_items)) {
                     </div>
                 </div>
             </div>
+            <!-- 🟣 DEBUG: Remove this after testing -->
+            <div style="display: none; background: #f8f9fa; padding: 10px; margin: 10px 0; border: 1px solid #ddd;">
+                <h4>Price Debug Info:</h4>
+                <?php foreach ($checkout_items as $index => $item): ?>
+                    <div style="margin: 5px 0;">
+                        <strong>Item <?= $index + 1 ?>:</strong> 
+                        <?= htmlspecialchars($item['name']) ?> | 
+                        Price: ₱<?= number_format($item['price'], 2) ?> | 
+                        Qty: <?= $item['quantity'] ?> | 
+                        Subtotal: ₱<?= number_format($item['subtotal'], 2) ?>
+                    </div>
+                <?php endforeach; ?>
+                <div style="margin: 5px 0;">
+                    <strong>Totals:</strong> 
+                    Subtotal: ₱<?= number_format($totals['subtotal'], 2) ?> | 
+                    Shipping: ₱<?= number_format($totals['shipping'], 2) ?> | 
+                    Total: ₱<?= number_format($totals['total'], 2) ?>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-
 <script>
-const SITE_URL = "<?php echo SITE_URL; ?>";
-const CHECKOUT_ITEMS = <?= json_encode($checkout_items) ?>;
-const ORDER_TOTALS = <?= json_encode($totals) ?>;
-const IS_BUY_NOW = <?= $is_buy_now ? 'true' : 'false'; ?>;
+// Debug: Check what's in session storage
+console.log("🛒 Current URL:", window.location.href);
+console.log("🛒 SITE_URL:", SITE_URL);
+
+// Check if we have any session issues
+fetch(SITE_URL + 'actions/checkout-items.php')
+    .then(res => res.json())
+    .then(data => {
+        console.log("🛒 Checkout Items API Response:", data);
+    })
+    .catch(err => {
+        console.error("🛒 Error fetching checkout items:", err);
+    });
 </script>
 
 <script src="<?php echo SITE_URL; ?>js/checkout.js?v=<?= time(); ?>"></script>

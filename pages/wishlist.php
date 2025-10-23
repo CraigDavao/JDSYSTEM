@@ -9,9 +9,12 @@ if (!$user_id) {
     exit;
 }
 
-$sql = "SELECT w.id AS wishlist_id, p.id, p.name, p.image 
+// 🟣 UPDATED: Fetch product images with blob support
+$sql = "SELECT w.id AS wishlist_id, p.id, p.name, 
+               pi.image, pi.image_format
         FROM wishlist w
         JOIN products p ON w.product_id = p.id
+        LEFT JOIN product_images pi ON p.id = pi.product_id
         WHERE w.user_id = ?
         ORDER BY w.added_at DESC";
 
@@ -38,9 +41,19 @@ $result = $stmt->get_result();
   <div id="wishlist-items">
     <?php if ($result->num_rows > 0): ?>
       <?php while ($item = $result->fetch_assoc()): ?>
+        <?php
+        // 🟣 Handle blob image conversion
+        if (!empty($item['image'])) {
+            $mimeType = !empty($item['image_format']) ? $item['image_format'] : 'image/jpeg';
+            $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($item['image']);
+        } else {
+            $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+        }
+        ?>
         <div class="wishlist-item">
           <a href="<?= SITE_URL; ?>pages/product.php?id=<?= $item['id'] ?>" class="wishlist-link">
-            <img src="<?= SITE_URL; ?>uploads/<?= htmlspecialchars($item['image']); ?>" alt="<?= htmlspecialchars($item['name']); ?>">
+            <img src="<?= $imageSrc; ?>" alt="<?= htmlspecialchars($item['name']); ?>" 
+                 onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
             <h3><?= htmlspecialchars($item['name']); ?></h3>
           </a>
           <button class="remove-wishlist" data-id="<?= $item['wishlist_id']; ?>">Remove</button>
@@ -83,5 +96,3 @@ $result = $stmt->get_result();
   </script>
 </body>
 </html>
-
-
