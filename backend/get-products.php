@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../connection/connection.php';
 
+
 /**
  * Get products (with first image as Base64)
  * 
@@ -57,7 +58,7 @@ function getProducts($filters = [])
             p.name,
             p.price,
             p.sale_price,
-            p.actual_sale_price,
+                
             p.category,
             p.category_group,
             p.gender,

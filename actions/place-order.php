@@ -99,6 +99,19 @@ try {
         if (!$stmt->execute()) {
             throw new Exception('Failed to insert order item: ' . $stmt->error);
         }
+
+        // ✅ Update product stock in product_colors table
+        $updateStock = $conn->prepare("
+            UPDATE product_colors 
+            SET quantity = GREATEST(quantity - ?, 0)
+            WHERE product_id = ? 
+        ");
+        $updateStock->bind_param("ii", $item['quantity'], $item['product_id']);
+
+        if (!$updateStock->execute()) {
+            throw new Exception('Failed to update product stock: ' . $updateStock->error);
+        }
+        $updateStock->close();
     }
     $stmt->close();
 
