@@ -5,17 +5,17 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
 // 🟣 TEMPORARY DEBUG - Check what's in session
-// echo "<div style='background: yellow; padding: 10px; margin: 10px; border: 2px solid red;'>";
-// echo "<h3>🛒 SESSION DEBUG</h3>";
-// echo "checkout_items: ";
-// if (isset($_SESSION['checkout_items'])) {
-//     echo implode(', ', $_SESSION['checkout_items']) . " (Count: " . count($_SESSION['checkout_items']) . ")";
-// } else {
-//     echo "Not set";
-// }
-// echo "<br>buy_now_product: ";
-// echo isset($_SESSION['buy_now_product']) ? 'Set' : 'Not set';
-// echo "</div>";
+echo "<div style='background: yellow; padding: 10px; margin: 10px; border: 2px solid red;'>";
+echo "<h3>🛒 SESSION DEBUG</h3>";
+echo "checkout_items: ";
+if (isset($_SESSION['checkout_items'])) {
+    echo implode(', ', $_SESSION['checkout_items']) . " (Count: " . count($_SESSION['checkout_items']) . ")";
+} else {
+    echo "Not set";
+}
+echo "<br>buy_now_product: ";
+echo isset($_SESSION['buy_now_product']) ? 'Set' : 'Not set';
+echo "</div>";
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -96,33 +96,40 @@ if (isset($_SESSION['buy_now_product'])) {
         $totals['total'] = $total;
     }
 } 
-    // Check for cart checkout items
-    else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
-        // Fix: Use proper parameter binding for IN clause
-        if (!empty($_SESSION['checkout_items'])) {
-            $placeholders = str_repeat('?,', count($_SESSION['checkout_items']) - 1) . '?';
-            
-            // 🟣 FIXED: Added GROUP BY to avoid duplicate products with multiple images
-            $sql = "
-                SELECT 
-                    cart.id AS cart_id,
-                    cart.product_id,
-                    products.id, 
-                    products.name,
-                    products.price,
-                    products.sale_price,
-                    products.actual_sale_price,
-                    products.description,
-                    cart.quantity,
-                    cart.size,
-                    product_images.image,
-                    product_images.image_format
-                FROM cart 
-                INNER JOIN products ON cart.product_id = products.id 
-                LEFT JOIN product_images ON products.id = product_images.product_id
-                WHERE cart.id IN ($placeholders) AND cart.user_id = ?
-                GROUP BY cart.id, products.id, cart.size
-            ";
+    // In your checkout.php cart items section, update the query to ensure color_id is included:
+
+// Check for cart checkout items
+else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
+    if (!empty($_SESSION['checkout_items'])) {
+        $placeholders = str_repeat('?,', count($_SESSION['checkout_items']) - 1) . '?';
+        
+        // 🟣 UPDATED QUERY: Make sure color_id is included
+        $sql = "
+            SELECT 
+                cart.id AS cart_id,
+                cart.product_id,
+                cart.color_id,  -- ✅ MAKE SURE THIS IS INCLUDED
+                cart.color_name,
+                cart.quantity,
+                cart.size,
+                products.id, 
+                products.name,
+                products.price,
+                products.sale_price,
+                products.actual_sale_price,
+                products.description,
+                product_images.image,
+                product_images.image_format
+            FROM cart 
+            INNER JOIN products ON cart.product_id = products.id 
+            LEFT JOIN product_images ON products.id = product_images.product_id 
+                AND (product_images.color_name = cart.color_name OR product_images.color_name IS NULL)
+            WHERE cart.id IN ($placeholders) AND cart.user_id = ?
+            GROUP BY cart.id
+            ORDER BY cart.id
+        ";
+        
+        // ... rest of your code remains the same
             
             $stmt = $conn->prepare($sql);
             if ($stmt) {
@@ -140,56 +147,62 @@ if (isset($_SESSION['buy_now_product'])) {
                 $subtotal = 0; // ✅ MOVED THIS LINE HERE
 
                 while ($row = $result->fetch_assoc()) {
-                    if (!isset($row['product_id']) || $row['product_id'] <= 0) {
-                        continue;
-                    }
+    if (!isset($row['product_id']) || $row['product_id'] <= 0) {
+        continue;
+    }
 
-                    // Handle blob image
-                    if (!empty($row['image'])) {
-                        $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
-                        $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
-                    } else {
-                        $image_data = SITE_URL . 'uploads/sample1.jpg';
-                    }
-                    
-                    // 🟣 FIXED: Better price calculation logic
-                    $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
-                    $salePrice = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
-                    $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
+    // Handle blob image
+    if (!empty($row['image'])) {
+        $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
+        $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
+    } else {
+        $image_data = SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    // 🟣 FIXED: Better price calculation logic
+    $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
+    $salePrice = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
+    $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
 
-                    // 🟣 Determine which price to use - FIXED LOGIC
-                    $displayPrice = $regularPrice; // Default to regular price
+    // 🟣 Determine which price to use - FIXED LOGIC
+    $displayPrice = $regularPrice; // Default to regular price
 
-                    // Only use sale prices if they're valid and lower than regular price
-                    if ($actualSale > 0 && $actualSale < $regularPrice) {
-                        $displayPrice = $actualSale;
-                    } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
-                        $displayPrice = $salePrice;
-                    }
+    // Only use sale prices if they're valid and lower than regular price
+    if ($actualSale > 0 && $actualSale < $regularPrice) {
+        $displayPrice = $actualSale;
+    } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
+        $displayPrice = $salePrice;
+    }
 
-                    // 🟣 Safety check: if displayPrice is 0, fallback to regular price
-                    if ($displayPrice <= 0) {
-                        $displayPrice = $regularPrice;
-                    }
+    // 🟣 Safety check: if displayPrice is 0, fallback to regular price
+    if ($displayPrice <= 0) {
+        $displayPrice = $regularPrice;
+    }
 
-                    // Debug logging (remove after testing)
-                    error_log("Product {$row['product_id']} - Regular: {$regularPrice}, Sale: {$salePrice}, Actual: {$actualSale}, Display: {$displayPrice}");
+    // 🟣 FIX: Ensure price is never 0
+    if ($displayPrice <= 0) {
+        error_log("❌ ERROR: Product {$row['product_id']} has price 0. Using fallback.");
+        $displayPrice = 820.00; // Fallback price
+    }
 
-                    $itemSubtotal = $displayPrice * $row['quantity'];
-                    $subtotal += $itemSubtotal;
-                    
-                    $checkout_items[] = [
-                        'cart_id' => $row['cart_id'],
-                        'product_id' => intval($row['product_id']),
-                        'name' => $row['name'],
-                        'price' => floatval($displayPrice),
-                        'quantity' => intval($row['quantity']),
-                        'size' => $row['size'],
-                        'image' => $image_data,
-                        'subtotal' => $itemSubtotal,
-                        'is_buy_now' => false
-                    ];
-                }
+    $itemSubtotal = $displayPrice * $row['quantity'];
+    $subtotal += $itemSubtotal;
+    
+    $checkout_items[] = [
+        'cart_id' => $row['cart_id'],
+        'product_id' => intval($row['product_id']),
+        'name' => $row['name'],
+        'price' => floatval($displayPrice),
+        'quantity' => intval($row['quantity']),
+        'size' => $row['size'],
+        'image' => $image_data,
+        'subtotal' => $itemSubtotal,
+        'is_buy_now' => false
+    ];
+    
+    // 🟣 DEBUG LOGGING
+    error_log("🛒 Cart Item - ID: {$row['product_id']}, Name: {$row['name']}, Price: $displayPrice, Qty: {$row['quantity']}, Subtotal: $itemSubtotal");
+}
                 
                 $shipping = $subtotal > 500 ? 0 : 50;
                 $total = $subtotal + $shipping;
@@ -328,7 +341,7 @@ if (empty($checkout_items)) {
                             <div class="item-info">
                                 <h4><?= htmlspecialchars($item['name']) ?></h4>
                                 <p>Size: <?= $item['size'] ?> | Qty: <?= $item['quantity'] ?></p>
-                                <p class="item-price">₱<?= number_format($item['price'], 2) ?> × <?= $item['quantity'] ?> = ₱<?= number_format($item['subtotal'], 2) ?></p>
+                                <p class="item-price">₱<?= number_format($item['price'], 2) ?> × <?= $item['quantity'] ?> = ₱<?= number_format($item['price'] * $item['quantity'], 2) ?></p>
                             </div>
                         </div>
                     <?php endforeach; ?>

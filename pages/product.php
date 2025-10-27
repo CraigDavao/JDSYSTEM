@@ -2,6 +2,7 @@
 ob_start();
 require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../functions.php'; // ✅ ADD THIS LINE
 
 // ✅ Get product ID from URL
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -27,8 +28,20 @@ if (!$product) {
   die('<p>Product not found.</p>');
 }
 
-// 🟣 Handle blob image conversion
-if (!empty($product['image'])) {
+// ✅ GET PRODUCT COLORS WITH IMAGES
+$colors = getProductColorsWithImages($id, $conn);
+
+// ✅ Get default color for main image
+$default_color = getDefaultProductColor($id, $conn);
+if (!$default_color && !empty($colors)) {
+    $default_color = $colors[0];
+}
+
+// 🟣 Handle blob image conversion - USE COLOR IMAGE IF AVAILABLE
+if ($default_color && !empty($default_color['image'])) {
+    $mimeType = $default_color['image_format'] ?? 'image/jpeg';
+    $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($default_color['image']);
+} elseif (!empty($product['image'])) {
     $mimeType = !empty($product['image_format']) ? $product['image_format'] : 'image/jpeg';
     $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($product['image']);
 } else {
@@ -46,7 +59,7 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
     $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
 }
 
-// Debug output (you can remove this after testing)
+// Debug output
 error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$product['sale_price']}, Actual Sale: {$product['actual_sale_price']}, Display: {$displayPrice}, Has Sale: " . ($hasSale ? 'Yes' : 'No'));
 ?>
 
@@ -57,16 +70,19 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
   <title><?= htmlspecialchars($product['name']) ?> | Jolly Dolly</title>
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time() ?>">
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/product.css?v=<?= time() ?>">
+  <link rel="stylesheet" href="<?= SITE_URL; ?>css/color-selector.css?v=<?= time() ?>"> <!-- ✅ ADD COLOR CSS -->
 </head>
 <body>
 
   <div class="product-page">
-    <div class="product-image">
-      <!-- ✅ Image from blob data -->
-      <img src="<?= $imageSrc ?>" 
-           alt="<?= htmlspecialchars($product['name']) ?>"
-           onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
-    </div>
+   <div class="product-image">
+  <!-- ✅ Image from blob data -->
+  <img src="<?= $imageSrc ?>" 
+       alt="<?= htmlspecialchars($product['name']) ?>"
+       class="main-product-image"
+       data-fallback="<?= SITE_URL ?>uploads/sample1.jpg"
+       onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+</div>
 
     <div class="product-info">
       <h1><?= htmlspecialchars($product['name']) ?></h1>
@@ -87,6 +103,14 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
       <?php else: ?>
         <!-- ✅ FIXED: Show regular price when not on sale -->
         <p class="price">₱<?= number_format($displayPrice, 2) ?></p>
+      <?php endif; ?>
+
+      <!-- ✅ COLOR SELECTOR -->
+      <?php if (!empty($colors)): ?>
+        <?php 
+          $product_id = $product['id'];
+          include __DIR__ . '/../includes/color-selector.php'; 
+        ?>
       <?php endif; ?>
 
       <div class="product-description">
@@ -118,7 +142,10 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
       </div>
 
       <div class="action-buttons">
-        <button class="add-to-cart" data-id="<?= $product['id'] ?>">Add to Cart</button>
+        <!-- ✅ SIMPLIFIED: Add to Cart button with ONLY product_id -->
+        <button class="add-to-cart" data-id="<?= $product['id'] ?>">
+          Add to Cart
+        </button>
         <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
       </div>
 
@@ -129,6 +156,7 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
           <input type="hidden" name="quantity" value="1" id="buy-now-quantity">
           <input type="hidden" name="size" value="M" id="selected-size">
           <input type="hidden" name="price" value="<?= $displayPrice; ?>" id="product-price">
+          <input type="hidden" name="color_id" id="form-color-id" value="<?= $default_color['id'] ?? '' ?>">
           <button type="submit" class="checkout-btn" id="buy-now-btn">Buy Now</button>
         </form>
       </div>
@@ -136,6 +164,9 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
   </div>
 
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
+  <!-- ✅ ADD COLOR SELECTOR JS -->
+  <script src="<?= SITE_URL; ?>js/color-selector.js?v=<?= time() ?>"></script>
 
   <script>
     // ✅ Size selection
@@ -175,9 +206,108 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
       if (val > 10) quantityInput.value = 10;
       buyNowQuantity.value = quantityInput.value;
     });
+
+    // ✅ Update form color ID when color changes (for Buy Now only)
+    document.addEventListener('colorChanged', function(e) {
+      const formColorInput = document.getElementById('form-color-id');
+      if (formColorInput) {
+        formColorInput.value = e.detail.colorId;
+        console.log('Color changed to:', e.detail.colorName, 'ID:', e.detail.colorId);
+      }
+    });
   </script>
 
+  <!-- Add this RIGHT BEFORE the closing </body> tag -->
+<script>
+// 🛒 DEBUG: Temporary Add to Cart functionality
+document.querySelectorAll(".add-to-cart").forEach((btn) => {
+    btn.addEventListener("click", async function(e) {
+        e.preventDefault();
+        console.log("🛒 Add to Cart CLICKED - DEBUG MODE");
+        
+        const productId = this.dataset.id;
+        console.log("📦 Product ID:", productId);
+        
+        if (!productId) {
+            alert("❌ No product ID found!");
+            return;
+        }
+
+        // Test different URL formats
+        const url1 = "<?= SITE_URL ?>actions/cart-add.php";
+        const url2 = "/JDSystem/actions/cart-add.php";
+        const url3 = "actions/cart-add.php";
+        
+        console.log("🌐 Testing URLs:", { url1, url2, url3 });
+
+        try {
+            console.log("🔄 Attempting fetch to:", url1);
+            
+            const formData = new URLSearchParams();
+            formData.append("product_id", productId);
+            
+            const response = await fetch(url1, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: formData,
+                credentials: "include"
+            });
+
+            console.log("✅ Fetch completed. Status:", response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const resultText = await response.text();
+            console.log("📄 Raw response:", resultText);
+            
+            try {
+                const result = JSON.parse(resultText);
+                console.log("📊 Parsed JSON:", result);
+                
+                if (result.status === "success") {
+                    alert("✅ Product added to cart!");
+                } else if (result.status === "not_logged_in") {
+                    alert("🔐 Please log in first!");
+                } else {
+                    alert("❌ " + (result.message || "Unknown error"));
+                }
+            } catch (parseError) {
+                console.error("❌ JSON Parse Error:", parseError);
+                alert("Server returned invalid JSON. Check console.");
+            }
+
+        } catch (error) {
+            console.error("❌ NETWORK ERROR:", {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // Test if the file exists with a simple GET request
+            try {
+                console.log("🔍 Testing if cart-add.php exists...");
+                const testResponse = await fetch("<?= SITE_URL ?>actions/cart-add.php");
+                console.log("📡 File test response status:", testResponse.status);
+            } catch (testError) {
+                console.error("❌ File doesn't exist or can't be accessed:", testError);
+            }
+            
+            alert("❌ Network error: " + error.message + "\nCheck browser console for details.");
+        }
+    });
+});
+
+console.log("🔧 Debug script loaded - Add to Cart should work now");
+</script>
+
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
+
+
+
 </body>
 </html>
 <?php ob_end_flush(); ?>

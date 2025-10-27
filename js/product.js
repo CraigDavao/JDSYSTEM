@@ -61,18 +61,24 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize modal close functionality
     setupModalClose();
 
-    // 🛒 ADD TO CART
+    // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR
     document.querySelectorAll(".add-to-cart").forEach((btn) => {
         btn.addEventListener("click", async () => {
             const productId = btn.dataset.id;
-            console.log("🛒 Add to cart clicked, product ID:", productId);
+            const colorId = btn.dataset.colorId || document.getElementById('selected-color-id')?.value;
+            console.log("🛒 Add to cart clicked, product ID:", productId, "Color ID:", colorId);
+            
             if (!productId) return;
 
             try {
+                const formData = new URLSearchParams();
+                formData.append("product_id", productId);
+                if (colorId) formData.append("color_id", colorId);
+
                 const response = await fetch(SITE_URL + "actions/cart-add.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: "product_id=" + encodeURIComponent(productId),
+                    body: formData,
                     credentials: "include",
                 });
 
