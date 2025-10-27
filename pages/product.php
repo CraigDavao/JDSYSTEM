@@ -2,45 +2,112 @@
 ob_start();
 require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../functions.php'; // ✅ ADD THIS LINE
+require_once __DIR__ . '/../functions.php';
 
-// ✅ Get product ID from URL
+// ✅ Get ID from URL - THIS COULD BE PRODUCT_ID OR COLOR_ID
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
-  die('<p>Invalid product ID.</p>');
+  die('<p>Invalid ID.</p>');
 }
 
-// ✅ Fetch product details with image from product_images table
-$sql = "SELECT p.id, p.name, p.price, p.sale_price, p.actual_sale_price, 
-               p.description, p.created_at, p.category, p.category_group,
-               p.gender, p.subcategory, p.sale_start, p.sale_end,
-               pi.image, pi.image_format
-        FROM products p
-        LEFT JOIN product_images pi ON p.id = pi.product_id
-        WHERE p.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
-        LIMIT 1";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$product = $stmt->get_result()->fetch_assoc();
+// First, check if this is a COLOR ID
+$is_color_id = false;
+$color_id = $id;
+$product_id = 0;
 
-if (!$product) {
-  die('<p>Product not found.</p>');
+// Try to fetch as color ID first
+$color_sql = "SELECT 
+                pc.id as color_id,
+                pc.product_id,
+                pc.color_name,
+                pc.quantity as color_quantity,
+                pc.is_default,
+                p.name, 
+                p.price, 
+                p.sale_price, 
+                p.actual_sale_price,
+                p.description, 
+                p.created_at, 
+                p.category, 
+                p.category_group,
+                p.gender, 
+                p.subcategory, 
+                p.sale_start, 
+                p.sale_end,
+                pi.image, 
+                pi.image_format
+            FROM product_colors pc
+            INNER JOIN products p ON pc.product_id = p.id
+            LEFT JOIN product_images pi ON pc.product_id = pi.product_id AND pi.color_name = pc.color_name
+            WHERE pc.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
+            LIMIT 1";
+$color_stmt = $conn->prepare($color_sql);
+$color_stmt->bind_param("i", $color_id);
+$color_stmt->execute();
+$product = $color_stmt->get_result()->fetch_assoc();
+
+if ($product) {
+    // This is a COLOR ID
+    $is_color_id = true;
+    $product_id = $product['product_id'];
+} else {
+    // If not found as color ID, try as PRODUCT ID
+    $product_sql = "SELECT p.id as product_id, p.name, p.price, p.sale_price, p.actual_sale_price, 
+                           p.description, p.created_at, p.category, p.category_group,
+                           p.gender, p.subcategory, p.sale_start, p.sale_end,
+                           pi.image, pi.image_format
+                    FROM products p
+                    LEFT JOIN product_images pi ON p.id = pi.product_id
+                    WHERE p.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
+                    LIMIT 1";
+    $product_stmt = $conn->prepare($product_sql);
+    $product_stmt->bind_param("i", $id);
+    $product_stmt->execute();
+    $product = $product_stmt->get_result()->fetch_assoc();
+    
+    if (!$product) {
+        die('<p>Product not found.</p>');
+    }
+    
+    $product_id = $product['product_id'] = $id;
+    
+    // Get default color for this product
+    $default_color = getDefaultProductColor($product_id, $conn);
+    if ($default_color) {
+        $color_id = $default_color['id'];
+        $is_color_id = true;
+        
+        // Update URL to use color ID instead of product ID
+        echo "<script>
+            if (window.history.replaceState) {
+                var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?id=' + $color_id;
+                window.history.replaceState({}, '', newUrl);
+            }
+        </script>";
+    }
 }
 
 // ✅ GET PRODUCT COLORS WITH IMAGES
-$colors = getProductColorsWithImages($id, $conn);
+$colors = getProductColorsWithImages($product_id, $conn);
 
-// ✅ Get default color for main image
-$default_color = getDefaultProductColor($id, $conn);
-if (!$default_color && !empty($colors)) {
-    $default_color = $colors[0];
+// ✅ Get current color
+$current_color = null;
+foreach ($colors as $color) {
+    if ($color['id'] == $color_id) {
+        $current_color = $color;
+        break;
+    }
+}
+
+if (!$current_color && !empty($colors)) {
+    $current_color = $colors[0];
+    $color_id = $current_color['id'];
 }
 
 // 🟣 Handle blob image conversion - USE COLOR IMAGE IF AVAILABLE
-if ($default_color && !empty($default_color['image'])) {
-    $mimeType = $default_color['image_format'] ?? 'image/jpeg';
-    $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($default_color['image']);
+if ($current_color && !empty($current_color['image'])) {
+    $mimeType = $current_color['image_format'] ?? 'image/jpeg';
+    $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($current_color['image']);
 } elseif (!empty($product['image'])) {
     $mimeType = !empty($product['image_format']) ? $product['image_format'] : 'image/jpeg';
     $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($product['image']);
@@ -58,9 +125,6 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
     // Use actual_sale_price if available, otherwise use sale_price
     $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
 }
-
-// Debug output
-error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$product['sale_price']}, Actual Sale: {$product['actual_sale_price']}, Display: {$displayPrice}, Has Sale: " . ($hasSale ? 'Yes' : 'No'));
 ?>
 
 <!doctype html>
@@ -70,13 +134,12 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
   <title><?= htmlspecialchars($product['name']) ?> | Jolly Dolly</title>
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/new.css?v=<?= time() ?>">
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/product.css?v=<?= time() ?>">
-  <link rel="stylesheet" href="<?= SITE_URL; ?>css/color-selector.css?v=<?= time() ?>"> <!-- ✅ ADD COLOR CSS -->
+  <link rel="stylesheet" href="<?= SITE_URL; ?>css/color-selector.css?v=<?= time() ?>">
 </head>
 <body>
 
   <div class="product-page">
    <div class="product-image">
-  <!-- ✅ Image from blob data -->
   <img src="<?= $imageSrc ?>" 
        alt="<?= htmlspecialchars($product['name']) ?>"
        class="main-product-image"
@@ -101,14 +164,13 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
           <?php endif; ?>
         </div>
       <?php else: ?>
-        <!-- ✅ FIXED: Show regular price when not on sale -->
         <p class="price">₱<?= number_format($displayPrice, 2) ?></p>
       <?php endif; ?>
 
       <!-- ✅ COLOR SELECTOR -->
       <?php if (!empty($colors)): ?>
         <?php 
-          $product_id = $product['id'];
+          $current_color_id = $current_color['id'] ?? $color_id;
           include __DIR__ . '/../includes/color-selector.php'; 
         ?>
       <?php endif; ?>
@@ -142,21 +204,21 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
       </div>
 
       <div class="action-buttons">
-        <!-- ✅ SIMPLIFIED: Add to Cart button with ONLY product_id -->
-        <button class="add-to-cart" data-id="<?= $product['id'] ?>">
+        <!-- ✅ Add to Cart button with COLOR ID -->
+        <button class="add-to-cart" data-id="<?= $current_color_id ?>">
           Add to Cart
         </button>
-        <button class="wishlist-btn" data-id="<?= $product['id'] ?>">♡ Add to Wishlist</button>
+        <button class="wishlist-btn" data-id="<?= $product_id ?>">♡ Add to Wishlist</button>
       </div>
 
       <!-- ✅ Buy Now Button -->
       <div class="action-button">
         <form id="buy-now-form" action="<?= SITE_URL ?>actions/buy_now.php" method="POST">
-          <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+          <input type="hidden" name="color_id" value="<?= $current_color_id ?>">
+          <input type="hidden" name="product_id" value="<?= $product_id ?>">
           <input type="hidden" name="quantity" value="1" id="buy-now-quantity">
           <input type="hidden" name="size" value="M" id="selected-size">
           <input type="hidden" name="price" value="<?= $displayPrice; ?>" id="product-price">
-          <input type="hidden" name="color_id" id="form-color-id" value="<?= $default_color['id'] ?? '' ?>">
           <button type="submit" class="checkout-btn" id="buy-now-btn">Buy Now</button>
         </form>
       </div>
@@ -165,7 +227,6 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
 
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
-  <!-- ✅ ADD COLOR SELECTOR JS -->
   <script src="<?= SITE_URL; ?>js/color-selector.js?v=<?= time() ?>"></script>
 
   <script>
@@ -207,46 +268,43 @@ error_log("Product {$product['id']} - Price: {$product['price']}, Sale Price: {$
       buyNowQuantity.value = quantityInput.value;
     });
 
-    // ✅ Update form color ID when color changes (for Buy Now only)
+    // ✅ Update URL when color changes
     document.addEventListener('colorChanged', function(e) {
-      const formColorInput = document.getElementById('form-color-id');
-      if (formColorInput) {
-        formColorInput.value = e.detail.colorId;
-        console.log('Color changed to:', e.detail.colorName, 'ID:', e.detail.colorId);
-      }
+      const newUrl = `<?= SITE_URL ?>pages/product.php?id=${e.detail.colorId}`;
+      window.history.replaceState({}, '', newUrl);
+      console.log('URL updated to:', newUrl);
     });
   </script>
 
-  <!-- Add this RIGHT BEFORE the closing </body> tag -->
+  <!-- 🛒 DEBUG: Temporary Add to Cart functionality -->
 <script>
-// 🛒 DEBUG: Temporary Add to Cart functionality
+// 🛒 FIXED: Add to Cart functionality
 document.querySelectorAll(".add-to-cart").forEach((btn) => {
     btn.addEventListener("click", async function(e) {
         e.preventDefault();
-        console.log("🛒 Add to Cart CLICKED - DEBUG MODE");
         
-        const productId = this.dataset.id;
-        console.log("📦 Product ID:", productId);
+        const colorId = this.dataset.id;
+        console.log("🛒 Add to Cart CLICKED");
+        console.log("🎨 Color ID:", colorId);
+        console.log("🔍 Button HTML:", this.outerHTML);
         
-        if (!productId) {
-            alert("❌ No product ID found!");
+        if (!colorId || colorId === "0") {
+            alert("❌ No valid color ID found! Please select a color.");
             return;
         }
 
-        // Test different URL formats
-        const url1 = "<?= SITE_URL ?>actions/cart-add.php";
-        const url2 = "/JDSystem/actions/cart-add.php";
-        const url3 = "actions/cart-add.php";
-        
-        console.log("🌐 Testing URLs:", { url1, url2, url3 });
+        // Show loading state
+        const originalText = this.textContent;
+        this.textContent = "Adding...";
+        this.disabled = true;
 
         try {
-            console.log("🔄 Attempting fetch to:", url1);
+            console.log("🔄 Sending to cart-add.php");
             
             const formData = new URLSearchParams();
-            formData.append("product_id", productId);
+            formData.append("color_id", colorId);
             
-            const response = await fetch(url1, {
+            const response = await fetch("<?= SITE_URL ?>actions/cart-add.php", {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -257,57 +315,77 @@ document.querySelectorAll(".add-to-cart").forEach((btn) => {
 
             console.log("✅ Fetch completed. Status:", response.status);
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
             const resultText = await response.text();
             console.log("📄 Raw response:", resultText);
             
+            let result;
             try {
-                const result = JSON.parse(resultText);
+                result = JSON.parse(resultText);
                 console.log("📊 Parsed JSON:", result);
-                
-                if (result.status === "success") {
-                    alert("✅ Product added to cart!");
-                } else if (result.status === "not_logged_in") {
-                    alert("🔐 Please log in first!");
-                } else {
-                    alert("❌ " + (result.message || "Unknown error"));
-                }
             } catch (parseError) {
                 console.error("❌ JSON Parse Error:", parseError);
-                alert("Server returned invalid JSON. Check console.");
+                throw new Error("Server returned invalid response. Check server logs.");
+            }
+
+            // Handle response
+            if (result.status === "success") {
+                alert("✅ " + result.message);
+                // Update cart count
+                updateCartCount();
+            } else if (result.message === "not_logged_in") {
+                alert("🔐 Please log in to add items to cart");
+                window.location.href = "<?= SITE_URL ?>auth/login.php";
+            } else if (result.message === "color_not_found") {
+                alert("❌ This color variant is no longer available.");
+            } else if (result.message === "invalid_color") {
+                alert("❌ Invalid color selection. Please try again.");
+            } else {
+                alert("❌ Error: " + result.message);
             }
 
         } catch (error) {
-            console.error("❌ NETWORK ERROR:", {
-                name: error.name,
-                message: error.message,
-                stack: error.stack
-            });
-            
-            // Test if the file exists with a simple GET request
-            try {
-                console.log("🔍 Testing if cart-add.php exists...");
-                const testResponse = await fetch("<?= SITE_URL ?>actions/cart-add.php");
-                console.log("📡 File test response status:", testResponse.status);
-            } catch (testError) {
-                console.error("❌ File doesn't exist or can't be accessed:", testError);
-            }
-            
-            alert("❌ Network error: " + error.message + "\nCheck browser console for details.");
+            console.error("❌ Error:", error);
+            alert("⚠️ " + error.message);
+        } finally {
+            // Reset button state
+            this.textContent = originalText;
+            this.disabled = false;
         }
     });
 });
 
-console.log("🔧 Debug script loaded - Add to Cart should work now");
+// Function to update cart count
+async function updateCartCount() {
+    try {
+        const response = await fetch("<?= SITE_URL ?>actions/cart-fetch.php", {
+            credentials: "include"
+        });
+        const data = await response.json();
+        
+        if (data.status === "success") {
+            const cartCount = document.getElementById("cart-count");
+            if (cartCount) {
+                const totalQuantity = data.cart.reduce((sum, item) => sum + item.quantity, 0);
+                cartCount.textContent = totalQuantity;
+                console.log("🛒 Cart count updated to:", totalQuantity);
+            }
+        }
+    } catch (error) {
+        console.error("Error updating cart count:", error);
+    }
+}
+
+// Debug info on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const addToCartBtn = document.querySelector('.add-to-cart');
+    console.log('🔍 Page Load Debug:');
+    console.log('Add to Cart Button:', addToCartBtn);
+    console.log('Button dataset:', addToCartBtn ? addToCartBtn.dataset : 'No button');
+    console.log('Current Color ID from PHP:', <?= $current_color_id ?>);
+});
 </script>
 
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
-
-
-
 </body>
 </html>
 <?php ob_end_flush(); ?>

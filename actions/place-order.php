@@ -80,41 +80,33 @@ try {
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
 
-    foreach ($items as $index => $item) {
-        if (empty($item['product_id']) || $item['product_id'] <= 0) {
-            throw new Exception("Invalid product_id at index $index");
-        }
-
-        $stmt->bind_param(
-            "iisisdd",
-            $order_id,
-            $item['product_id'],
-            $item['name'],
-            $item['quantity'],
-            $item['size'],
-            $item['price'],
-            $item['subtotal']
-        );
-
-        if (!$stmt->execute()) {
-            throw new Exception('Failed to insert order item: ' . $stmt->error);
-        }
-
-        // ✅ Update product stock in product_colors table
+   // In the order items insertion section, update the stock update part:
+foreach ($items as $index => $item) {
+    // ... existing code ...
+    
+    // ✅ UPDATED: Update product stock in product_colors table using color_id
+    if (isset($item['color_id']) && $item['color_id'] > 0) {
         $updateStock = $conn->prepare("
             UPDATE product_colors 
             SET quantity = GREATEST(quantity - ?, 0)
-            WHERE product_id = ? 
+            WHERE id = ? 
+        ");
+        $updateStock->bind_param("ii", $item['quantity'], $item['color_id']);
+    } else {
+        // Fallback: update by product_id (for backward compatibility)
+        $updateStock = $conn->prepare("
+            UPDATE product_colors 
+            SET quantity = GREATEST(quantity - ?, 0)
+            WHERE product_id = ? AND is_default = 1
         ");
         $updateStock->bind_param("ii", $item['quantity'], $item['product_id']);
-
-        if (!$updateStock->execute()) {
-            throw new Exception('Failed to update product stock: ' . $updateStock->error);
-        }
-        $updateStock->close();
     }
-    $stmt->close();
 
+    if (!$updateStock->execute()) {
+        throw new Exception('Failed to update product stock: ' . $updateStock->error);
+    }
+    $updateStock->close();
+}
     // Cleanup sessions
     $is_buy_now = !empty($items[0]['is_buy_now']);
     if ($is_buy_now) {

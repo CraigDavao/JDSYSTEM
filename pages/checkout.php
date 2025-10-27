@@ -50,7 +50,7 @@ try {
     // Silently continue with default values
 }
 
-// 🟣 CHECK FOR CHECKOUT ITEMS - FIXED VERSION
+// 🟣 CHECK FOR CHECKOUT ITEMS - UPDATED FOR COLOR ID SYSTEM
 $checkout_items = [];
 $totals = ['subtotal' => 0, 'shipping' => 0, 'total' => 0];
 $is_buy_now = false;
@@ -59,12 +59,18 @@ $is_buy_now = false;
 if (isset($_SESSION['buy_now_product'])) {
     $buyNowProduct = $_SESSION['buy_now_product'];
     
-    if (isset($buyNowProduct['product_id']) && $buyNowProduct['product_id'] > 0) {
+    // 🟣 UPDATED: Check for color_id instead of product_id
+    if (isset($buyNowProduct['color_id']) && $buyNowProduct['color_id'] > 0) {
         // 🟣 FIXED: Ensure price is valid
         if (!isset($buyNowProduct['price']) || $buyNowProduct['price'] <= 0) {
-            // Fetch the correct price from database if needed
-            $priceStmt = $conn->prepare("SELECT price, sale_price, actual_sale_price FROM products WHERE id = ?");
-            $priceStmt->bind_param("i", $buyNowProduct['product_id']);
+            // Fetch the correct price from database via color_id
+            $priceStmt = $conn->prepare("
+                SELECT p.price, p.sale_price, p.actual_sale_price 
+                FROM products p 
+                INNER JOIN product_colors pc ON p.id = pc.product_id 
+                WHERE pc.id = ?
+            ");
+            $priceStmt->bind_param("i", $buyNowProduct['color_id']);
             $priceStmt->execute();
             $priceResult = $priceStmt->get_result()->fetch_assoc();
             
@@ -96,28 +102,25 @@ if (isset($_SESSION['buy_now_product'])) {
         $totals['total'] = $total;
     }
 } 
-    // In your checkout.php cart items section, update the query to ensure color_id is included:
-
 // Check for cart checkout items
 else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
     if (!empty($_SESSION['checkout_items'])) {
         $placeholders = str_repeat('?,', count($_SESSION['checkout_items']) - 1) . '?';
         
-        // 🟣 UPDATED QUERY: Make sure color_id is included
+        // 🟣 UPDATED QUERY: Get cart items with color information
         $sql = "
             SELECT 
                 cart.id AS cart_id,
                 cart.product_id,
-                cart.color_id,  -- ✅ MAKE SURE THIS IS INCLUDED
+                cart.color_id,
                 cart.color_name,
                 cart.quantity,
                 cart.size,
-                products.id, 
+                cart.price as cart_price,  -- Use the price stored in cart
                 products.name,
-                products.price,
+                products.price as product_price,
                 products.sale_price,
                 products.actual_sale_price,
-                products.description,
                 product_images.image,
                 product_images.image_format
             FROM cart 
@@ -129,92 +132,91 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
             ORDER BY cart.id
         ";
         
-        // ... rest of your code remains the same
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            // Bind parameters dynamically
+            $types = str_repeat('i', count($_SESSION['checkout_items'])) . 'i';
+            $params = array_merge($_SESSION['checkout_items'], [$user_id]);
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
             
-            $stmt = $conn->prepare($sql);
-            if ($stmt) {
-                // Bind parameters dynamically
-                $types = str_repeat('i', count($_SESSION['checkout_items'])) . 'i';
-                $params = array_merge($_SESSION['checkout_items'], [$user_id]);
-                $stmt->bind_param($types, ...$params);
-                $stmt->execute();
-                $result = $stmt->get_result();
+            // Debug: Check how many items were fetched
+            $fetched_count = $result->num_rows;
+            error_log("🛒 Checkout - Fetched $fetched_count items from database");
+            
+            $subtotal = 0;
+
+            while ($row = $result->fetch_assoc()) {
+                if (!isset($row['product_id']) || $row['product_id'] <= 0) {
+                    continue;
+                }
+
+                // Handle blob image
+                if (!empty($row['image'])) {
+                    $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
+                    $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
+                } else {
+                    $image_data = SITE_URL . 'uploads/sample1.jpg';
+                }
                 
-                // Debug: Check how many items were fetched
-                $fetched_count = $result->num_rows;
-                error_log("🛒 Checkout - Fetched $fetched_count items from database");
+                // 🟣 UPDATED: Use the price from cart (already calculated during add to cart)
+                $displayPrice = (float)$row['cart_price'];
                 
-                $subtotal = 0; // ✅ MOVED THIS LINE HERE
+                // 🟣 Safety check: if displayPrice is 0, calculate from product prices
+                if ($displayPrice <= 0) {
+                    $regularPrice = (float)$row['product_price'];
+                    $salePrice = (float)$row['sale_price'];
+                    $actualSale = (float)$row['actual_sale_price'];
 
-                while ($row = $result->fetch_assoc()) {
-    if (!isset($row['product_id']) || $row['product_id'] <= 0) {
-        continue;
-    }
+                    $displayPrice = $regularPrice;
+                    if ($actualSale > 0 && $actualSale < $regularPrice) {
+                        $displayPrice = $actualSale;
+                    } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
+                        $displayPrice = $salePrice;
+                    }
+                }
 
-    // Handle blob image
-    if (!empty($row['image'])) {
-        $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
-        $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
-    } else {
-        $image_data = SITE_URL . 'uploads/sample1.jpg';
-    }
-    
-    // 🟣 FIXED: Better price calculation logic
-    $regularPrice = isset($row['price']) ? (float)$row['price'] : 0;
-    $salePrice = isset($row['sale_price']) ? (float)$row['sale_price'] : 0;
-    $actualSale = isset($row['actual_sale_price']) ? (float)$row['actual_sale_price'] : 0;
+                // 🟣 FIX: Ensure price is never 0
+                if ($displayPrice <= 0) {
+                    error_log("❌ ERROR: Product {$row['product_id']} has price 0. Using fallback.");
+                    $displayPrice = 820.00; // Fallback price
+                }
 
-    // 🟣 Determine which price to use - FIXED LOGIC
-    $displayPrice = $regularPrice; // Default to regular price
-
-    // Only use sale prices if they're valid and lower than regular price
-    if ($actualSale > 0 && $actualSale < $regularPrice) {
-        $displayPrice = $actualSale;
-    } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
-        $displayPrice = $salePrice;
-    }
-
-    // 🟣 Safety check: if displayPrice is 0, fallback to regular price
-    if ($displayPrice <= 0) {
-        $displayPrice = $regularPrice;
-    }
-
-    // 🟣 FIX: Ensure price is never 0
-    if ($displayPrice <= 0) {
-        error_log("❌ ERROR: Product {$row['product_id']} has price 0. Using fallback.");
-        $displayPrice = 820.00; // Fallback price
-    }
-
-    $itemSubtotal = $displayPrice * $row['quantity'];
-    $subtotal += $itemSubtotal;
-    
-    $checkout_items[] = [
-        'cart_id' => $row['cart_id'],
-        'product_id' => intval($row['product_id']),
-        'name' => $row['name'],
-        'price' => floatval($displayPrice),
-        'quantity' => intval($row['quantity']),
-        'size' => $row['size'],
-        'image' => $image_data,
-        'subtotal' => $itemSubtotal,
-        'is_buy_now' => false
-    ];
-    
-    // 🟣 DEBUG LOGGING
-    error_log("🛒 Cart Item - ID: {$row['product_id']}, Name: {$row['name']}, Price: $displayPrice, Qty: {$row['quantity']}, Subtotal: $itemSubtotal");
-}
+                $itemSubtotal = $displayPrice * $row['quantity'];
+                $subtotal += $itemSubtotal;
                 
-                $shipping = $subtotal > 500 ? 0 : 50;
-                $total = $subtotal + $shipping;
+                $checkout_items[] = [
+                    'cart_id' => $row['cart_id'],
+                    'product_id' => intval($row['product_id']),
+                    'color_id' => intval($row['color_id']),  // 🟣 ADD COLOR ID
+                    'color_name' => $row['color_name'],      // 🟣 ADD COLOR NAME
+                    'name' => $row['name'],
+                    'price' => floatval($displayPrice),
+                    'quantity' => intval($row['quantity']),
+                    'size' => $row['size'],
+                    'image' => $image_data,
+                    'subtotal' => $itemSubtotal,
+                    'is_buy_now' => false
+                ];
                 
-                $totals['subtotal'] = $subtotal;
-                $totals['shipping'] = $shipping;
-                $totals['total'] = $total;
-            } else {
-                die("Database error: " . $conn->error);
+                // 🟣 DEBUG LOGGING
+                error_log("🛒 Cart Item - ID: {$row['product_id']}, Color: {$row['color_name']}, Price: $displayPrice, Qty: {$row['quantity']}, Subtotal: $itemSubtotal");
             }
+            
+            $shipping = $subtotal > 500 ? 0 : 50;
+            $total = $subtotal + $shipping;
+            
+            $totals['subtotal'] = $subtotal;
+            $totals['shipping'] = $shipping;
+            $totals['total'] = $total;
+            
+            $stmt->close();
+        } else {
+            die("Database error: " . $conn->error);
         }
     }
+}
 
 // If no items, redirect to cart
 if (empty($checkout_items)) {
@@ -340,7 +342,12 @@ if (empty($checkout_items)) {
                                  onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
                             <div class="item-info">
                                 <h4><?= htmlspecialchars($item['name']) ?></h4>
-                                <p>Size: <?= $item['size'] ?> | Qty: <?= $item['quantity'] ?></p>
+                                <p>
+                                    <?php if (isset($item['color_name'])): ?>
+                                        Color: <?= htmlspecialchars($item['color_name']) ?> | 
+                                    <?php endif; ?>
+                                    Size: <?= $item['size'] ?> | Qty: <?= $item['quantity'] ?>
+                                </p>
                                 <p class="item-price">₱<?= number_format($item['price'], 2) ?> × <?= $item['quantity'] ?> = ₱<?= number_format($item['price'] * $item['quantity'], 2) ?></p>
                             </div>
                         </div>
@@ -365,43 +372,9 @@ if (empty($checkout_items)) {
                     </div>
                 </div>
             </div>
-            <!-- 🟣 DEBUG: Remove this after testing -->
-            <div style="display: none; background: #f8f9fa; padding: 10px; margin: 10px 0; border: 1px solid #ddd;">
-                <h4>Price Debug Info:</h4>
-                <?php foreach ($checkout_items as $index => $item): ?>
-                    <div style="margin: 5px 0;">
-                        <strong>Item <?= $index + 1 ?>:</strong> 
-                        <?= htmlspecialchars($item['name']) ?> | 
-                        Price: ₱<?= number_format($item['price'], 2) ?> | 
-                        Qty: <?= $item['quantity'] ?> | 
-                        Subtotal: ₱<?= number_format($item['subtotal'], 2) ?>
-                    </div>
-                <?php endforeach; ?>
-                <div style="margin: 5px 0;">
-                    <strong>Totals:</strong> 
-                    Subtotal: ₱<?= number_format($totals['subtotal'], 2) ?> | 
-                    Shipping: ₱<?= number_format($totals['shipping'], 2) ?> | 
-                    Total: ₱<?= number_format($totals['total'], 2) ?>
-                </div>
-            </div>
         </div>
     </div>
 </div>
-<script>
-// Debug: Check what's in session storage
-console.log("🛒 Current URL:", window.location.href);
-console.log("🛒 SITE_URL:", SITE_URL);
-
-// Check if we have any session issues
-fetch(SITE_URL + 'actions/checkout-items.php')
-    .then(res => res.json())
-    .then(data => {
-        console.log("🛒 Checkout Items API Response:", data);
-    })
-    .catch(err => {
-        console.error("🛒 Error fetching checkout items:", err);
-    });
-</script>
 
 <script src="<?php echo SITE_URL; ?>js/checkout.js?v=<?= time(); ?>"></script>
 
