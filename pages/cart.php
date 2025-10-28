@@ -45,15 +45,17 @@ document.addEventListener("DOMContentLoaded", () => {
             data.cart.forEach(item => {
                 const isChecked = checkboxStates[item.cart_id] ?? true;
                 
-                // 🟣 FIXED: Handle image source properly
+                // ✅ Image handling
                 let imageSrc = item.image;
-                
-                // Check if it's already a data URL (starts with 'data:')
                 if (!imageSrc.startsWith('data:')) {
-                    // It's a filename, prepend the uploads path
                     imageSrc = SITE_URL + 'uploads/' + imageSrc;
                 }
-                
+
+                // 🟣 Color display: show user-selected color or fallback
+                const colorDisplay = item.color 
+                    ? `<p class="item-color">Color: <span style="text-transform: capitalize;">${item.color}</span></p>` 
+                    : `<p class="item-color">Color: <span style="opacity:0.6;">N/A</span></p>`;
+
                 html += `
                 <div class="cart-item" data-cart-id="${item.cart_id}">
                     <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
@@ -61,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
                          onerror="this.src='${SITE_URL}uploads/sample1.jpg'">
                     <div class="item-details">
                         <h3>${item.name}</h3>
+                        ${colorDisplay} <!-- ✅ shows the actual color -->
                         <p class="item-price">Price: ₱${item.price.toFixed(2)}</p>
                         <div class="item-controls">
                             <div class="control-group">
@@ -112,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // ✅ Rest of your JS unchanged below
     function attachCartEvents() {
         document.querySelectorAll(".quantity-input").forEach(input => {
             input.addEventListener("change", async () => {
@@ -119,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const quantity = input.value;
                 const size = input.closest(".cart-item").querySelector(".size-select").value;
                 await updateCart(cartId, quantity, size);
-                updateSubtotal(cartId, quantity, size);
+                updateSubtotal(cartId, quantity);
                 updateTotalOnSelection();
             });
         });
@@ -130,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const quantity = select.closest(".cart-item").querySelector(".quantity-input").value;
                 const size = select.value;
                 await updateCart(cartId, quantity, size);
-                updateSubtotal(cartId, quantity, size);
+                updateSubtotal(cartId, quantity);
             });
         });
 
@@ -151,7 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
 
-        // Select All functionality
         document.getElementById("select-all").addEventListener("change", function() {
             const checkboxes = document.querySelectorAll(".select-item");
             checkboxes.forEach(checkbox => {
@@ -161,7 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
             updateTotalOnSelection();
         });
 
-        // Remove Selected functionality
         document.getElementById("remove-selected").addEventListener("click", async () => {
             const selectedItems = getSelectedCartIds();
             if (selectedItems.length === 0) {
@@ -183,8 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const checkboxes = document.querySelectorAll(".select-item");
         const selectAll = document.getElementById("select-all");
         if (checkboxes.length > 0) {
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            selectAll.checked = allChecked;
+            selectAll.checked = Array.from(checkboxes).every(cb => cb.checked);
         }
     }
 
@@ -212,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function updateSubtotal(cartId, quantity, size) {
+    function updateSubtotal(cartId, quantity) {
         const cartItem = document.querySelector(`.cart-item[data-cart-id="${cartId}"]`);
         const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("Price: ₱", ""));
         cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
@@ -257,25 +258,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("checkout-btn").addEventListener("click", async () => {
         const selectedItems = getSelectedCartIds();
-
-        console.log("🛒 Selected items for checkout:", selectedItems);
-        console.log("🛒 Selected items count:", selectedItems.length);
-        
         if (selectedItems.length === 0) {
             alert("Please select at least one item to checkout.");
             return;
         }
 
         try {
-            // 🟣 IMPORTANT: Clear any existing Buy Now session first
             await fetch(SITE_URL + "actions/clear-buy-now.php", {
                 method: "POST",
                 credentials: "include"
             });
 
-            console.log("🛒 Sending to cart-checkout.php:", selectedItems.join(","));
-            
-            // Store selected items in session for checkout
             const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -284,23 +277,15 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             
             const result = await response.json();
-            console.log("🛒 Checkout API response:", result);
-            
             if (result.status === "success") {
-                console.log(`🛒 Success! Redirecting to checkout with ${result.count} items`);
-                console.log(`🛒 Item IDs:`, result.items);
-                
-                // Add a small delay to ensure session is saved
                 setTimeout(() => {
                     window.location.href = SITE_URL + "pages/checkout.php";
                 }, 500);
-                
             } else {
-                console.error("🛒 Checkout failed:", result.message);
                 alert("Error: " + (result.message || "Failed to proceed to checkout"));
             }
         } catch (error) {
-            console.error("🛒 Checkout error:", error);
+            console.error("Checkout error:", error);
             alert("Network error. Please try again.");
         }
     });

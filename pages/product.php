@@ -4,18 +4,21 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../functions.php';
 
-// ✅ Get ID from URL - THIS COULD BE PRODUCT_ID OR COLOR_ID
+// ✅ Get ID from URL
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
   die('<p>Invalid ID.</p>');
 }
+
+// DEBUG: Check what's on line 121
+echo "<!-- Debug: Current line count: " . __LINE__ . " -->";
 
 // First, check if this is a COLOR ID
 $is_color_id = false;
 $color_id = $id;
 $product_id = 0;
 
-// Try to fetch as color ID first
+// Try to fetch as color ID first - WITH PRICE FROM PRODUCTS TABLE
 $color_sql = "SELECT 
                 pc.id as color_id,
                 pc.product_id,
@@ -23,8 +26,8 @@ $color_sql = "SELECT
                 pc.quantity as color_quantity,
                 pc.is_default,
                 p.name, 
-                p.price, 
-                p.sale_price, 
+                p.price,
+                p.sale_price,
                 p.actual_sale_price,
                 p.description, 
                 p.created_at, 
@@ -41,17 +44,27 @@ $color_sql = "SELECT
             LEFT JOIN product_images pi ON pc.product_id = pi.product_id AND pi.color_name = pc.color_name
             WHERE pc.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
             LIMIT 1";
+
+echo "<!-- Debug: SQL Query: " . htmlspecialchars($color_sql) . " -->";
+
+
 $color_stmt = $conn->prepare($color_sql);
+if (!$color_stmt) {
+    die('Prepare failed: (' . $conn->errno . ') ' . $conn->error);
+}
+
 $color_stmt->bind_param("i", $color_id);
 $color_stmt->execute();
 $product = $color_stmt->get_result()->fetch_assoc();
+
+// ... rest of your code
 
 if ($product) {
     // This is a COLOR ID
     $is_color_id = true;
     $product_id = $product['product_id'];
 } else {
-    // If not found as color ID, try as PRODUCT ID
+    // If not found as color ID, try as PRODUCT ID - WITH PRICE FROM PRODUCTS TABLE
     $product_sql = "SELECT p.id as product_id, p.name, p.price, p.sale_price, p.actual_sale_price, 
                            p.description, p.created_at, p.category, p.category_group,
                            p.gender, p.subcategory, p.sale_start, p.sale_end,
@@ -115,7 +128,7 @@ if ($current_color && !empty($current_color['image'])) {
     $imageSrc = SITE_URL . 'uploads/sample1.jpg';
 }
 
-// ✅ FIXED: Better price calculation logic
+// ✅ FIXED: Price calculation using data from products table
 $hasSale = false;
 $displayPrice = $product['price']; // Default to regular price
 
@@ -204,9 +217,9 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       </div>
 
       <div class="action-buttons">
-        <!-- ✅ Add to Cart button with COLOR ID -->
+        <!-- ✅ Add to Cart button with ONLY COLOR ID -->
         <button class="add-to-cart" data-id="<?= $current_color_id ?>">
-          Add to Cart
+            Add to Cart
         </button>
         <button class="wishlist-btn" data-id="<?= $product_id ?>">♡ Add to Wishlist</button>
       </div>
@@ -275,115 +288,6 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       console.log('URL updated to:', newUrl);
     });
   </script>
-
-  <!-- 🛒 DEBUG: Temporary Add to Cart functionality -->
-<script>
-// 🛒 FIXED: Add to Cart functionality
-document.querySelectorAll(".add-to-cart").forEach((btn) => {
-    btn.addEventListener("click", async function(e) {
-        e.preventDefault();
-        
-        const colorId = this.dataset.id;
-        console.log("🛒 Add to Cart CLICKED");
-        console.log("🎨 Color ID:", colorId);
-        console.log("🔍 Button HTML:", this.outerHTML);
-        
-        if (!colorId || colorId === "0") {
-            alert("❌ No valid color ID found! Please select a color.");
-            return;
-        }
-
-        // Show loading state
-        const originalText = this.textContent;
-        this.textContent = "Adding...";
-        this.disabled = true;
-
-        try {
-            console.log("🔄 Sending to cart-add.php");
-            
-            const formData = new URLSearchParams();
-            formData.append("color_id", colorId);
-            
-            const response = await fetch("<?= SITE_URL ?>actions/cart-add.php", {
-                method: "POST",
-                headers: { 
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: formData,
-                credentials: "include"
-            });
-
-            console.log("✅ Fetch completed. Status:", response.status);
-            
-            const resultText = await response.text();
-            console.log("📄 Raw response:", resultText);
-            
-            let result;
-            try {
-                result = JSON.parse(resultText);
-                console.log("📊 Parsed JSON:", result);
-            } catch (parseError) {
-                console.error("❌ JSON Parse Error:", parseError);
-                throw new Error("Server returned invalid response. Check server logs.");
-            }
-
-            // Handle response
-            if (result.status === "success") {
-                alert("✅ " + result.message);
-                // Update cart count
-                updateCartCount();
-            } else if (result.message === "not_logged_in") {
-                alert("🔐 Please log in to add items to cart");
-                window.location.href = "<?= SITE_URL ?>auth/login.php";
-            } else if (result.message === "color_not_found") {
-                alert("❌ This color variant is no longer available.");
-            } else if (result.message === "invalid_color") {
-                alert("❌ Invalid color selection. Please try again.");
-            } else {
-                alert("❌ Error: " + result.message);
-            }
-
-        } catch (error) {
-            console.error("❌ Error:", error);
-            alert("⚠️ " + error.message);
-        } finally {
-            // Reset button state
-            this.textContent = originalText;
-            this.disabled = false;
-        }
-    });
-});
-
-// Function to update cart count
-async function updateCartCount() {
-    try {
-        const response = await fetch("<?= SITE_URL ?>actions/cart-fetch.php", {
-            credentials: "include"
-        });
-        const data = await response.json();
-        
-        if (data.status === "success") {
-            const cartCount = document.getElementById("cart-count");
-            if (cartCount) {
-                const totalQuantity = data.cart.reduce((sum, item) => sum + item.quantity, 0);
-                cartCount.textContent = totalQuantity;
-                console.log("🛒 Cart count updated to:", totalQuantity);
-            }
-        }
-    } catch (error) {
-        console.error("Error updating cart count:", error);
-    }
-}
-
-// Debug info on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const addToCartBtn = document.querySelector('.add-to-cart');
-    console.log('🔍 Page Load Debug:');
-    console.log('Add to Cart Button:', addToCartBtn);
-    console.log('Button dataset:', addToCartBtn ? addToCartBtn.dataset : 'No button');
-    console.log('Current Color ID from PHP:', <?= $current_color_id ?>);
-});
-</script>
 
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>
