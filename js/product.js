@@ -1,4 +1,4 @@
-// ✅ product.js - FULLY DEBUGGED VERSION
+// ✅ product.js - FIXED VERSION WITH PROPER FORM VISIBILITY
 document.addEventListener("DOMContentLoaded", () => {
     console.log("🔧 product.js loaded - Starting initialization");
     
@@ -9,29 +9,178 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginModal = document.getElementById("profile-modal");
     console.log("🔍 Login modal found:", !!loginModal);
 
-    // 🟣 Show login modal
+    // 🆕 ADD CSS TO ENSURE ONLY ONE FORM IS VISIBLE
+    function addModalStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* 🆕 FORCE ONLY ONE FORM TO BE VISIBLE AT A TIME */
+            #login-form, #reset-form, #register-form, #verify-form {
+                display: none !important;
+            }
+            #login-form:not(.hidden), 
+            #reset-form:not(.hidden), 
+            #register-form:not(.hidden), 
+            #verify-form:not(.hidden) {
+                display: block !important;
+            }
+            .hidden {
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+            }
+        `;
+        document.head.appendChild(style);
+        console.log("✅ Added modal visibility styles");
+    }
+
+    // 🆕 FUNCTION TO COMPLETELY RESET MODAL TO LOGIN FORM
+    function resetModalToLogin() {
+        console.log("🔄 Resetting modal to login form");
+        
+        // Get all form elements
+        const loginForm = document.getElementById("login-form");
+        const registerForm = document.getElementById("register-form");
+        const verifyForm = document.getElementById("verify-form");
+        const resetForm = document.getElementById("reset-form");
+        
+        // 🆕 HIDE ALL FORMS USING BOTH CLASSES AND STYLES
+        if (loginForm) {
+            loginForm.classList.remove("hidden");
+            loginForm.style.display = 'block';
+        }
+        if (resetForm) {
+            resetForm.classList.add("hidden");
+            resetForm.style.display = 'none';
+        }
+        if (registerForm) {
+            registerForm.classList.add("hidden");
+            registerForm.style.display = 'none';
+        }
+        if (verifyForm) {
+            verifyForm.classList.add("hidden");
+            verifyForm.style.display = 'none';
+        }
+        
+        console.log("✅ Modal reset to login form only");
+    }
+
+    // 🧹 Hide reset form whenever any other UI action happens (Add to Cart, Wishlist, Buy Now, etc.)
+    function hideResetPasswordFormIfVisible() {
+        const resetForm = document.getElementById("reset-form");
+        const loginForm = document.getElementById("login-form");
+
+        if (resetForm && !resetForm.classList.contains("hidden")) {
+            console.log("🧹 Hiding reset password form due to another action");
+            resetForm.classList.add("hidden");
+            resetForm.style.display = "none";
+
+            // Show the login form back
+            if (loginForm) {
+                loginForm.classList.remove("hidden");
+                loginForm.style.display = "block";
+            }
+        }
+    }
+
+
+    // 🆕 FUNCTION TO SHOW ONLY RESET PASSWORD FORM
+    function showResetPasswordForm() {
+        console.log("🔄 Showing reset password form only");
+        
+        const loginForm = document.getElementById("login-form");
+        const resetForm = document.getElementById("reset-form");
+        
+        if (loginForm && resetForm) {
+            // Hide login form
+            loginForm.classList.add("hidden");
+            loginForm.style.display = 'none';
+            
+            // Show reset form
+            resetForm.classList.remove("hidden");
+            resetForm.style.display = 'block';
+            
+            console.log("✅ Reset password form shown, login form hidden");
+        }
+    }
+
+    // 🆕 FUNCTION TO SETUP FORGOT PASSWORD RESET BEHAVIOR
+    function setupForgotPasswordReset() {
+        console.log("🔄 Setting up forgot password reset behavior");
+        
+        // Find forgot password link by text content
+        const allLinks = document.querySelectorAll('a');
+        let forgotPasswordLink = null;
+        
+        allLinks.forEach(link => {
+            if (link.textContent.includes('Forgot your password') || 
+                link.textContent.includes('Forgot password')) {
+                forgotPasswordLink = link;
+            }
+        });
+        
+        if (forgotPasswordLink) {
+            console.log("✅ Found forgot password link");
+            
+            forgotPasswordLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("🔗 Forgot password clicked - showing reset form");
+                showResetPasswordForm();
+            });
+        } else {
+            console.warn("⚠️ Forgot password link not found");
+        }
+        
+        // 🆕 SETUP "BACK TO LOGIN" BUTTON
+        const allButtons = document.querySelectorAll('button, a');
+        let backToLoginBtn = null;
+        
+        allButtons.forEach(btn => {
+            if (btn.textContent.includes('Back to Login') || 
+                btn.textContent.includes('Back to login')) {
+                backToLoginBtn = btn;
+            }
+        });
+        
+        if (backToLoginBtn) {
+            console.log("✅ Found back to login button");
+            
+            backToLoginBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("🔙 Back to login clicked - resetting to login form");
+                resetModalToLogin();
+            });
+        } else {
+            console.warn("⚠️ Back to login button not found");
+        }
+    }
+
+    // 🟣 Show login modal - UPDATED WITH COMPLETE RESET
     function showLoginModal() {
-        console.log("🔄 Showing login modal");
+        console.log("🔄 Showing login modal - Resetting to login form");
         if (loginModal) {
             loginModal.style.display = "flex";
             document.body.style.overflow = "hidden";
             
-            const loginForm = document.getElementById("login-form");
-            const registerForm = document.getElementById("register-form");
-            const verifyForm = document.getElementById("verify-form");
+            // 🆕 COMPLETE RESET TO LOGIN FORM
+            resetModalToLogin();
             
-            if (loginForm) loginForm.classList.remove("hidden");
-            if (registerForm) registerForm.classList.add("hidden");
-            if (verifyForm) verifyForm.classList.add("hidden");
-            
-            if (loginForm) loginForm.scrollIntoView({ behavior: "smooth" });
         } else {
             console.warn("⚠️ Login modal not found in DOM.");
             window.location.href = SITE_URL + "auth/login.php";
         }
     }
 
-    // 🔵 Close login modal
+    function closeLoginModal() {
+        if (loginModal) {
+            loginModal.style.display = "none";
+            document.body.style.overflow = "auto";
+            hideResetPasswordFormIfVisible(); // 🆕 Add this line
+            setTimeout(resetModalToLogin, 100);
+        }
+    }
+
+
+    // 🔵 Enhanced modal close setup
     function setupModalClose() {
         window.addEventListener("click", (e) => {
             if (e.target === loginModal) {
@@ -51,20 +200,14 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function closeLoginModal() {
-        if (loginModal) {
-            loginModal.style.display = "none";
-            document.body.style.overflow = "auto";
-        }
-    }
-
     // Initialize modal close functionality
     setupModalClose();
 
-    // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR
+    // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR & MODAL RESET
     document.querySelectorAll(".add-to-cart").forEach((btn) => {
         btn.addEventListener("click", async () => {
             const productId = btn.dataset.id;
+            hideResetPasswordFormIfVisible();
             const colorId = btn.dataset.colorId || document.getElementById('selected-color-id')?.value;
             console.log("🛒 Add to cart clicked, product ID:", productId, "Color ID:", colorId);
             
@@ -143,6 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 event.preventDefault();
                 event.stopPropagation();
+                hideResetPasswordFormIfVisible();
 
                 const productId = this.dataset.id;
                 if (!productId) return;
@@ -199,10 +343,98 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch((err) => console.error("💌 Error updating wishlist badge:", err));
     }
 
+    // 🚀 BUY NOW FUNCTIONALITY - INTEGRATED LIKE ADD TO CART/WISHLIST
+    function initializeBuyNow() {
+        console.log("🚀 Initializing Buy Now functionality...");
+
+        const buyNowBtn = document.getElementById("buy-now-btn");
+        if (!buyNowBtn) {
+            console.error("❌ BUY NOW BUTTON NOT FOUND! Check your HTML ID.");
+            return;
+        }
+
+        buyNowBtn.addEventListener("click", async function (event) {
+            console.log("🚀 Buy Now button CLICKED!");
+            
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Get all necessary data
+            const colorId = this.dataset.colorId;
+            const productId = this.dataset.productId;
+            const quantity = document.getElementById("quantity")?.value || 1;
+            const size = document.getElementById("selected-size")?.value || "M";
+            const price = this.dataset.price;
+
+            console.log("📦 Buy Now Data:", {
+                colorId,
+                productId,
+                quantity,
+                size,
+                price
+            });
+
+            if (!colorId || !productId) {
+                alert("⚠️ Missing product information. Color ID or Product ID not found.");
+                return;
+            }
+
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = "Processing...";
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append("color_id", colorId);
+                formData.append("product_id", productId);
+                formData.append("quantity", quantity);
+                formData.append("size", size);
+                formData.append("price", price);
+
+                console.log("📤 Sending Buy Now request to:", SITE_URL + "actions/buy_now.php");
+
+                const response = await fetch(SITE_URL + "actions/buy_now.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: formData,
+                    credentials: "include",
+                });
+
+                const result = await response.json();
+                console.log("🚀 Buy Now API response:", result);
+
+                if (result.success) {
+                    // Redirect to checkout page
+                    console.log("✅ Buy Now successful, redirecting to checkout...");
+                    window.location.href = result.redirect_url || SITE_URL + "pages/checkout.php";
+                } else if (result.message === 'not_logged_in' || result.requires_login) {
+                    console.log("🔐 User not logged in, showing login modal");
+                    showLoginModal();
+                    this.textContent = originalText;
+                    this.disabled = false;
+                } else {
+                    alert(result.message || "⚠️ Something went wrong with Buy Now.");
+                    this.textContent = originalText;
+                    this.disabled = false;
+                }
+            } catch (error) {
+                console.error("🚀 Buy Now Network Error:", error);
+                alert("⚠️ Network error. Please try again.");
+                this.textContent = originalText;
+                this.disabled = false;
+            }
+        });
+
+        console.log("✅ Buy Now event listener attached successfully");
+    }
+
     // 🚀 INITIALIZE EVERYTHING
     function initialize() {
         console.log("🚀 Starting full initialization...");
+        addModalStyles(); // 🆕 ADD THIS LINE - Adds the CSS styles first
         initializeWishlist();
+        initializeBuyNow();
+        setupForgotPasswordReset();
         updateWishlistCount();
         updateCartAfterAdd();
         console.log("✅ Full initialization complete");

@@ -224,16 +224,14 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
         <button class="wishlist-btn" data-id="<?= $product_id ?>">♡ Add to Wishlist</button>
       </div>
 
-      <!-- ✅ Buy Now Button -->
+      <!-- ✅ Buy Now Button - Make sure this exists in your product.php -->
       <div class="action-button">
-        <form id="buy-now-form" action="<?= SITE_URL ?>actions/buy_now.php" method="POST">
-          <input type="hidden" name="color_id" value="<?= $current_color_id ?>">
-          <input type="hidden" name="product_id" value="<?= $product_id ?>">
-          <input type="hidden" name="quantity" value="1" id="buy-now-quantity">
-          <input type="hidden" name="size" value="M" id="selected-size">
-          <input type="hidden" name="price" value="<?= $displayPrice; ?>" id="product-price">
-          <button type="submit" class="checkout-btn" id="buy-now-btn">Buy Now</button>
-        </form>
+        <button class="checkout-btn" id="buy-now-btn" 
+                data-color-id="<?= $current_color_id ?>" 
+                data-product-id="<?= $product_id ?>"
+                data-price="<?= $displayPrice ?>">
+          Buy Now
+        </button>
       </div>
     </div>
   </div>

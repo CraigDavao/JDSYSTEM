@@ -273,11 +273,11 @@ require_once __DIR__ . '/../connection/connection.php';
     <!-- Login Form -->
     <div class="form-container" id="login-form">
       <h2>Log in</h2>
-      <form method="POST" action="<?php echo SITE_URL; ?>auth/login.php">
+      <form method="POST" action="<?php echo SITE_URL; ?>auth/login.php" id="login-form-data">
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password" required>
 
-        <a href="./auth/forgot.php" id="forgot-password">Forgot your password?</a>
+        <a href="#" id="show-forgot-password">Forgot your password?</a>
 
         <div class="form-actions">
           <button type="submit">Log in</button>
@@ -287,26 +287,54 @@ require_once __DIR__ . '/../connection/connection.php';
     </div>
 
     <!-- Register Form -->
-<div class="form-container hidden" id="register-form">
-  <h2>Create account</h2>
-  <form method="POST" action="auth/register.php">
-    <input type="text" name="fullname" placeholder="Full Name" required>
-    <input type="text" name="number" placeholder="Mobile Number" required>
-    <input type="email" name="email" placeholder="Email" required>
-    <input type="password" name="password" placeholder="Password" required>
+    <div class="form-container hidden" id="register-form">
+      <h2>Create account</h2>
+      <form method="POST" action="<?php echo SITE_URL; ?>auth/register.php" id="register-form-data">
+        <input type="text" name="fullname" placeholder="Full Name" required>
+        <input type="text" name="number" placeholder="Mobile Number" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
 
-    <div class="form-actions">
-      <button type="submit">Register</button>
-      <a href="../auth/register.php" id="show-login">Already have an account? Log in</a>
+        <div class="form-actions">
+          <button type="submit">Register</button>
+          <a href="#" id="show-login">Already have an account? Log in</a>
+        </div>
+      </form>
     </div>
-  </form>
-</div>
 
+    <!-- Forgot Password Form -->
+    <div class="form-container hidden" id="forgot-password-form">
+      <h2>Reset Password</h2>
+      <form id="forgot-password-form-data">
+        <p>Enter your email address and we'll send you a password reset link.</p>
+        <input type="email" name="email" placeholder="Email" required id="forgot-email">
+        
+        <div class="form-actions">
+          <button type="submit">Send Reset Link</button>
+          <a href="#" id="show-login-from-forgot">Back to Login</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Reset Password Form -->
+    <div class="form-container hidden" id="reset-password-form">
+      <h2>Create New Password</h2>
+      <form id="reset-password-form-data">
+        <input type="hidden" name="token" id="reset-token">
+        <input type="password" name="password" placeholder="New Password" required>
+        <input type="password" name="confirm_password" placeholder="Confirm New Password" required>
+        
+        <div class="form-actions">
+          <button type="submit">Reset Password</button>
+          <a href="#" id="show-login-from-reset">Back to Login</a>
+        </div>
+      </form>
+    </div>
 
     <!-- Verification Form -->
     <div class="form-container hidden" id="verify-form">
       <h2>Verify account</h2>
-      <form method="POST" action="auth/verify.php">
+      <form method="POST" action="<?php echo SITE_URL; ?>auth/verify.php">
         <input type="hidden" name="email" id="verify-email">
         <input type="text" name="code" placeholder="Enter Verification Code *" required>
         <button type="submit">Verify</button>
@@ -315,8 +343,322 @@ require_once __DIR__ . '/../connection/connection.php';
   </div>
 </div>
 
+<script src="<?= SITE_URL; ?>js/wishlist.js?v=<?= time(); ?>" defer></script>
 
-<script src="<?= SITE_URL; ?>../js/wishlist.js?v=<?= time(); ?>" defer></script>
+<!-- Improved Modal JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const SITE_URL = "<?= SITE_URL ?>";
+
+    // Modal elements
+    const profileModal = document.getElementById('profile-modal');
+    const closeModal = document.getElementById('close-modal');
+    const profileIcon = document.getElementById('profile-icon');
+
+    // Form containers
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const forgotPasswordForm = document.getElementById('forgot-password-form');
+    const resetPasswordForm = document.getElementById('reset-password-form');
+    const verifyForm = document.getElementById('verify-form');
+
+    // Navigation links
+    const showForgotPassword = document.getElementById('show-forgot-password');
+    const showLoginFromForgot = document.getElementById('show-login-from-forgot');
+    const showLoginFromReset = document.getElementById('show-login-from-reset');
+    const showRegister = document.getElementById('show-register');
+    const showLogin = document.getElementById('show-login');
+
+    /** -------------------------
+     * Modal show / hide handling
+     * ------------------------- */
+    profileIcon?.addEventListener('click', (e) => {
+        e.preventDefault();
+        profileModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        hideAllForms();
+        loginForm.classList.remove('hidden');
+    });
+
+    closeModal?.addEventListener('click', () => {
+        profileModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        hideAllForms();
+        loginForm.classList.remove('hidden');
+        // ✅ Clear any URL token so reset form won't reappear
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === profileModal) {
+            profileModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            hideAllForms();
+            loginForm.classList.remove('hidden');
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && profileModal.style.display === 'flex') {
+            profileModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            hideAllForms();
+            loginForm.classList.remove('hidden');
+        }
+    });
+
+    /** -------------------------
+     * Form navigation logic
+     * ------------------------- */
+    showForgotPassword?.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        forgotPasswordForm.classList.remove('hidden');
+    });
+
+    showLoginFromForgot?.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        loginForm.classList.remove('hidden');
+    });
+
+    showLoginFromReset?.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        loginForm.classList.remove('hidden');
+    });
+
+    showRegister?.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        registerForm.classList.remove('hidden');
+    });
+
+    showLogin?.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        loginForm.classList.remove('hidden');
+    });
+
+    /** -------------------------
+     * Utility functions
+     * ------------------------- */
+    function hideAllForms() {
+        [loginForm, registerForm, forgotPasswordForm, resetPasswordForm, verifyForm].forEach(form => {
+            if (form) form.classList.add('hidden');
+        });
+    }
+
+    function clearFormMessages(form) {
+        const existingMessages = form.querySelectorAll('.form-message');
+        existingMessages.forEach(msg => msg.remove());
+    }
+
+    function showFormMessage(form, message, isSuccess = true) {
+        clearFormMessages(form);
+        const msg = document.createElement('div');
+        msg.className = `form-message ${isSuccess ? 'success' : 'error'}`;
+        msg.textContent = message;
+        form.insertBefore(msg, form.firstChild);
+    }
+
+    /** -------------------------
+     * Login Form Submission (AJAX)
+     * ------------------------- */
+    const loginFormData = document.getElementById('login-form-data');
+    loginFormData?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        
+        const email = this.querySelector('input[name="email"]').value.trim();
+        const password = this.querySelector('input[name="password"]').value;
+
+        if (!email || !password) {
+            showFormMessage(this, '⚠️ Please fill in all fields.', false);
+            return;
+        }
+
+        const btn = this.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = 'Logging in...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData(this);
+            
+            const response = await fetch(SITE_URL + 'auth/login.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.text();
+
+            // Check if login was successful (redirects to dashboard)
+            if (response.redirected || result.includes('dashboard') || result.includes('success')) {
+                // Login successful - reload page to update header
+                window.location.reload();
+            } 
+            // Check for specific error messages
+            else if (result.includes('Invalid email or password') || result.includes('incorrect')) {
+                showFormMessage(this, '❌ Invalid email or password. Please try again.', false);
+            }
+            else if (result.includes('Account not verified')) {
+                showFormMessage(this, '⚠️ Please verify your account first.', false);
+            }
+            else if (result.includes('User not found')) {
+                showFormMessage(this, '❌ No account found with this email.', false);
+            }
+            else {
+                // Generic error
+                showFormMessage(this, '❌ Login failed. Please try again.', false);
+            }
+
+        } catch (error) {
+            console.error('Login error:', error);
+            showFormMessage(this, '⚠️ Network error. Please try again.', false);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    /** -------------------------
+     * Forgot Password Submission
+     * ------------------------- */
+    const forgotPasswordFormData = document.getElementById('forgot-password-form-data');
+    forgotPasswordFormData?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const email = this.querySelector('input[name="email"]').value.trim();
+
+        if (!email) {
+            showFormMessage(this, '⚠️ Please enter your email.', false);
+            return;
+        }
+
+        const btn = this.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = 'Sending...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(SITE_URL + 'auth/forgot.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ email })
+            });
+
+            const text = await res.text();
+            if (text.includes('✅') || text.includes('reset link has been sent')) {
+                showFormMessage(this, '✅ Password reset link has been sent!', true);
+                setTimeout(() => {
+                    this.reset();
+                    hideAllForms();
+                    loginForm.classList.remove('hidden');
+                }, 2500);
+            } else {
+                showFormMessage(this, text.replace(/<[^>]*>/g, '') || '⚠️ Error sending email.', false);
+            }
+        } catch {
+            showFormMessage(this, '⚠️ Network error. Try again later.', false);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    /** -------------------------
+     * Reset Password Submission
+     * ------------------------- */
+    const resetPasswordFormData = document.getElementById('reset-password-form-data');
+    resetPasswordFormData?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const token = this.querySelector('#reset-token').value.trim();
+        const password = this.querySelector('input[name="password"]').value;
+        const confirm = this.querySelector('input[name="confirm_password"]').value;
+
+        if (!token) return showFormMessage(this, '⚠️ Invalid token.', false);
+        if (!password || !confirm) return showFormMessage(this, '⚠️ Fill in all fields.', false);
+        if (password !== confirm) return showFormMessage(this, '⚠️ Passwords do not match.', false);
+        if (password.length < 6) return showFormMessage(this, '⚠️ Minimum 6 characters.', false);
+
+        const btn = this.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = 'Resetting...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(SITE_URL + 'actions/reset-password.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ token, new_password: password })
+            });
+
+            const result = await res.json();
+            if (result.status === 'success') {
+                showFormMessage(this, result.message, true);
+                this.reset();
+                setTimeout(() => {
+                    hideAllForms();
+                    loginForm.classList.remove('hidden');
+                }, 2000);
+            } else {
+                showFormMessage(this, result.message, false);
+            }
+        } catch {
+            showFormMessage(this, '⚠️ Network error.', false);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    /** -------------------------
+     * Auto-show Reset Form by Token
+     * ------------------------- */
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    if (resetToken) {
+        document.getElementById('reset-token').value = resetToken;
+        profileModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        hideAllForms();
+        resetPasswordForm.classList.remove('hidden');
+        // Remove token from URL so it won't persist
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    // Add CSS for form messages
+    const style = document.createElement('style');
+    style.textContent = `
+        .form-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .form-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .form-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .hidden {
+            display: none !important;
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
 
  </body>
 </html>
