@@ -12,7 +12,7 @@ ob_start();
 $response = ['success' => false, 'message' => 'Unknown error'];
 
 try {
-    // Check if user is logged in - EXACTLY LIKE CART-ADD.PHP
+    // Check if user is logged in
     if (!isset($_SESSION['user_id'])) {
         throw new Exception('not_logged_in');
     }
@@ -32,7 +32,7 @@ try {
         throw new Exception('Invalid product data');
     }
 
-    // 🟣 UPDATED: Fetch product details via COLOR ID (same as cart-add.php)
+    // 🟣 Fetch product details via COLOR ID
     $stmt = $conn->prepare("
         SELECT 
             pc.id as color_id,
@@ -58,23 +58,26 @@ try {
     ");
     
     if (!$stmt) {
-        throw new Exception('Database prepare failed');
+        throw new Exception('Database prepare failed: ' . $conn->error);
     }
     
     $stmt->bind_param("i", $color_id);
-    $stmt->execute();
+    
+    if (!$stmt->execute()) {
+        throw new Exception('Database execute failed: ' . $stmt->error);
+    }
+    
     $result = $stmt->get_result();
     $product = $result->fetch_assoc();
 
     if (!$product) {
         error_log("❌ Color ID $color_id not found in database");
-        throw new Exception('Product not found');
+        throw new Exception('Product color not found');
     }
 
-    error_log("✅ Found product: " . $product['name'] . " for color_id: $color_id");
+    error_log("✅ Found product: " . $product['name'] . " for color_id: $color_id, color_name: " . $product['color_name']);
 
-    // 🟣 Calculate CORRECT price (actual_sale_price > sale_price > price)
-    // Use the price from form if provided, otherwise calculate from database
+    // 🟣 Calculate CORRECT price
     if ($price > 0) {
         $displayPrice = $price;
     } else {
@@ -90,7 +93,11 @@ try {
         $image_data = SITE_URL . 'uploads/sample1.jpg';
     }
 
-    // 🟣 Set buy now product in session with ALL details including COLOR INFORMATION
+    // 🟣 COMPLETELY CLEAR any previous buy now data
+    unset($_SESSION['buy_now_product']);
+    unset($_SESSION['checkout_items']);
+
+    // 🟣 Set NEW buy now product in session
     $_SESSION['buy_now_product'] = [
         'product_id' => $product['product_id'],
         'color_id' => $color_id,
@@ -109,15 +116,22 @@ try {
         'color_quantity' => $product['color_quantity']
     ];
 
-    // 🟣 Clear any existing cart checkout items
-    unset($_SESSION['checkout_items']);
-
-    error_log("✅ Buy Now successful for user $user_id, redirecting to checkout");
+    error_log("✅ Buy Now session updated for user $user_id:");
+    error_log("   - Product: " . $product['name']);
+    error_log("   - Color: " . $product['color_name'] . " (ID: $color_id)");
+    error_log("   - Size: $size");
+    error_log("   - Quantity: $quantity");
+    error_log("   - Price: $displayPrice");
     
     $response = [
         'success' => true, 
         'message' => 'Product ready for checkout',
-        'redirect_url' => SITE_URL . "pages/checkout.php"
+        'redirect_url' => SITE_URL . "pages/checkout.php",
+        'debug_info' => [
+            'color_name' => $product['color_name'],
+            'color_id' => $color_id,
+            'product_name' => $product['name']
+        ]
     ];
 
 } catch (Exception $e) {

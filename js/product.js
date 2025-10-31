@@ -203,20 +203,29 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize modal close functionality
     setupModalClose();
 
-    // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR & MODAL RESET
+    // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR, SIZE & QUANTITY
     document.querySelectorAll(".add-to-cart").forEach((btn) => {
         btn.addEventListener("click", async () => {
-            const productId = btn.dataset.id;
+            const colorId = btn.dataset.id;
             hideResetPasswordFormIfVisible();
-            const colorId = btn.dataset.colorId || document.getElementById('selected-color-id')?.value;
-            console.log("🛒 Add to cart clicked, product ID:", productId, "Color ID:", colorId);
             
-            if (!productId) return;
+            // ✅ GET CURRENT SELECTED SIZE AND QUANTITY
+            const activeSize = document.querySelector('.size-option.active');
+            const size = activeSize ? activeSize.dataset.size : 'M';
+            const quantity = document.getElementById("quantity")?.value || 1;
+
+            console.log("🛒 Add to cart clicked, Color ID:", colorId, "Size:", size, "Quantity:", quantity);
+            
+            if (!colorId) {
+                alert("Please select a color.");
+                return;
+            }
 
             try {
                 const formData = new URLSearchParams();
-                formData.append("product_id", productId);
-                if (colorId) formData.append("color_id", colorId);
+                formData.append("color_id", colorId);
+                formData.append("quantity", quantity);
+                formData.append("size", size);
 
                 const response = await fetch(SITE_URL + "actions/cart-add.php", {
                     method: "POST",
@@ -343,90 +352,100 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch((err) => console.error("💌 Error updating wishlist badge:", err));
     }
 
-    // 🚀 BUY NOW FUNCTIONALITY - INTEGRATED LIKE ADD TO CART/WISHLIST
-    function initializeBuyNow() {
-        console.log("🚀 Initializing Buy Now functionality...");
+   // 🚀 BUY NOW FUNCTIONALITY - COMPLETELY FIXED
+function initializeBuyNow() {
+    console.log("🚀 Initializing Buy Now functionality...");
 
-        const buyNowBtn = document.getElementById("buy-now-btn");
-        if (!buyNowBtn) {
-            console.error("❌ BUY NOW BUTTON NOT FOUND! Check your HTML ID.");
+    const buyNowBtn = document.getElementById("buy-now-btn");
+    if (!buyNowBtn) {
+        console.error("❌ BUY NOW BUTTON NOT FOUND!");
+        return;
+    }
+
+    buyNowBtn.addEventListener("click", async function (event) {
+        console.log("🚀 Buy Now button CLICKED!");
+        
+        event.preventDefault();
+        event.stopPropagation();
+
+        // ✅ CRITICAL FIX: Get the CURRENT selected color from hidden field
+        const selectedColorId = document.getElementById('selected-color-id');
+        const colorId = selectedColorId ? selectedColorId.value : null;
+        
+        const productId = this.dataset.productId;
+        const price = this.dataset.price;
+        
+        // Get current size and quantity
+        const activeSize = document.querySelector('.size-option.active');
+        const size = activeSize ? activeSize.dataset.size : 'M';
+        const quantity = document.getElementById("quantity")?.value || 1;
+
+        console.log("📦 Buy Now - FINAL SELECTION:", {
+            colorId: colorId,
+            productId: productId,
+            quantity: quantity,
+            size: size,
+            price: price
+        });
+
+        // Validation
+        if (!colorId) {
+            alert("⚠️ Please select a color before buying.");
             return;
         }
 
-        buyNowBtn.addEventListener("click", async function (event) {
-            console.log("🚀 Buy Now button CLICKED!");
-            
-            event.preventDefault();
-            event.stopPropagation();
+        if (!productId) {
+            alert("⚠️ Product information missing.");
+            return;
+        }
 
-            // Get all necessary data
-            const colorId = this.dataset.colorId;
-            const productId = this.dataset.productId;
-            const quantity = document.getElementById("quantity")?.value || 1;
-            const size = document.getElementById("selected-size")?.value || "M";
-            const price = this.dataset.price;
+        const originalText = this.textContent;
+        this.disabled = true;
+        this.textContent = "Processing...";
 
-            console.log("📦 Buy Now Data:", {
-                colorId,
-                productId,
-                quantity,
-                size,
-                price
+        try {
+            const formData = new URLSearchParams();
+            formData.append("color_id", colorId);
+            formData.append("product_id", productId);
+            formData.append("quantity", quantity);
+            formData.append("size", size);
+            formData.append("price", price);
+
+            console.log("📤 Sending Buy Now request...");
+            console.log("🎯 Color ID being sent:", colorId);
+
+            const response = await fetch(SITE_URL + "actions/buy_now.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData,
+                credentials: "include",
             });
 
-            if (!colorId || !productId) {
-                alert("⚠️ Missing product information. Color ID or Product ID not found.");
-                return;
-            }
+            const result = await response.json();
+            console.log("🚀 Buy Now API response:", result);
 
-            const originalText = this.textContent;
-            this.disabled = true;
-            this.textContent = "Processing...";
-
-            try {
-                const formData = new URLSearchParams();
-                formData.append("color_id", colorId);
-                formData.append("product_id", productId);
-                formData.append("quantity", quantity);
-                formData.append("size", size);
-                formData.append("price", price);
-
-                console.log("📤 Sending Buy Now request to:", SITE_URL + "actions/buy_now.php");
-
-                const response = await fetch(SITE_URL + "actions/buy_now.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: formData,
-                    credentials: "include",
-                });
-
-                const result = await response.json();
-                console.log("🚀 Buy Now API response:", result);
-
-                if (result.success) {
-                    // Redirect to checkout page
-                    console.log("✅ Buy Now successful, redirecting to checkout...");
-                    window.location.href = result.redirect_url || SITE_URL + "pages/checkout.php";
-                } else if (result.message === 'not_logged_in' || result.requires_login) {
-                    console.log("🔐 User not logged in, showing login modal");
-                    showLoginModal();
-                    this.textContent = originalText;
-                    this.disabled = false;
-                } else {
-                    alert(result.message || "⚠️ Something went wrong with Buy Now.");
-                    this.textContent = originalText;
-                    this.disabled = false;
-                }
-            } catch (error) {
-                console.error("🚀 Buy Now Network Error:", error);
-                alert("⚠️ Network error. Please try again.");
+            if (result.success) {
+                console.log("✅ Buy Now successful!");
+                window.location.href = result.redirect_url || SITE_URL + "pages/checkout.php";
+            } else if (result.message === 'not_logged_in' || result.requires_login) {
+                showLoginModal();
+                this.textContent = originalText;
+                this.disabled = false;
+            } else {
+                alert(result.message || "⚠️ Something went wrong.");
                 this.textContent = originalText;
                 this.disabled = false;
             }
-        });
+        } catch (error) {
+            console.error("🚀 Buy Now Network Error:", error);
+            alert("⚠️ Network error. Please try again.");
+            this.textContent = originalText;
+            this.disabled = false;
+        }
+    });
 
-        console.log("✅ Buy Now event listener attached successfully");
-    }
+    console.log("✅ Buy Now event listener attached");
+}
 
     // 🚀 INITIALIZE EVERYTHING
     function initialize() {

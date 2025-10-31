@@ -47,6 +47,19 @@ $color_sql = "SELECT
 
 echo "<!-- Debug: SQL Query: " . htmlspecialchars($color_sql) . " -->";
 
+// Initialize product state from session
+if (!isset($_SESSION['product_state'])) {
+    $_SESSION['product_state'] = [];
+}
+
+// Get current product state from session
+$current_size = $_SESSION['product_state'][$product_id]['size'] ?? 'M';
+$current_quantity = $_SESSION['product_state'][$product_id]['quantity'] ?? 1;
+
+// If color_id is in session, use it (unless URL has different color_id)
+if (isset($_SESSION['product_state'][$product_id]['color_id']) && !isset($_GET['color_id'])) {
+    $color_id = $_SESSION['product_state'][$product_id]['color_id'];
+}
 
 $color_stmt = $conn->prepare($color_sql);
 if (!$color_stmt) {
@@ -153,11 +166,11 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
 
   <div class="product-page">
    <div class="product-image">
-  <img src="<?= $imageSrc ?>" 
-       alt="<?= htmlspecialchars($product['name']) ?>"
-       class="main-product-image"
-       data-fallback="<?= SITE_URL ?>uploads/sample1.jpg"
-       onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+    <img src="<?= $imageSrc ?>" 
+         alt="<?= htmlspecialchars($product['name']) ?>"
+         class="main-product-image"
+         data-fallback="<?= SITE_URL ?>uploads/sample1.jpg"
+         onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
 </div>
 
     <div class="product-info">
@@ -219,19 +232,18 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       <div class="action-buttons">
         <!-- ✅ Add to Cart button with ONLY COLOR ID -->
         <button class="add-to-cart" data-id="<?= $current_color_id ?>">
-            Add to Cart
+          Add to Cart
         </button>
         <button class="wishlist-btn" data-id="<?= $product_id ?>">♡ Add to Wishlist</button>
       </div>
 
       <!-- ✅ Buy Now Button - Make sure this exists in your product.php -->
-      <div class="action-button">
-        <button class="checkout-btn" id="buy-now-btn" 
-                data-color-id="<?= $current_color_id ?>" 
-                data-product-id="<?= $product_id ?>"
-                data-price="<?= $displayPrice ?>">
+      <button class="checkout-btn" id="buy-now-btn" 
+        data-color-id="<?= $current_color_id ?>" 
+        data-product-id="<?= $product_id ?>"
+        data-price="<?= $displayPrice ?>">
           Buy Now
-        </button>
+      </button>
       </div>
     </div>
   </div>
@@ -285,7 +297,28 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       window.history.replaceState({}, '', newUrl);
       console.log('URL updated to:', newUrl);
     });
+
+    
   </script>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const productId = document.querySelector(".color-selector")?.dataset.productId;
+  const selectedColorId = document.getElementById("selected-color-id");
+
+  const markCartAction = () => {
+    if (productId && selectedColorId.value) {
+      sessionStorage.setItem("selected_color_" + productId, selectedColorId.value);
+      sessionStorage.setItem("from_cart_actions", "true");
+    }
+  };
+
+  document.querySelectorAll(".add-to-cart, .add-to-wishlist, .buy-now").forEach(btn => {
+    btn.addEventListener("click", markCartAction);
+  });
+});
+</script>
+
 
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>
