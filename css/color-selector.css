@@ -1,14 +1,11 @@
-/* Color Selector Styles */
+/* Color Selector Styles (Text Version) */
 .color-selector {
     margin: 1.5rem 0;
 }
 
+/* Hide the old label */
 .color-selector label {
-    display: block;
-    margin-bottom: 0.8rem;
-    font-weight: 600;
-    color: #2a2a2a;
-    font-size: 1rem;
+    display: none;
 }
 
 .color-options {
@@ -19,17 +16,24 @@
 
 .color-option {
     display: flex;
-    flex-direction: column;
     align-items: center;
+    justify-content: center;
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.6rem 1rem;
     border-radius: 8px;
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    background: #fafafa;
+    font-size: 0.95rem;
+    text-transform: capitalize;
+    min-width: 90px;
+    font-weight: 500;
+    color: #333;
 }
 
 .color-option:hover {
     border-color: #8b5a2b;
+    background: #f8f4f0;
     transform: translateY(-2px);
 }
 
@@ -37,47 +41,29 @@
     border-color: #8b5a2b;
     background: #f8f4f0;
     box-shadow: 0 4px 12px rgba(139, 90, 43, 0.2);
+    color: #8b5a2b;
+    font-weight: 600;
 }
 
+/* Remove color swatch circle */
 .color-preview {
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
-    border: 2px solid #e0e0e0;
-    transition: all 0.3s ease;
-    display: block;
+    display: none;
 }
 
-.color-option.active .color-preview {
-    border-color: #8b5a2b;
-    transform: scale(1.1);
+/* Text inside color box */
+.color-text {
+    display: inline-block;
 }
-
-.color-option:hover .color-preview {
-    border-color: #8b5a2b;
-}
-
-/* Color-specific styles */
-.color-preview.red { background-color: #dc2626; }
-.color-preview.blue { background-color: #2563eb; }
-.color-preview.black { background-color: #000000; }
-.color-preview.white { background-color: #ffffff; border-color: #ccc; }
-.color-preview.green { background-color: #16a34a; }
-.color-preview.yellow { background-color: #eab308; }
-.color-preview.purple { background-color: #9333ea; }
-.color-preview.pink { background-color: #db2777; }
-.color-preview.orange { background-color: #ea580c; }
-.color-preview.gray { background-color: #6b7280; }
-.color-preview.brown { background-color: #78350f; }
 
 /* Responsive */
 @media (max-width: 768px) {
     .color-options {
         gap: 0.6rem;
     }
-    
-    .color-preview {
-        width: 35px;
-        height: 35px;
+
+    .color-option {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.9rem;
+        min-width: 75px;
     }
 }

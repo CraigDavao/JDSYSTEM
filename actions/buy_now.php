@@ -12,12 +12,28 @@ ob_start();
 $response = ['success' => false, 'message' => 'Unknown error'];
 
 try {
-    // Check if user is logged in
+    // ✅ Check if user is logged in
     if (!isset($_SESSION['user_id'])) {
         throw new Exception('not_logged_in');
     }
 
     $user_id = $_SESSION['user_id'];
+
+    // 🛑 Check if user is blocked or restricted
+    $checkUser = $conn->prepare("SELECT is_blocked, is_restricted FROM users WHERE id = ?");
+    $checkUser->bind_param("i", $user_id);
+    $checkUser->execute();
+    $userStatus = $checkUser->get_result()->fetch_assoc();
+
+    if ($userStatus) {
+        if ($userStatus['is_blocked'] == 1) {
+            throw new Exception('blocked');
+        } elseif ($userStatus['is_restricted'] == 1) {
+            throw new Exception('restricted');
+        }
+    }
+
+    // ✅ Proceed with normal Buy Now logic
     $color_id = isset($_POST['color_id']) ? (int)$_POST['color_id'] : 0;
     $product_id = isset($_POST['product_id']) ? (int)$_POST['product_id'] : 0;
     $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 1;
@@ -137,12 +153,21 @@ try {
 } catch (Exception $e) {
     $error_msg = $e->getMessage();
     
-    // Handle not_logged_in exactly like cart-add.php
     if ($error_msg === 'not_logged_in') {
         $response = [
             'success' => false, 
             'message' => 'not_logged_in',
             'requires_login' => true
+        ];
+    } elseif ($error_msg === 'restricted') {
+        $response = [
+            'success' => false,
+            'message' => 'Your account is restricted and cannot make purchases.'
+        ];
+    } elseif ($error_msg === 'blocked') {
+        $response = [
+            'success' => false,
+            'message' => 'Your account has been blocked. Please contact support.'
         ];
     } else {
         $response = [
@@ -150,7 +175,7 @@ try {
             'message' => $error_msg
         ];
     }
-    
+
     error_log("❌ Buy Now Error: " . $error_msg);
 }
 

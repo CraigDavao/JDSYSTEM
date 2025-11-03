@@ -70,8 +70,6 @@ $color_stmt->bind_param("i", $color_id);
 $color_stmt->execute();
 $product = $color_stmt->get_result()->fetch_assoc();
 
-// ... rest of your code
-
 if ($product) {
     // This is a COLOR ID
     $is_color_id = true;
@@ -128,6 +126,43 @@ foreach ($colors as $color) {
 if (!$current_color && !empty($colors)) {
     $current_color = $colors[0];
     $color_id = $current_color['id'];
+}
+
+// ✅ GET STOCK INFORMATION FOR CURRENT COLOR
+$current_stock = $current_color['quantity'] ?? 0;
+
+// ✅ GET STOCK BY SIZE FOR CURRENT COLOR - FIXED QUERY
+$stock_by_size = [];
+$sizes = ['S', 'M', 'L', 'XL'];
+
+// Check if product_sizes table exists and has data
+$check_table_sql = "SHOW TABLES LIKE 'product_sizes'";
+$table_exists = $conn->query($check_table_sql)->num_rows > 0;
+
+if ($table_exists) {
+    $size_stock_sql = "SELECT size, quantity FROM product_sizes WHERE color_id = ?";
+    $size_stmt = $conn->prepare($size_stock_sql);
+    if ($size_stmt) {
+        $size_stmt->bind_param("i", $color_id);
+        $size_stmt->execute();
+        $size_stock_result = $size_stmt->get_result();
+        while ($row = $size_stock_result->fetch_assoc()) {
+            $stock_by_size[$row['size']] = $row['quantity'];
+        }
+        $size_stmt->close();
+    }
+} else {
+    // If product_sizes table doesn't exist, use the color quantity for all sizes
+    foreach ($sizes as $size) {
+        $stock_by_size[$size] = $current_stock; // Use total color quantity for each size
+    }
+}
+
+// If no size-specific data, distribute total stock evenly or use same for all sizes
+if (empty($stock_by_size)) {
+    foreach ($sizes as $size) {
+        $stock_by_size[$size] = $current_stock; // Use total color quantity for each size
+    }
 }
 
 // 🟣 Handle blob image conversion - USE COLOR IMAGE IF AVAILABLE
@@ -193,6 +228,46 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
         <p class="price">₱<?= number_format($displayPrice, 2) ?></p>
       <?php endif; ?>
 
+      <!-- ✅ STOCK INFORMATION DISPLAY -->
+      <div class="stock-info">
+        <?php if ($current_stock > 0): ?>
+          <?php if ($current_stock <= 10): ?>
+            <div class="stock-low">
+              
+              <span class="stock-text">Only <?= $current_stock ?> left in stock!</span>
+            </div>
+          <?php else: ?>
+            <div class="stock-available">
+              
+              <span class="stock-text">In Stock (<?= $current_stock ?> available)</span>
+            </div>
+          <?php endif; ?>
+          
+          <!-- ✅ Stock by Size -->
+          <div class="size-stock-info">
+            <h4>Available by Size:</h4>
+            <div class="size-stock-grid">
+              <?php 
+              foreach ($sizes as $size): 
+                $size_qty = $stock_by_size[$size] ?? 0;
+              ?>
+                <div class="size-stock-item">
+                  <span class="size-label">Size <?= $size ?>:</span>
+                  <span class="size-quantity <?= $size_qty == 0 ? 'out-of-stock' : 'in-stock' ?>">
+                    <?= $size_qty > 0 ? $size_qty . ' available' : 'Out of stock' ?>
+                  </span>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        <?php else: ?>
+          <div class="stock-out">
+            <span class="stock-icon">❌</span>
+            <span class="stock-text">Out of Stock</span>
+          </div>
+        <?php endif; ?>
+      </div>
+
       <!-- ✅ COLOR SELECTOR -->
       <?php if (!empty($colors)): ?>
         <?php 
@@ -214,37 +289,54 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       <div class="size-selector">
         <label>Size:</label>
         <div class="size-options">
-          <button type="button" class="size-option active" data-size="S">S</button>
-          <button type="button" class="size-option" data-size="M">M</button>
-          <button type="button" class="size-option" data-size="L">L</button>
-          <button type="button" class="size-option" data-size="XL">XL</button>
+          <?php 
+          foreach ($sizes as $size): 
+            $size_qty = $stock_by_size[$size] ?? 0;
+            $is_disabled = $size_qty == 0;
+            $is_active = $size === $current_size && !$is_disabled;
+          ?>
+            <button type="button" 
+                    class="size-option <?= $is_active ? 'active' : '' ?> <?= $is_disabled ? 'disabled' : '' ?>" 
+                    data-size="<?= $size ?>"
+                    <?= $is_disabled ? 'disabled' : '' ?>>
+              <?= $size ?>
+              <?php if ($is_disabled): ?>
+                <span class="size-out-of-stock">(X)</span>
+              <?php endif; ?>
+            </button>
+          <?php endforeach; ?>
         </div>
       </div>
 
       <!-- ✅ Quantity Selector -->
-      <div class="quantity-selector">
+      <div class="quantity-selector <?= $current_stock == 0 ? 'out-of-stock' : '' ?>">
         <label>Quantity:</label>
-        <button type="button" class="quantity-btn" id="minus-btn">−</button>
-        <input type="number" id="quantity" name="quantity" value="1" min="1" max="10" class="quantity-input">
-        <button type="button" class="quantity-btn" id="plus-btn">+</button>
+        <button type="button" class="quantity-btn" id="minus-btn" <?= $current_stock == 0 ? 'disabled' : '' ?>>−</button>
+        <input type="number" id="quantity" name="quantity" value="1" min="1" max="<?= min(10, $current_stock) ?>" 
+               class="quantity-input" <?= $current_stock == 0 ? 'disabled' : '' ?>>
+        <button type="button" class="quantity-btn" id="plus-btn" <?= $current_stock == 0 ? 'disabled' : '' ?>>+</button>
       </div>
 
       <div class="action-buttons">
         <!-- ✅ Add to Cart button with ONLY COLOR ID -->
-        <button class="add-to-cart" data-id="<?= $current_color_id ?>">
-          Add to Cart
+        <button class="add-to-cart" data-id="<?= $current_color_id ?>" <?= $current_stock == 0 ? 'disabled' : '' ?>>
+          <?= $current_stock == 0 ? 'Out of Stock' : 'Add to Cart' ?>
         </button>
-        <button class="wishlist-btn" data-id="<?= $product_id ?>">♡ Add to Wishlist</button>
+        <button class="wishlist-btn" data-id="<?= $product_id ?>" <?= $current_stock == 0 ? 'disabled' : '' ?>>♡ Add to Wishlist</button>
       </div>
 
-      <!-- ✅ Buy Now Button - Make sure this exists in your product.php -->
+      <!-- ✅ Buy Now Button -->
       <button class="checkout-btn" id="buy-now-btn" 
         data-color-id="<?= $current_color_id ?>" 
         data-product-id="<?= $product_id ?>"
-        data-price="<?= $displayPrice ?>">
-          Buy Now
+        data-price="<?= $displayPrice ?>"
+        <?= $current_stock == 0 ? 'disabled' : '' ?>>
+          <?= $current_stock == 0 ? 'Out of Stock' : 'Buy Now' ?>
       </button>
-      </div>
+      
+      <!-- Hidden field for selected color -->
+      <input type="hidden" id="selected-color-id" value="<?= $current_color_id ?>">
+      <input type="hidden" id="selected-size" value="<?= $current_size ?>">
     </div>
   </div>
 
@@ -254,11 +346,14 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
 
   <script>
     // ✅ Size selection
-    document.querySelectorAll('.size-option').forEach(btn => {
+    document.querySelectorAll('.size-option:not(.disabled)').forEach(btn => {
       btn.addEventListener('click', function() {
         document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         document.getElementById('selected-size').value = this.dataset.size;
+        
+        // Update quantity limits based on selected size
+        updateQuantityLimits();
       });
     });
 
@@ -266,29 +361,59 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
     const minusBtn = document.getElementById('minus-btn');
     const plusBtn = document.getElementById('plus-btn');
     const quantityInput = document.getElementById('quantity');
-    const buyNowQuantity = document.getElementById('buy-now-quantity');
+
+    function updateQuantityLimits() {
+      const selectedSize = document.querySelector('.size-option.active')?.dataset.size;
+      const sizeStockElements = document.querySelectorAll('.size-stock-item');
+      let maxQuantity = <?= $current_stock ?>;
+      
+      // Find the stock for selected size
+      sizeStockElements.forEach(item => {
+        const sizeLabel = item.querySelector('.size-label');
+        if (sizeLabel && sizeLabel.textContent.includes(selectedSize)) {
+          const quantityElement = item.querySelector('.size-quantity');
+          if (quantityElement) {
+            const stockText = quantityElement.textContent;
+            const match = stockText.match(/(\d+)/);
+            if (match) {
+              maxQuantity = parseInt(match[1]);
+            }
+          }
+        }
+      });
+      
+      // Update quantity input limits
+      quantityInput.max = Math.max(1, maxQuantity);
+      
+      // Adjust current quantity if it exceeds new limit
+      const currentQuantity = parseInt(quantityInput.value);
+      if (currentQuantity > maxQuantity) {
+        quantityInput.value = maxQuantity;
+      }
+    }
 
     minusBtn.addEventListener('click', () => {
       let val = parseInt(quantityInput.value);
       if (val > 1) {
         quantityInput.value = val - 1;
-        buyNowQuantity.value = quantityInput.value;
       }
     });
 
     plusBtn.addEventListener('click', () => {
       let val = parseInt(quantityInput.value);
-      if (val < 10) {
+      const max = parseInt(quantityInput.max);
+      if (val < max) {
         quantityInput.value = val + 1;
-        buyNowQuantity.value = quantityInput.value;
       }
     });
 
     quantityInput.addEventListener('change', () => {
       let val = parseInt(quantityInput.value);
-      if (val < 1) quantityInput.value = 1;
-      if (val > 10) quantityInput.value = 10;
-      buyNowQuantity.value = quantityInput.value;
+      const max = parseInt(quantityInput.max);
+      const min = parseInt(quantityInput.min);
+      
+      if (val < min) quantityInput.value = min;
+      if (val > max) quantityInput.value = max;
     });
 
     // ✅ Update URL when color changes
@@ -296,29 +421,32 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       const newUrl = `<?= SITE_URL ?>pages/product.php?id=${e.detail.colorId}`;
       window.history.replaceState({}, '', newUrl);
       console.log('URL updated to:', newUrl);
+      
+      // Reload page to show new color's stock
+      window.location.reload();
     });
 
-    
+    // Initialize quantity limits
+    updateQuantityLimits();
   </script>
 
   <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const productId = document.querySelector(".color-selector")?.dataset.productId;
-  const selectedColorId = document.getElementById("selected-color-id");
+    document.addEventListener("DOMContentLoaded", () => {
+      const productId = document.querySelector(".color-selector")?.dataset.productId;
+      const selectedColorId = document.getElementById("selected-color-id");
 
-  const markCartAction = () => {
-    if (productId && selectedColorId.value) {
-      sessionStorage.setItem("selected_color_" + productId, selectedColorId.value);
-      sessionStorage.setItem("from_cart_actions", "true");
-    }
-  };
+      const markCartAction = () => {
+        if (productId && selectedColorId.value) {
+          sessionStorage.setItem("selected_color_" + productId, selectedColorId.value);
+          sessionStorage.setItem("from_cart_actions", "true");
+        }
+      };
 
-  document.querySelectorAll(".add-to-cart, .add-to-wishlist, .buy-now").forEach(btn => {
-    btn.addEventListener("click", markCartAction);
-  });
-});
-</script>
-
+      document.querySelectorAll(".add-to-cart, .wishlist-btn, .checkout-btn").forEach(btn => {
+        btn.addEventListener("click", markCartAction);
+      });
+    });
+  </script>
 
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>

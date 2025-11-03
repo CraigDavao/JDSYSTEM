@@ -1,20 +1,30 @@
 <?php
 /**
- * Color Selector Component - FINAL UPDATED VERSION
- * Usage: include this file in product pages
+ * Color Selector Component - FINAL VERSION
+ * ✅ URL updates dynamically (?id=181)
+ * ✅ No page reload
+ * ✅ Image changes instantly
  */
 
 if (!isset($product_id) || !isset($colors)) {
     return;
 }
 
-// Get current color ID from URL or session
-$current_color_id = $color_id ?? null;
+// ✅ Get ID from URL (product color id)
+$current_color_id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+
+// ✅ Default to first or default color
 if (!$current_color_id && !empty($colors)) {
-    $current_color_id = $colors[0]['id'];
+    foreach ($colors as $color) {
+        if (!empty($color['is_default'])) {
+            $current_color_id = $color['id'];
+            break;
+        }
+    }
+    if (!$current_color_id) $current_color_id = $colors[0]['id'];
 }
 
-// Find current color
+// ✅ Find current color
 $current_color = null;
 foreach ($colors as $color) {
     if ($color['id'] == $current_color_id) {
@@ -29,10 +39,6 @@ if (!$current_color && !empty($colors)) {
 ?>
 
 <div class="color-selector" data-product-id="<?= $product_id ?>">
-    <label class="color-label">
-        Color: <span id="selected-color-name"><?= htmlspecialchars($current_color['color_name'] ?? 'Select Color') ?></span>
-    </label>
-    
     <div class="color-options">
         <?php foreach ($colors as $color): 
             $image_data = '';
@@ -46,11 +52,11 @@ if (!$current_color && !empty($colors)) {
                  data-color-name="<?= htmlspecialchars($color['color_name']) ?>"
                  data-color-image="<?= htmlspecialchars($image_data) ?>"
                  title="<?= htmlspecialchars($color['color_name']) ?>">
-                <span class="color-preview" style="background-color: <?= getColorCode($color['color_name']) ?>"></span>
+                <span class="color-text"><?= htmlspecialchars($color['color_name']) ?></span>
             </div>
         <?php endforeach; ?>
     </div>
-    
+
     <input type="hidden" name="selected_color_id" id="selected-color-id" value="<?= $current_color_id ?>">
 </div>
 
@@ -59,49 +65,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const productId = document.querySelector(".color-selector")?.dataset.productId;
   const colorOptions = document.querySelectorAll(".color-option");
   const selectedColorInput = document.getElementById("selected-color-id");
-  const selectedColorName = document.getElementById("selected-color-name");
   const mainImage = document.querySelector(".main-product-image");
 
-  // Detect if user came from Add to Cart / Wishlist / Buy Now
-  const fromCartActions = sessionStorage.getItem("from_cart_actions");
-
-  // ✅ Restore color only if returning from Add to Cart / Wishlist / Buy Now
-  if (fromCartActions && productId) {
-    const savedColorId = sessionStorage.getItem("selected_color_" + productId);
-    if (savedColorId) {
-      const savedOption = document.querySelector(`.color-option[data-color-id="${savedColorId}"]`);
-      if (savedOption) {
-        colorOptions.forEach(opt => opt.classList.remove("active"));
-        savedOption.classList.add("active");
-        selectedColorInput.value = savedColorId;
-        selectedColorName.textContent = savedOption.dataset.colorName;
-
-        const imageSrc = savedOption.dataset.colorImage;
-        if (mainImage && imageSrc) mainImage.src = imageSrc;
-      }
+  // ✅ Restore color from session
+  const savedColorId = sessionStorage.getItem("selected_color_" + productId);
+  if (savedColorId) {
+    const savedOption = document.querySelector(`.color-option[data-color-id="${savedColorId}"]`);
+    if (savedOption) {
+      colorOptions.forEach(opt => opt.classList.remove("active"));
+      savedOption.classList.add("active");
+      selectedColorInput.value = savedColorId;
+      const imageSrc = savedOption.dataset.colorImage;
+      if (mainImage && imageSrc) mainImage.src = imageSrc;
     }
-
-    // Clear marker so color resets next time
-    sessionStorage.removeItem("from_cart_actions");
   }
 
-  // ✅ Handle color click
+  // ✅ Handle color click (no refresh but update URL)
   colorOptions.forEach(option => {
     option.addEventListener("click", () => {
       const colorId = option.dataset.colorId;
-      const colorName = option.dataset.colorName;
       const imageSrc = option.dataset.colorImage;
 
-      // Update UI
+      // Update visuals
       colorOptions.forEach(opt => opt.classList.remove("active"));
       option.classList.add("active");
       selectedColorInput.value = colorId;
-      selectedColorName.textContent = colorName;
 
+      // Update main image
       if (mainImage && imageSrc) mainImage.src = imageSrc;
 
-      // Save color for this product
+      // Save to session
       sessionStorage.setItem("selected_color_" + productId, colorId);
+
+      // ✅ Update the URL (without reload)
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", colorId);
+      window.history.pushState({}, "", url);
     });
   });
 });

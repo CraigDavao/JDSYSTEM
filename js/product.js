@@ -277,69 +277,155 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 💖 WISHLIST FEATURE - NOW AJAX ONLY, NO REDIRECT
-    function initializeWishlist() {
-        console.log("💖 Initializing wishlist functionality...");
+    // 💖 WISHLIST FEATURE - UPDATED TO INCLUDE COLOR SELECTION
+function initializeWishlist() {
+    console.log("💖 Initializing wishlist functionality...");
 
-        const wishlistButtons = document.querySelectorAll(".wishlist-btn");
-        console.log("🔍 Found wishlist buttons:", wishlistButtons.length);
+    const wishlistButtons = document.querySelectorAll(".wishlist-btn");
+    console.log("🔍 Found wishlist buttons:", wishlistButtons.length);
 
-        if (wishlistButtons.length === 0) {
-            console.error("❌ NO WISHLIST BUTTONS FOUND! Check your HTML class names.");
-            return;
-        }
+    if (wishlistButtons.length === 0) {
+        console.error("❌ NO WISHLIST BUTTONS FOUND! Check your HTML class names.");
+        return;
+    }
 
-        wishlistButtons.forEach((btn) => {
-            btn.addEventListener("click", async function (event) {
-                console.log("💖 Wishlist button CLICKED!", { productId: this.dataset.id });
+    wishlistButtons.forEach((btn) => {
+        btn.addEventListener("click", async function (event) {
+            console.log("💖 Wishlist button CLICKED!");
 
-                event.preventDefault();
-                event.stopPropagation();
-                hideResetPasswordFormIfVisible();
+            event.preventDefault();
+            event.stopPropagation();
+            hideResetPasswordFormIfVisible();
 
-                const productId = this.dataset.id;
-                if (!productId) return;
+            // ✅ GET CURRENT SELECTED COLOR
+            const selectedColorId = document.getElementById('selected-color-id');
+            const colorId = selectedColorId ? selectedColorId.value : null;
+            const productId = this.dataset.id;
 
-                const originalText = this.textContent;
-                this.disabled = true;
-                this.textContent = "Adding...";
+            console.log("💖 Wishlist Data:", {
+                productId: productId,
+                colorId: colorId,
+                activeColor: document.querySelector('.color-option.active')?.dataset.colorName
+            });
 
-                try {
-                    const res = await fetch(SITE_URL + "actions/wishlist-add.php", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: "product_id=" + encodeURIComponent(productId),
-                        credentials: "include",
-                    });
+            if (!productId) {
+                alert("⚠️ Product information missing.");
+                return;
+            }
 
-                    const data = await res.json();
-                    console.log("💖 Wishlist API response:", data);
+            if (!colorId) {
+                alert("⚠️ Please select a color before adding to wishlist.");
+                return;
+            }
 
-                    if (data.status === "success") {
-                        this.textContent = "✓ Added";
-                        updateWishlistCount();
-                    } else if (data.status === "exists") {
-                        this.textContent = "✓ Already in wishlist";
-                    } else if (data.status === "not_logged_in" || data.message === "not_logged_in") {
-                        showLoginModal();
-                        this.textContent = originalText;
-                        this.disabled = false;
-                    } else {
-                        alert(data.message || "⚠️ Something went wrong.");
-                        this.textContent = originalText;
-                        this.disabled = false;
-                    }
-                } catch (err) {
-                    console.error("💖 NETWORK ERROR:", err);
-                    alert("⚠️ Network error. Please try again.");
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = "Adding...";
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append("product_id", productId);
+                formData.append("color_id", colorId); // ✅ Send color_id
+
+                const res = await fetch(SITE_URL + "actions/wishlist-add.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: formData,
+                    credentials: "include",
+                });
+
+                const data = await res.json();
+                console.log("💖 Wishlist API response:", data);
+
+                if (data.status === "success") {
+                    this.textContent = "✓ Added";
+                    updateWishlistCount();
+                    // Show success message with color info
+                    const colorName = document.querySelector('.color-option.active')?.dataset.colorName || 'selected color';
+                    showNotification(`Added ${colorName} variant to wishlist!`, 'success');
+                } else if (data.status === "exists") {
+                    this.textContent = "✓ Already in wishlist";
+                    showNotification(data.message || 'Already in wishlist', 'info');
+                } else if (data.status === "not_logged_in" || data.message === "not_logged_in") {
+                    showLoginModal();
+                    this.textContent = originalText;
+                    this.disabled = false;
+                } else {
+                    alert(data.message || "⚠️ Something went wrong.");
                     this.textContent = originalText;
                     this.disabled = false;
                 }
-            });
+            } catch (err) {
+                console.error("💖 NETWORK ERROR:", err);
+                alert("⚠️ Network error. Please try again.");
+                this.textContent = originalText;
+                this.disabled = false;
+            }
         });
+    });
 
-        console.log("✅ Wishlist event listeners attached successfully");
+    console.log("✅ Wishlist event listeners attached successfully");
+}
+
+// 🆕 ADD NOTIFICATION FUNCTION
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notif => notif.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Add styles if not exists
+    if (!document.querySelector('#notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'notification-styles';
+        styles.textContent = `
+            .notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 6px;
+                color: white;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                max-width: 300px;
+                animation: slideIn 0.3s ease;
+            }
+            .notification-success { background: #27ae60; }
+            .notification-error { background: #e74c3c; }
+            .notification-info { background: #3498db; }
+            .notification button {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 18px;
+                cursor: pointer;
+            }
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(styles);
     }
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 3000);
+}
 
     // 💌 UPDATE WISHLIST BADGE
     function updateWishlistCount() {
