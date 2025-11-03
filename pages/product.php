@@ -451,4 +451,4 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>
 </html>
-<?php ob_end_flush(); ?>
+<?php ob_end_flush(); ?>asa   

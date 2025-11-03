@@ -1,9 +1,10 @@
 <?php
 /**
- * Color Selector Component - FINAL VERSION
- * ✅ URL updates dynamically (?id=181)
- * ✅ No page reload
- * ✅ Image changes instantly
+ * Color Selector Component - SAFE VERSION
+ * ✅ Only updates image and stock display
+ * ✅ Doesn't touch size options, quantity, or buttons
+ * ✅ No page refresh feel
+ * ✅ Preserves all existing functionality
  */
 
 if (!isset($product_id) || !isset($colors)) {
@@ -39,25 +40,25 @@ if (!$current_color && !empty($colors)) {
 ?>
 
 <div class="color-selector" data-product-id="<?= $product_id ?>">
-    <div class="color-options">
-        <?php foreach ($colors as $color): 
-            $image_data = '';
-            if (!empty($color['image'])) {
-                $mimeType = $color['image_format'] ?? 'image/jpeg';
-                $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($color['image']);
-            }
-        ?>
-            <div class="color-option <?= ($color['id'] == $current_color_id) ? 'active' : '' ?>" 
-                 data-color-id="<?= $color['id'] ?>"
-                 data-color-name="<?= htmlspecialchars($color['color_name']) ?>"
-                 data-color-image="<?= htmlspecialchars($image_data) ?>"
-                 title="<?= htmlspecialchars($color['color_name']) ?>">
-                <span class="color-text"><?= htmlspecialchars($color['color_name']) ?></span>
-            </div>
-        <?php endforeach; ?>
-    </div>
+  <div class="color-options">
+    <?php foreach ($colors as $color): 
+        $image_data = '';
+        if (!empty($color['image'])) {
+            $mimeType = $color['image_format'] ?? 'image/jpeg';
+            $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($color['image']);
+        }
+    ?>
+      <div class="color-option <?= ($color['id'] == $current_color_id) ? 'active' : '' ?>" 
+           data-color-id="<?= $color['id'] ?>"
+           data-color-name="<?= htmlspecialchars($color['color_name']) ?>"
+           data-color-image="<?= htmlspecialchars($image_data) ?>"
+           title="<?= htmlspecialchars($color['color_name']) ?>">
+        <span class="color-text"><?= htmlspecialchars($color['color_name']) ?></span>
+      </div>
+    <?php endforeach; ?>
+  </div>
 
-    <input type="hidden" name="selected_color_id" id="selected-color-id" value="<?= $current_color_id ?>">
+  <input type="hidden" name="selected_color_id" id="selected-color-id" value="<?= $current_color_id ?>">
 </div>
 
 <script>
@@ -67,41 +68,120 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectedColorInput = document.getElementById("selected-color-id");
   const mainImage = document.querySelector(".main-product-image");
 
-  // ✅ Restore color from session
-  const savedColorId = sessionStorage.getItem("selected_color_" + productId);
-  if (savedColorId) {
-    const savedOption = document.querySelector(`.color-option[data-color-id="${savedColorId}"]`);
-    if (savedOption) {
-      colorOptions.forEach(opt => opt.classList.remove("active"));
-      savedOption.classList.add("active");
-      selectedColorInput.value = savedColorId;
-      const imageSrc = savedOption.dataset.colorImage;
-      if (mainImage && imageSrc) mainImage.src = imageSrc;
+  // ✅ Simple function to update stock information ONLY
+  async function updateStockInfo(colorId) {
+    try {
+      const response = await fetch(`<?= SITE_URL ?>actions/get-color-stock.php?color_id=${colorId}`);
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        // ONLY update the stock display - nothing else
+        updateStockDisplay(data.stock_info);
+      }
+    } catch (error) {
+      console.error('Error fetching stock:', error);
     }
   }
 
-  // ✅ Handle color click (no refresh but update URL)
+  // ✅ ONLY updates the stock display section
+  function updateStockDisplay(stockInfo) {
+    const stockInfoElement = document.querySelector('.stock-info');
+    if (!stockInfoElement) return;
+    
+    const currentStock = stockInfo.current_stock;
+    const stockBySize = stockInfo.stock_by_size;
+    
+    let stockHTML = '';
+    
+    if (currentStock > 0) {
+      if (currentStock <= 10) {
+        stockHTML = `
+          <div class="stock-low">
+            <span class="stock-text">Only ${currentStock} left in stock!</span>
+          </div>
+        `;
+      } else {
+        stockHTML = `
+          <div class="stock-available">
+            <span class="stock-text">In Stock (${currentStock} available)</span>
+          </div>
+        `;
+      }
+      
+      // Add size stock information (read-only display)
+      stockHTML += `
+        <div class="size-stock-info">
+          <h4>Available by Size:</h4>
+          <div class="size-stock-grid">
+      `;
+      
+      ['S', 'M', 'L', 'XL'].forEach(size => {
+        const sizeQty = stockBySize[size] || 0;
+        stockHTML += `
+          <div class="size-stock-item">
+            <span class="size-label">Size ${size}:</span>
+            <span class="size-quantity ${sizeQty == 0 ? 'out-of-stock' : 'in-stock'}">
+              ${sizeQty > 0 ? sizeQty + ' available' : 'Out of stock'}
+            </span>
+          </div>
+        `;
+      });
+      
+      stockHTML += `
+          </div>
+        </div>
+      `;
+    } else {
+      stockHTML = `
+        <div class="stock-out">
+          <span class="stock-icon">❌</span>
+          <span class="stock-text">Out of Stock</span>
+        </div>
+      `;
+    }
+    
+    // ONLY update the stock info element
+    stockInfoElement.innerHTML = stockHTML;
+    
+    // NOTE: We are NOT updating:
+    // - Size option buttons (they stay as they are)
+    // - Quantity selector (stays as it is)  
+    // - Add to Cart/Buy Now buttons (stay as they are)
+    // - Any other page elements
+  }
+
+  // ✅ Handle color click - ONLY updates image and stock
   colorOptions.forEach(option => {
     option.addEventListener("click", () => {
       const colorId = option.dataset.colorId;
       const imageSrc = option.dataset.colorImage;
 
-      // Update visuals
+      // Update active color
       colorOptions.forEach(opt => opt.classList.remove("active"));
       option.classList.add("active");
       selectedColorInput.value = colorId;
 
-      // Update main image
-      if (mainImage && imageSrc) mainImage.src = imageSrc;
+      // Update image only
+      if (mainImage && imageSrc) {
+        mainImage.src = imageSrc;
+      }
 
-      // Save to session
+      // Save to session (existing functionality)
       sessionStorage.setItem("selected_color_" + productId, colorId);
 
-      // ✅ Update the URL (without reload)
+      // Update URL (existing functionality)
       const url = new URL(window.location.href);
       url.searchParams.set("id", colorId);
       window.history.pushState({}, "", url);
+
+      // Update stock information only
+      updateStockInfo(colorId);
     });
   });
+
+  // ✅ Load initial stock for current color
+  if (selectedColorInput.value) {
+    updateStockInfo(selectedColorInput.value);
+  }
 });
 </script>

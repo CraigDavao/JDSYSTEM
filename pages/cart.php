@@ -35,87 +35,129 @@ document.addEventListener("DOMContentLoaded", () => {
     let checkboxStates = {};
 
     async function loadCart() {
-        const res = await fetch(SITE_URL + "actions/cart-fetch.php");
-        const data = await res.json();
-        const cartItems = document.getElementById("cart-items");
-        const cartTotal = document.getElementById("cart-total");
+        try {
+            const res = await fetch(SITE_URL + "actions/cart-fetch.php");
+            const data = await res.json();
+            const cartItems = document.getElementById("cart-items");
+            const cartTotal = document.getElementById("cart-total");
 
-        if (data.status === "success") {
-            let html = "";
-            data.cart.forEach(item => {
-                const isChecked = checkboxStates[item.cart_id] ?? true;
-                
-                // ✅ Image handling
-                let imageSrc = item.image;
-                if (!imageSrc.startsWith('data:')) {
-                    imageSrc = SITE_URL + 'uploads/' + imageSrc;
-                }
+            if (data.status === "success" && data.cart && data.cart.length > 0) {
+                let html = "";
+                data.cart.forEach(item => {
+                    const isChecked = checkboxStates[item.cart_id] ?? true;
+                    
+                    // ✅ Image handling
+                    let imageSrc = item.image;
+                    if (item.image && !item.image.startsWith('data:')) {
+                        // If it's blob data stored as string, create data URL
+                        if (item.image_format && item.image.length > 100) {
+                            imageSrc = 'data:' + item.image_format + ';base64,' + btoa(item.image);
+                        } else {
+                            imageSrc = SITE_URL + 'uploads/' + item.image;
+                        }
+                    } else if (!item.image) {
+                        imageSrc = SITE_URL + 'uploads/sample1.jpg';
+                    }
 
-                // 🟣 Color display: show user-selected color or fallback
-                const colorDisplay = item.color 
-                    ? `<p class="item-color">Color: <span style="text-transform: capitalize;">${item.color}</span></p>` 
-                    : `<p class="item-color">Color: <span style="opacity:0.6;">N/A</span></p>`;
+                    // 🟣 Color display: show user-selected color or fallback
+                    const colorDisplay = item.color_name 
+                        ? `<p class="item-color">Color: <span style="text-transform: capitalize;">${item.color_name}</span></p>` 
+                        : `<p class="item-color">Color: <span style="opacity:0.6;">N/A</span></p>`;
 
-                html += `
-                <div class="cart-item" data-cart-id="${item.cart_id}">
-                    <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
-                    <img src="${imageSrc}" alt="${item.name}" width="80" 
-                         onerror="this.src='${SITE_URL}uploads/sample1.jpg'">
-                    <div class="item-details">
-                        <h3>${item.name}</h3>
-                        ${colorDisplay} <!-- ✅ shows the actual color -->
-                        <p class="item-price">Price: ₱${item.price.toFixed(2)}</p>
-                        <div class="item-controls">
-                            <div class="control-group">
-                                <label>Size:</label>
-                                <select class="size-select">
-                                    <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
-                                    <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
-                                    <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
-                                    <option value="XL" ${item.size === "XL" ? "selected" : ""}>XL</option>
-                                </select>
+                    // Calculate subtotal
+                    const subtotal = (item.price * item.quantity).toFixed(2);
+
+                    html += `
+                    <div class="cart-item" data-cart-id="${item.cart_id}">
+                        <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
+                        <img src="${imageSrc}" alt="${item.name}" width="80" 
+                             onerror="this.src='${SITE_URL}uploads/sample1.jpg'">
+                        <div class="item-details">
+                            <h3>${item.name}</h3>
+                            ${colorDisplay}
+                            <p class="item-price">Price: ₱${parseFloat(item.price).toFixed(2)}</p>
+                            <div class="item-controls">
+                                <div class="control-group">
+                                    <label>Size:</label>
+                                    <select class="size-select">
+                                        <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
+                                        <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
+                                        <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
+                                        <option value="XL" ${item.size === "XL" ? "selected" : ""}>XL</option>
+                                    </select>
+                                </div>
+                                <div class="control-group">
+                                    <label>Quantity:</label>
+                                    <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
+                                </div>
                             </div>
-                            <div class="control-group">
-                                <label>Quantity:</label>
-                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
-                            </div>
+                            <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${subtotal}</span></p>
                         </div>
-                        <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${item.subtotal.toFixed(2)}</span></p>
+                        <button class="remove-item">× Remove</button>
                     </div>
-                    <button class="remove-item">× Remove</button>
-                </div>
-                `;
-            });
+                    `;
+                });
 
-            cartItems.innerHTML = html;
-            
-            const total = calculateTotal();
-            const shipping = total > 500 ? 0 : 50;
-            const grandTotal = total + shipping;
-            
-            cartTotal.innerHTML = `
-                <div class="total-breakdown">
-                    <div class="total-row">
-                        <span>Subtotal:</span>
-                        <span>₱${total.toFixed(2)}</span>
+                cartItems.innerHTML = html;
+                
+                const total = calculateTotal();
+                const shipping = total > 500 ? 0 : 50;
+                const grandTotal = total + shipping;
+                
+                cartTotal.innerHTML = `
+                    <div class="total-breakdown">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>₱${total.toFixed(2)}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Shipping:</span>
+                            <span>${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Total:</span>
+                            <span>₱${grandTotal.toFixed(2)}</span>
+                        </div>
                     </div>
-                    <div class="total-row">
-                        <span>Shipping:</span>
-                        <span>${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
+                `;
+
+                attachCartEvents();
+                updateSelectAllState();
+            } else {
+                // Empty cart
+                cartItems.innerHTML = `
+                    <div class="empty-cart">
+                        <p>Your cart is empty</p>
+                        <a href="<?php echo SITE_URL; ?>pages/products.php" class="continue-shopping">Continue Shopping</a>
                     </div>
-                    <div class="total-row grand-total">
-                        <span>Total:</span>
-                        <span>₱${grandTotal.toFixed(2)}</span>
+                `;
+                cartTotal.innerHTML = `
+                    <div class="total-breakdown">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>₱0.00</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Shipping:</span>
+                            <span>₱0.00</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Total:</span>
+                            <span>₱0.00</span>
+                        </div>
                     </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading cart:', error);
+            document.getElementById('cart-items').innerHTML = `
+                <div class="error-cart">
+                    <p>Error loading cart. Please try again.</p>
                 </div>
             `;
-
-            attachCartEvents();
-            updateSelectAllState();
         }
     }
 
-    // ✅ Rest of your JS unchanged below
     function attachCartEvents() {
         document.querySelectorAll(".quantity-input").forEach(input => {
             input.addEventListener("change", async () => {
@@ -186,6 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const selectAll = document.getElementById("select-all");
         if (checkboxes.length > 0) {
             selectAll.checked = Array.from(checkboxes).every(cb => cb.checked);
+        } else {
+            selectAll.checked = false;
         }
     }
 
@@ -198,33 +242,43 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function updateCart(cartId, quantity, size) {
-        await fetch(SITE_URL + "actions/cart-update.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `cart_id=${cartId}&quantity=${quantity}&size=${size}`
-        });
+        try {
+            await fetch(SITE_URL + "actions/cart-update.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_id=${cartId}&quantity=${quantity}&size=${size}`
+            });
+        } catch (error) {
+            console.error('Error updating cart:', error);
+        }
     }
 
     async function removeCartItem(cartId) {
-        await fetch(SITE_URL + "actions/cart-remove.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `cart_id=${cartId}`
-        });
+        try {
+            await fetch(SITE_URL + "actions/cart-remove.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_id=${cartId}`
+            });
+        } catch (error) {
+            console.error('Error removing cart item:', error);
+        }
     }
 
     function updateSubtotal(cartId, quantity) {
         const cartItem = document.querySelector(`.cart-item[data-cart-id="${cartId}"]`);
-        const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("Price: ₱", ""));
-        cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
-        updateTotalOnSelection();
+        if (cartItem) {
+            const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("Price: ₱", ""));
+            cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
+            updateTotalOnSelection();
+        }
     }
 
     function calculateTotal() {
         let total = 0;
         document.querySelectorAll(".cart-item").forEach(item => {
             const checkbox = item.querySelector(".select-item");
-            if (checkbox.checked) {
+            if (checkbox && checkbox.checked) {
                 const price = parseFloat(item.querySelector(".item-price").innerText.replace("Price: ₱", ""));
                 const qty = parseInt(item.querySelector(".quantity-input").value);
                 total += price * qty;

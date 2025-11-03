@@ -22,7 +22,7 @@ try {
     $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 1;
     $size = $_POST['size'] ?? 'M';
 
-    error_log("🛒 Cart Add - Received color_id: $color_id, user_id: $user_id");
+    error_log("🛒 Cart Add - Received color_id: $color_id, user_id: $user_id, size: $size, quantity: $quantity");
 
     // Validate input
     if ($color_id <= 0) {
@@ -30,7 +30,7 @@ try {
         throw new Exception('invalid_color');
     }
 
-    // 🟣 UPDATED: Fetch product details via COLOR ID (same as buy_now.php)
+    // 🟣 Fetch product details via COLOR ID
     $stmt = $conn->prepare("
         SELECT 
             pc.id as color_id,
@@ -70,6 +70,16 @@ try {
     $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : 
                    (!empty($product['sale_price']) ? $product['sale_price'] : $product['price']);
 
+    // 🟣 CRITICAL FIX: Ensure price is properly formatted and validated
+    $displayPrice = floatval($displayPrice);
+    
+    if ($displayPrice <= 0) {
+        error_log("❌ Invalid price calculated: $displayPrice - Using product price instead");
+        $displayPrice = floatval($product['price']);
+    }
+    
+    error_log("💰 Final price to store: " . $displayPrice);
+
     // Check if product already in cart (with same color_id and size)
     $checkCart = $conn->prepare("
         SELECT id, quantity 
@@ -78,13 +88,13 @@ try {
     ");
     
     if (!$checkCart) {
-        throw new Exception('Database prepare failed');
+        throw new Exception('Database prepare failed: ' . $conn->error);
     }
     
     $checkCart->bind_param("iis", $user_id, $color_id, $size);
     
     if (!$checkCart->execute()) {
-        throw new Exception('Database execute failed');
+        throw new Exception('Database execute failed: ' . $checkCart->error);
     }
     
     $cart_result = $checkCart->get_result();
@@ -97,46 +107,48 @@ try {
         $update = $conn->prepare("UPDATE cart SET quantity = ? WHERE id = ?");
         
         if (!$update) {
-            throw new Exception('Database prepare failed');
+            throw new Exception('Database prepare failed: ' . $conn->error);
         }
         
         $update->bind_param("ii", $newQuantity, $row['id']);
         
         if ($update->execute()) {
             $response = ['status' => 'success', 'message' => 'Product quantity updated in cart'];
-            error_log("✅ Cart updated - Color ID: $color_id, New Quantity: $newQuantity");
+            error_log("✅ Cart updated - Color ID: $color_id, Size: $size, New Quantity: $newQuantity");
         } else {
-            throw new Exception('Failed to update cart');
+            throw new Exception('Failed to update cart: ' . $update->error);
         }
         $update->close();
     } else {
         // Insert new item with color information
-        $stmt = $conn->prepare("
+        $insert_stmt = $conn->prepare("
             INSERT INTO cart (user_id, product_id, color_id, color_name, quantity, size, price, added_at) 
             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
-        if (!$stmt) {
-            throw new Exception('Database prepare failed');
+        if (!$insert_stmt) {
+            throw new Exception('Database prepare failed: ' . $conn->error);
         }
         
-        $stmt->bind_param("iiisisd", 
+        // 🟣 CRITICAL FIX: Use the correct data types in bind_param
+        // "iiisisd" means: int, int, int, string, int, string, double
+        $insert_stmt->bind_param("iiisisd", 
             $user_id, 
             $product['product_id'], 
             $color_id, 
             $product['color_name'], 
             $quantity, 
             $size,
-            $displayPrice
+            $displayPrice  // This should be a double/float
         );
         
-        if ($stmt->execute()) {
+        if ($insert_stmt->execute()) {
             $response = ['status' => 'success', 'message' => 'Product added to cart!'];
-            error_log("✅ Cart item added - Color ID: $color_id, Product: " . $product['name']);
+            error_log("✅ Cart item added - Color ID: $color_id, Product: " . $product['name'] . ", Size: $size, Quantity: $quantity, Price: $displayPrice");
         } else {
-            throw new Exception('Failed to add to cart: ' . $stmt->error);
+            throw new Exception('Failed to add to cart: ' . $insert_stmt->error);
         }
-        $stmt->close();
+        $insert_stmt->close();
     }
     
     $checkCart->close();
