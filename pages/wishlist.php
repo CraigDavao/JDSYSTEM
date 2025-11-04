@@ -9,8 +9,6 @@ if (!$user_id) {
     exit;
 }
 
-
-
 // ✅ UPDATED QUERY: Get color-specific images using color_name
 $sql = "
 SELECT 
@@ -52,10 +50,6 @@ WHERE w.user_id = ?
 ORDER BY w.added_at DESC
 ";
 
-
-
-
-
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -76,6 +70,7 @@ $total_count = $count_result->fetch_assoc()['total_count'];
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/wishlist.css?v=<?= time(); ?>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <title>My Wishlist | Jolly Dolly</title>
 </head>
 <body>
@@ -97,17 +92,15 @@ $total_count = $count_result->fetch_assoc()['total_count'];
           <?php
           // Handle blob image conversion
           if (!empty($item['image'])) {
-    $mimeType = !empty($item['image_format']) ? $item['image_format'] : 'image/jpeg';
-    $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($item['image']);
-} else {
-    $imageSrc = SITE_URL . 'uploads/sample1.jpg';
-}
-          
-          // Create product link with color parameter
-          $product_link = SITE_URL . 'pages/products.php?id=' . $item['product_id'];
-          if (!empty($item['color_id'])) {
-              $product_link .= '&color_id=' . $item['color_id'];
+              $mimeType = !empty($item['image_format']) ? $item['image_format'] : 'image/jpeg';
+              $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($item['image']);
+          } else {
+              $imageSrc = SITE_URL . 'uploads/sample1.jpg';
           }
+          
+          // ✅ FIXED: Create product link with color ID as the main parameter
+          // Your product.php expects 'id' parameter to be the color_id
+          $product_link = SITE_URL . 'pages/product.php?id=' . $item['color_id'];
           ?>
           
           <div class="wishlist-item" data-wishlist-id="<?= $item['wishlist_id'] ?>">
@@ -127,11 +120,10 @@ $total_count = $count_result->fetch_assoc()['total_count'];
             </a>
             
             <div class="item-actions">
-          <a href="#" class="remove-wishlist" data-id="<?= $item['wishlist_id']; ?>" title="Remove from wishlist">
-              <i class="fa-solid fa-trash"></i>
-          </a>
-        </div>
-
+              <button class="remove-wishlist" data-id="<?= $item['wishlist_id']; ?>" title="Remove from wishlist">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
           </div>
         <?php endwhile; ?>
       <?php else: ?>
@@ -148,130 +140,115 @@ $total_count = $count_result->fetch_assoc()['total_count'];
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
   <script>
+// Wishlist count updater - MOVE THIS INSIDE DOMContentLoaded
 document.addEventListener("DOMContentLoaded", function() {
     console.log('Wishlist page loaded');
 
+    // Wishlist count updater
+    const wishlistCount = document.querySelector(".wishlist-count");
+    if (wishlistCount) {
+        function updateWishlistCount() {
+            fetch("<?= SITE_URL; ?>actions/wishlist-count.php")
+                .then(response => {
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    return response.json();
+                })
+                .then(data => {
+                    wishlistCount.textContent = data.count ?? 0;
+                })
+                .catch(error => {
+                    console.error("❌ Error fetching wishlist count:", error);
+                    wishlistCount.textContent = "0";
+                });
+        }
+        updateWishlistCount();
+        setInterval(updateWishlistCount, 10000);
+    }
 
-    document.addEventListener("DOMContentLoaded", function() {
-    console.log('Wishlist page loaded');
-
-    // ... your existing code for remove button, notifications, etc. ...
-
-    // Make the entire wishlist item clickable
+    // Make the entire wishlist item clickable (except remove button)
     document.querySelectorAll('.wishlist-item').forEach(item => {
         item.addEventListener('click', function(e) {
-            // Avoid clicking the remove button
-            if (!e.target.classList.contains('remove-wishlist')) {
+            if (!e.target.closest('.remove-wishlist')) {
                 const link = this.querySelector('.wishlist-link');
-                if (link) window.location.href = link.href;
+                if (link) {
+                    console.log('Navigating to product:', link.href);
+                    window.location.href = link.href;
+                }
             }
         });
     });
 
-});
-
-
-    // Remove item from wishlist
+    // ✅ SINGLE Remove item from wishlist handler
     document.addEventListener("click", async (e) => {
-        if (e.target.classList.contains("remove-wishlist")) {
-            const wishlistId = e.target.dataset.id;
-            const itemElement = e.target.closest('.wishlist-item');
+        if (e.target.closest(".remove-wishlist")) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const removeBtn = e.target.closest(".remove-wishlist");
+            const wishlistId = removeBtn.dataset.id;
+            const itemElement = removeBtn.closest('.wishlist-item');
             
             if (confirm('Remove this item from your wishlist?')) {
                 try {
+                    console.log('Removing wishlist item ID:', wishlistId);
+                    
+                    const formData = new URLSearchParams();
+                    formData.append("wishlist_id", wishlistId);
+                    
                     const res = await fetch("<?= SITE_URL; ?>actions/wishlist-remove.php", {
                         method: "POST",
                         headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                        body: "id=" + wishlistId
+                        body: formData
                     });
                     
                     const result = await res.text();
+                    console.log('Remove response:', result);
                     
                     if (result.trim() === "success") {
-                        itemElement.remove();
-                        updateWishlistUI();
+                        itemElement.style.animation = 'fadeOut 0.3s ease';
+                        setTimeout(() => {
+                            itemElement.remove();
+                            updateWishlistUI();
+                        }, 300);
                         showNotification('Item removed from wishlist', 'success');
                     } else {
-                        showNotification('Failed to remove item', 'error');
+                        let errorMessage = 'Failed to remove item';
+                        
+                        switch(result.trim()) {
+                            case 'not_logged_in':
+                                errorMessage = 'Please log in to continue';
+                                break;
+                            case 'not_found':
+                                errorMessage = 'Item not found in your wishlist';
+                                break;
+                            case 'database_error':
+                                errorMessage = 'Database error occurred';
+                                break;
+                            case 'invalid_id':
+                                errorMessage = 'Invalid item ID';
+                                break;
+                            case 'invalid_method':
+                                errorMessage = 'Invalid request';
+                                break;
+                            default:
+                                errorMessage = 'Failed to remove item: ' + result;
+                        }
+                        
+                        showNotification(errorMessage, 'error');
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    showNotification('Network error', 'error');
+                    showNotification('Network error: ' + error.message, 'error');
                 }
-            }
-        }
-    });
-
-    // Add to Cart from wishlist
-    document.addEventListener("click", async (e) => {
-        if (e.target.classList.contains("add-to-cart-btn")) {
-            console.log('Add to cart clicked');
-            
-            const productId = e.target.dataset.productId;
-            const colorId = e.target.dataset.colorId;
-            const colorName = e.target.dataset.colorName;
-            const button = e.target;
-            const originalText = button.textContent;
-            
-            console.log('Product ID:', productId, 'Color ID:', colorId, 'Color Name:', colorName);
-            
-            // Check if colorId is valid
-            if (!colorId || colorId === '0' || colorId === 'null') {
-                showNotification('This item has no color selected. Please visit the product page to add to cart.', 'error');
-                return;
-            }
-            
-            button.textContent = 'Adding...';
-            button.disabled = true;
-            
-            try {
-                const formData = new URLSearchParams();
-                formData.append("product_id", productId);
-                formData.append("color_id", colorId);
-                formData.append("quantity", 1);
-                formData.append("size", "M");
-                
-                if (colorName && colorName !== '' && colorName !== 'null') {
-                    formData.append("color_name", colorName);
-                }
-
-                console.log('Sending form data:', formData.toString());
-
-                const response = await fetch("<?= SITE_URL; ?>actions/cart-add.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: formData,
-                    credentials: "same-origin",
-                });
-
-                console.log('Response status:', response.status);
-                
-                const result = await response.json();
-                console.log('Cart add result:', result);
-                
-                if (result.status === "success") {
-                    showNotification('Added to cart!', 'success');
-                } else if (result.status === "exists") {
-                    showNotification('Already in cart', 'info');
-                } else if (result.message === "not_logged_in") {
-                    showNotification('Please log in first', 'error');
-                } else if (result.message === "invalid_color" || result.message === "color_not_found") {
-                    showNotification('Invalid color selection. Please visit product page.', 'error');
-                } else {
-                    showNotification(result.message || 'Failed to add to cart', 'error');
-                }
-            } catch (error) {
-                console.error("Cart Error:", error);
-                showNotification('Network error: ' + error.message, 'error');
-            } finally {
-                button.textContent = originalText;
-                button.disabled = false;
             }
         }
     });
 
     // Clear all wishlist items
-    document.getElementById('clear-wishlist')?.addEventListener('click', async function() {
+    document.getElementById('clear-wishlist')?.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
         if (confirm('Clear all items from your wishlist?')) {
             try {
                 const res = await fetch("<?= SITE_URL; ?>actions/wishlist-clear.php", {
@@ -280,6 +257,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
                 
                 const result = await res.text();
+                console.log('Clear response:', result);
                 
                 if (result.trim() === "success") {
                     document.getElementById('wishlist-items').innerHTML = `
@@ -292,11 +270,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     updateWishlistUI();
                     showNotification('Wishlist cleared', 'success');
                 } else {
-                    showNotification('Failed to clear wishlist', 'error');
+                    showNotification('Failed to clear wishlist: ' + result, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showNotification('Network error', 'error');
+                showNotification('Network error: ' + error.message, 'error');
             }
         }
     });
@@ -317,15 +295,25 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         // Update wishlist count in header
-        const wishlistBadge = document.getElementById('wishlist-count');
+        const wishlistBadge = document.querySelector('.wishlist-count');
         if (wishlistBadge) {
             wishlistBadge.textContent = itemCount;
+        }
+        
+        // If no items, show empty state
+        if (itemCount === 0 && !document.querySelector('.wishlist-empty')) {
+            document.getElementById('wishlist-items').innerHTML = `
+                <div class="wishlist-empty">
+                  <div class="empty-icon">💝</div>
+                  <h3>Your wishlist is empty</h3>
+                  <p>Save items you love for later!</p>
+                  <a href='<?= SITE_URL; ?>pages/new.php' class='continue-shopping'>Continue Shopping</a>
+                </div>`;
         }
     }
 
     // Notification function
     function showNotification(message, type = 'info') {
-        // Remove existing notifications
         const existingNotifications = document.querySelectorAll('.notification');
         existingNotifications.forEach(notif => notif.remove());
         
@@ -363,7 +351,6 @@ document.addEventListener("DOMContentLoaded", function() {
         
         document.body.appendChild(notification);
         
-        // Auto remove after 3 seconds
         setTimeout(() => {
             if (notification.parentElement) {
                 notification.remove();
@@ -371,12 +358,16 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 3000);
     }
 
-    // Add CSS for notification animation
+    // Add CSS for animations
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.8); }
         }
     `;
     document.head.appendChild(style);

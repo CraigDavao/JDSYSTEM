@@ -1,20 +1,19 @@
 <?php
 /**
- * Color Selector Component - SAFE VERSION
- * ✅ Only updates image and stock display
- * ✅ Doesn't touch size options, quantity, or buttons
- * ✅ No page refresh feel
- * ✅ Preserves all existing functionality
+ * Color Selector Component - FIXED VERSION
+ * ✅ Updates size buttons when color changes
+ * ✅ No page refresh
+ * ✅ No session persistence - always uses URL parameter
  */
 
 if (!isset($product_id) || !isset($colors)) {
     return;
 }
 
-// ✅ Get ID from URL (product color id)
+// ✅ Get ID from URL (product color id) - ONLY source of truth
 $current_color_id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
-// ✅ Default to first or default color
+// ✅ Default to first or default color if no URL parameter
 if (!$current_color_id && !empty($colors)) {
     foreach ($colors as $color) {
         if (!empty($color['is_default'])) {
@@ -68,15 +67,112 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectedColorInput = document.getElementById("selected-color-id");
   const mainImage = document.querySelector(".main-product-image");
 
-  // ✅ Simple function to update stock information ONLY
+  // ✅ Function to update size buttons based on stock
+  function updateSizeButtons(stockBySize) {
+    const sizeButtons = document.querySelectorAll('.size-option');
+    
+    sizeButtons.forEach(button => {
+      const size = button.dataset.size;
+      const sizeQty = stockBySize[size] || 0;
+      const isDisabled = sizeQty === 0;
+      
+      // Update button disabled state
+      button.disabled = isDisabled;
+      
+      // Update button classes
+      button.classList.toggle('disabled', isDisabled);
+      
+      // Update out-of-stock indicator
+      let outOfStockSpan = button.querySelector('.size-out-of-stock');
+      if (isDisabled && !outOfStockSpan) {
+        outOfStockSpan = document.createElement('span');
+        outOfStockSpan.className = 'size-out-of-stock';
+        outOfStockSpan.textContent = '(X)';
+        button.appendChild(outOfStockSpan);
+      } else if (!isDisabled && outOfStockSpan) {
+        outOfStockSpan.remove();
+      }
+      
+      // If current active size is now disabled, remove active class
+      if (button.classList.contains('active') && isDisabled) {
+        button.classList.remove('active');
+      }
+    });
+    
+    // Auto-select first available size if no active size
+    const activeSize = document.querySelector('.size-option.active');
+    if (!activeSize) {
+      const firstAvailable = document.querySelector('.size-option:not(.disabled)');
+      if (firstAvailable) {
+        firstAvailable.classList.add('active');
+        document.getElementById('selected-size').value = firstAvailable.dataset.size;
+      }
+    }
+  }
+
+  // ✅ Function to update quantity and buttons based on stock
+  function updateQuantityAndButtons(currentStock) {
+    const quantityInput = document.getElementById('quantity');
+    const minusBtn = document.getElementById('minus-btn');
+    const plusBtn = document.getElementById('plus-btn');
+    const addToCartBtn = document.querySelector('.add-to-cart');
+    const buyNowBtn = document.getElementById('buy-now-btn');
+    const wishlistBtn = document.querySelector('.wishlist-btn');
+    const quantitySelector = document.querySelector('.quantity-selector');
+    
+    const isOutOfStock = currentStock === 0;
+    const maxQuantity = Math.min(10, currentStock);
+    
+    // Update quantity input
+    if (quantityInput) {
+      quantityInput.disabled = isOutOfStock;
+      quantityInput.max = maxQuantity;
+    }
+    
+    // Update quantity buttons
+    if (minusBtn) minusBtn.disabled = isOutOfStock;
+    if (plusBtn) plusBtn.disabled = isOutOfStock;
+    
+    // Update Add to Cart button
+    if (addToCartBtn) {
+      addToCartBtn.disabled = isOutOfStock;
+      addToCartBtn.textContent = isOutOfStock ? 'Out of Stock' : 'Add to Cart';
+    }
+    
+    // Update Buy Now button
+    if (buyNowBtn) {
+      buyNowBtn.disabled = isOutOfStock;
+      buyNowBtn.textContent = isOutOfStock ? 'Out of Stock' : 'Buy Now';
+    }
+    
+    // Update Wishlist button
+    if (wishlistBtn) {
+      wishlistBtn.disabled = isOutOfStock;
+    }
+    
+    // Update quantity selector styling
+    if (quantitySelector) {
+      if (isOutOfStock) {
+        quantitySelector.classList.add('out-of-stock');
+      } else {
+        quantitySelector.classList.remove('out-of-stock');
+      }
+    }
+  }
+
+  // ✅ Simple function to update stock information
   async function updateStockInfo(colorId) {
     try {
       const response = await fetch(`<?= SITE_URL ?>actions/get-color-stock.php?color_id=${colorId}`);
       const data = await response.json();
       
       if (data.status === 'success') {
-        // ONLY update the stock display - nothing else
+        // Update stock display
         updateStockDisplay(data.stock_info);
+        // Update size buttons - THIS IS THE KEY FIX
+        updateSizeButtons(data.stock_info.stock_by_size);
+        // Update quantity and buttons
+        updateQuantityAndButtons(data.stock_info.current_stock);
       }
     } catch (error) {
       console.error('Error fetching stock:', error);
@@ -140,17 +236,10 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     }
     
-    // ONLY update the stock info element
     stockInfoElement.innerHTML = stockHTML;
-    
-    // NOTE: We are NOT updating:
-    // - Size option buttons (they stay as they are)
-    // - Quantity selector (stays as it is)  
-    // - Add to Cart/Buy Now buttons (stay as they are)
-    // - Any other page elements
   }
 
-  // ✅ Handle color click - ONLY updates image and stock
+  // ✅ Handle color click - updates image, stock, AND size buttons
   colorOptions.forEach(option => {
     option.addEventListener("click", () => {
       const colorId = option.dataset.colorId;
@@ -166,15 +255,15 @@ document.addEventListener("DOMContentLoaded", () => {
         mainImage.src = imageSrc;
       }
 
-      // Save to session (existing functionality)
-      sessionStorage.setItem("selected_color_" + productId, colorId);
+      // ✅ REMOVED: Session storage saving
+      // sessionStorage.setItem("selected_color_" + productId, colorId);
 
       // Update URL (existing functionality)
       const url = new URL(window.location.href);
       url.searchParams.set("id", colorId);
       window.history.pushState({}, "", url);
 
-      // Update stock information only
+      // Update stock information AND size buttons
       updateStockInfo(colorId);
     });
   });

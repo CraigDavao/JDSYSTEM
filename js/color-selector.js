@@ -1,6 +1,7 @@
 /**
  * Color Selector Functionality - FIXED VERSION
  * Handles color selection and image switching with proper Buy Now button updates
+ * ✅ No session persistence - always uses URL parameter
  */
 
 class ColorSelector {
@@ -27,8 +28,8 @@ class ColorSelector {
             });
         });
         
-        // Restore saved color from session storage
-        this.restoreSavedColor();
+        // ✅ REMOVED: Session storage restoration
+        // this.restoreSavedColor();
         
         // Initialize first color if none active
         if (!this.container.querySelector('.color-option.active') && this.colorOptions.length > 0) {
@@ -38,16 +39,7 @@ class ColorSelector {
         console.log('✅ Color selector initialized');
     }
     
-    restoreSavedColor() {
-        const savedColorId = sessionStorage.getItem(`selected_color_${this.productId}`);
-        if (savedColorId) {
-            const savedOption = this.container.querySelector(`.color-option[data-color-id="${savedColorId}"]`);
-            if (savedOption) {
-                console.log(`🎯 Restoring saved color: ${savedOption.dataset.colorName}`);
-                this.selectColor(savedOption, true); // true = silent update (no event)
-            }
-        }
-    }
+    // ✅ REMOVED: restoreSavedColor() method entirely
     
     selectColor(selectedOption, silent = false) {
         console.log(`🎨 Color selected: ${selectedOption.dataset.colorName} (ID: ${selectedOption.dataset.colorId})`);
@@ -80,8 +72,8 @@ class ColorSelector {
         // Update any add to cart buttons
         this.updateAddToCartData(colorId, colorName);
         
-        // Save to session storage
-        sessionStorage.setItem(`selected_color_${this.productId}`, colorId);
+        // ✅ REMOVED: Session storage saving
+        // sessionStorage.setItem(`selected_color_${this.productId}`, colorId);
         
         // Update URL without page reload
         this.updateUrl(colorId);
@@ -204,18 +196,4 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 });
 
-// Session storage for color persistence
-document.addEventListener('DOMContentLoaded', () => {
-    // This ensures colors are remembered across page navigation
-    const colorOptions = document.querySelectorAll('.color-option');
-    colorOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            const productId = option.closest('.color-selector')?.dataset.productId;
-            const colorId = option.dataset.colorId;
-            if (productId && colorId) {
-                sessionStorage.setItem(`selected_color_${productId}`, colorId);
-                console.log(`💾 Saved color ${colorId} for product ${productId}`);
-            }
-        });
-    });
-});
+// ✅ REMOVED: Entire session storage persistence block

@@ -28,6 +28,10 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<script>
+const SITE_URL = "<?= SITE_URL; ?>";
+</script>
+
 <script src="<?php echo SITE_URL; ?>js/cart.js?v=<?= time(); ?>"></script>
 
 <script>
@@ -311,38 +315,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     document.getElementById("checkout-btn").addEventListener("click", async () => {
-        const selectedItems = getSelectedCartIds();
-        if (selectedItems.length === 0) {
-            alert("Please select at least one item to checkout.");
-            return;
-        }
+    const selectedItems = getSelectedCartIds();
 
-        try {
-            await fetch(SITE_URL + "actions/clear-buy-now.php", {
-                method: "POST",
-                credentials: "include"
-            });
+    console.log("🛒 Selected cart IDs:", selectedItems);
 
-            const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `cart_ids=${selectedItems.join(",")}`,
-                credentials: "include"
-            });
-            
-            const result = await response.json();
-            if (result.status === "success") {
-                setTimeout(() => {
-                    window.location.href = SITE_URL + "pages/checkout.php";
-                }, 500);
-            } else {
-                alert("Error: " + (result.message || "Failed to proceed to checkout"));
-            }
-        } catch (error) {
-            console.error("Checkout error:", error);
-            alert("Network error. Please try again.");
+    if (selectedItems.length === 0) {
+        alert("Please select at least one item to checkout.");
+        return;
+    }
+
+    try {
+        // Clear buy-now session (if any)
+        await fetch(SITE_URL + "actions/clear-buy-now.php", {
+            method: "POST",
+            credentials: "include"
+        });
+
+        // Proceed to checkout
+        const bodyData = new URLSearchParams({
+            cart_ids: selectedItems.join(",")
+        });
+
+        const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: bodyData.toString(),
+            credentials: "include"
+        });
+
+        const result = await response.json();
+        console.log("🛒 Checkout response:", result);
+
+        if (result.status === "success") {
+            window.location.href = SITE_URL + "pages/checkout.php";
+        } else {
+            alert("Error: " + (result.message || "Failed to proceed to checkout"));
         }
-    });
+    } catch (error) {
+        console.error("Checkout error:", error);
+        alert("Network error. Please try again.");
+    }
+});
 
     loadCart();
 });

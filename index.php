@@ -2,16 +2,48 @@
 require_once __DIR__ . '/includes/header.php';
 
 /* ------------------------------------------------------------
-   FETCH PRODUCTS AND IMAGES
+   HELPER FUNCTION: Get default color ID for a product
+------------------------------------------------------------ */
+function getDefaultColorId($product_id, $conn) {
+    $sql = "SELECT id FROM product_colors WHERE product_id = ? AND is_default = 1 LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['id'];
+    }
+    
+    // If no default color, get the first available color
+    $sql = "SELECT id FROM product_colors WHERE product_id = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['id'];
+    }
+    
+    return null;
+}
+
+/* ------------------------------------------------------------
+   FETCH PRODUCTS AND IMAGES WITH COLOR IDS
 ------------------------------------------------------------ */
 
 // Fetch 4 latest active products (New Arrivals)
 $featured_products = [];
 $new_arrivals_sql = "
     SELECT p.*, 
-           COALESCE(TO_BASE64(pi.image), NULL) AS product_image
+           COALESCE(TO_BASE64(pi.image), NULL) AS product_image,
+           pc.id as color_id
     FROM products p
     LEFT JOIN product_images pi ON p.id = pi.product_id
+    LEFT JOIN product_colors pc ON p.id = pc.product_id AND pc.is_default = 1
     WHERE p.is_active = 1
     GROUP BY p.id
     ORDER BY p.created_at DESC
@@ -20,6 +52,10 @@ $new_arrivals_sql = "
 $new_arrivals_result = $conn->query($new_arrivals_sql);
 if ($new_arrivals_result && $new_arrivals_result->num_rows > 0) {
     while ($row = $new_arrivals_result->fetch_assoc()) {
+        // If no color_id from join, get it manually
+        if (empty($row['color_id'])) {
+            $row['color_id'] = getDefaultColorId($row['id'], $conn);
+        }
         $featured_products[] = $row;
     }
 }
@@ -31,9 +67,11 @@ $categories = ['kid', 'baby'];
 foreach ($categories as $category) {
     $cat_sql = "
         SELECT p.*, 
-               COALESCE(TO_BASE64(pi.image), NULL) AS product_image
+               COALESCE(TO_BASE64(pi.image), NULL) AS product_image,
+               pc.id as color_id
         FROM products p
         LEFT JOIN product_images pi ON p.id = pi.product_id
+        LEFT JOIN product_colors pc ON p.id = pc.product_id AND pc.is_default = 1
         WHERE p.category_group = ? AND p.is_active = 1
         GROUP BY p.id
         ORDER BY p.created_at DESC
@@ -47,6 +85,10 @@ foreach ($categories as $category) {
     $categories_products[$category] = [];
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
+            // If no color_id from join, get it manually
+            if (empty($row['color_id'])) {
+                $row['color_id'] = getDefaultColorId($row['id'], $conn);
+            }
             $categories_products[$category][] = $row;
         }
     }
@@ -155,8 +197,11 @@ function isOnSale($product) {
                     $img = $product['product_image'] 
                         ? 'data:image/jpeg;base64,' . $product['product_image'] 
                         : SITE_URL . 'uploads/una.jpg';
+                    
+                    // Use color_id if available, otherwise fallback to product id
+                    $link_id = !empty($product['color_id']) ? $product['color_id'] : $product['id'];
                 ?>
-                    <a href="<?= SITE_URL ?>pages/product.php?id=<?= $product['id'] ?>" class="product-card">
+                    <a href="<?= SITE_URL ?>pages/product.php?id=<?= $link_id ?>" class="product-card">
                         <div class="product-image-container">
                             <img src="<?= $img ?>" 
                                  alt="<?= htmlspecialchars($product['name']); ?>"
@@ -205,8 +250,11 @@ function isOnSale($product) {
                             $img = $product['product_image'] 
                                 ? 'data:image/jpeg;base64,' . $product['product_image'] 
                                 : SITE_URL . 'uploads/sample1.jpg';
+                            
+                            // Use color_id if available, otherwise fallback to product id
+                            $link_id = !empty($product['color_id']) ? $product['color_id'] : $product['id'];
                         ?>
-                            <a href="<?= SITE_URL ?>pages/product.php?id=<?= $product['id'] ?>" class="product-card">
+                            <a href="<?= SITE_URL ?>pages/product.php?id=<?= $link_id ?>" class="product-card">
                                 <div class="product-image-container">
                                     <img src="<?= $img ?>" 
                                          alt="<?= htmlspecialchars($product['name']); ?>"

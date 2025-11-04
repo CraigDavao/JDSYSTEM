@@ -204,12 +204,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getSelectedCartIds() {
-        const selectedItems = [];
-        document.querySelectorAll(".select-item:checked").forEach(checkbox => {
-            selectedItems.push(checkbox.dataset.cartId);
-        });
-        return selectedItems;
+        return Array.from(document.querySelectorAll(".select-item:checked"))
+            .map(cb => cb.dataset.cartId)
+            .filter(id => id && !isNaN(id));
     }
+
 
     // Update cart item
     async function updateCart(cartId, quantity, size) {

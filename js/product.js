@@ -1,4 +1,4 @@
-// ✅ product.js - FIXED VERSION WITH PROPER FORM VISIBILITY
+// ✅ product.js - FIXED VERSION WITH PROPER SIZE UPDATES
 document.addEventListener("DOMContentLoaded", () => {
     console.log("🔧 product.js loaded - Starting initialization");
     
@@ -81,7 +81,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     }
-
 
     // 🆕 FUNCTION TO SHOW ONLY RESET PASSWORD FORM
     function showResetPasswordForm() {
@@ -179,7 +178,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-
     // 🔵 Enhanced modal close setup
     function setupModalClose() {
         window.addEventListener("click", (e) => {
@@ -202,6 +200,155 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize modal close functionality
     setupModalClose();
+
+    // ✅ SIZE SELECTION - NEW FUNCTION
+    function initializeSizeSelection() {
+        console.log("📏 Initializing size selection...");
+        
+        const sizeOptions = document.querySelectorAll('.size-option:not(.disabled)');
+        
+        sizeOptions.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all size options
+                document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                document.getElementById('selected-size').value = this.dataset.size;
+                
+                // Update quantity limits based on selected size
+                updateQuantityLimits();
+            });
+        });
+        
+        // Auto-select first available size if none selected
+        const activeSize = document.querySelector('.size-option.active');
+        if (!activeSize && sizeOptions.length > 0) {
+            sizeOptions[0].click();
+        }
+        
+        console.log("✅ Size selection initialized");
+    }
+
+    // ✅ UPDATE QUANTITY LIMITS - IMPROVED FUNCTION
+    function updateQuantityLimits() {
+        const selectedSize = document.querySelector('.size-option.active')?.dataset.size;
+        const sizeStockElements = document.querySelectorAll('.size-stock-item');
+        let maxQuantity = 0;
+        
+        // Find the stock for selected size
+        if (selectedSize) {
+            sizeStockElements.forEach(item => {
+                const sizeLabel = item.querySelector('.size-label');
+                if (sizeLabel && sizeLabel.textContent.includes(selectedSize)) {
+                    const quantityElement = item.querySelector('.size-quantity');
+                    if (quantityElement && quantityElement.classList.contains('in-stock')) {
+                        const stockText = quantityElement.textContent;
+                        const match = stockText.match(/(\d+)/);
+                        if (match) {
+                            maxQuantity = parseInt(match[1]);
+                        }
+                    } else {
+                        maxQuantity = 0; // Out of stock for this size
+                    }
+                }
+            });
+        }
+        
+        // If no size-specific stock found, use total stock
+        if (maxQuantity === 0) {
+            const stockTextElement = document.querySelector('.stock-available .stock-text, .stock-low .stock-text');
+            if (stockTextElement) {
+                const match = stockTextElement.textContent.match(/(\d+)/);
+                if (match) {
+                    maxQuantity = parseInt(match[1]);
+                }
+            }
+        }
+        
+        // Update quantity input limits
+        const quantityInput = document.getElementById('quantity');
+        const minusBtn = document.getElementById('minus-btn');
+        const plusBtn = document.getElementById('plus-btn');
+        
+        quantityInput.max = Math.max(0, maxQuantity);
+        
+        // Adjust current quantity if it exceeds new limit
+        const currentQuantity = parseInt(quantityInput.value);
+        if (currentQuantity > maxQuantity) {
+            quantityInput.value = Math.max(1, maxQuantity);
+        }
+        
+        // Enable/disable quantity controls
+        const isOutOfStock = maxQuantity === 0;
+        quantityInput.disabled = isOutOfStock;
+        minusBtn.disabled = isOutOfStock;
+        plusBtn.disabled = isOutOfStock;
+        
+        // Update Add to Cart button state
+        const addToCartBtn = document.querySelector('.add-to-cart');
+        const buyNowBtn = document.getElementById('buy-now-btn');
+        const wishlistBtn = document.querySelector('.wishlist-btn');
+        
+        if (isOutOfStock) {
+            if (addToCartBtn) {
+                addToCartBtn.disabled = true;
+                addToCartBtn.textContent = 'Out of Stock';
+            }
+            if (buyNowBtn) {
+                buyNowBtn.disabled = true;
+                buyNowBtn.textContent = 'Out of Stock';
+            }
+            if (wishlistBtn) {
+                wishlistBtn.disabled = true;
+            }
+        } else {
+            if (addToCartBtn) {
+                addToCartBtn.disabled = false;
+                addToCartBtn.textContent = 'Add to Cart';
+            }
+            if (buyNowBtn) {
+                buyNowBtn.disabled = false;
+                buyNowBtn.textContent = 'Buy Now';
+            }
+            if (wishlistBtn) {
+                wishlistBtn.disabled = false;
+            }
+        }
+    }
+
+    // ✅ QUANTITY LOGIC
+    function initializeQuantityControls() {
+        const minusBtn = document.getElementById('minus-btn');
+        const plusBtn = document.getElementById('plus-btn');
+        const quantityInput = document.getElementById('quantity');
+
+        if (minusBtn && plusBtn && quantityInput) {
+            minusBtn.addEventListener('click', () => {
+                let val = parseInt(quantityInput.value);
+                if (val > 1) {
+                    quantityInput.value = val - 1;
+                }
+            });
+
+            plusBtn.addEventListener('click', () => {
+                let val = parseInt(quantityInput.value);
+                const max = parseInt(quantityInput.max);
+                if (val < max) {
+                    quantityInput.value = val + 1;
+                }
+            });
+
+            quantityInput.addEventListener('change', () => {
+                let val = parseInt(quantityInput.value);
+                const max = parseInt(quantityInput.max);
+                const min = parseInt(quantityInput.min);
+                
+                if (val < min) quantityInput.value = min;
+                if (val > max) quantityInput.value = max;
+            });
+        }
+    }
 
     // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR, SIZE & QUANTITY
     document.querySelectorAll(".add-to-cart").forEach((btn) => {
@@ -278,154 +425,154 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 💖 WISHLIST FEATURE - UPDATED TO INCLUDE COLOR SELECTION
-function initializeWishlist() {
-    console.log("💖 Initializing wishlist functionality...");
+    function initializeWishlist() {
+        console.log("💖 Initializing wishlist functionality...");
 
-    const wishlistButtons = document.querySelectorAll(".wishlist-btn");
-    console.log("🔍 Found wishlist buttons:", wishlistButtons.length);
+        const wishlistButtons = document.querySelectorAll(".wishlist-btn");
+        console.log("🔍 Found wishlist buttons:", wishlistButtons.length);
 
-    if (wishlistButtons.length === 0) {
-        console.error("❌ NO WISHLIST BUTTONS FOUND! Check your HTML class names.");
-        return;
-    }
+        if (wishlistButtons.length === 0) {
+            console.error("❌ NO WISHLIST BUTTONS FOUND! Check your HTML class names.");
+            return;
+        }
 
-    wishlistButtons.forEach((btn) => {
-        btn.addEventListener("click", async function (event) {
-            console.log("💖 Wishlist button CLICKED!");
+        wishlistButtons.forEach((btn) => {
+            btn.addEventListener("click", async function (event) {
+                console.log("💖 Wishlist button CLICKED!");
 
-            event.preventDefault();
-            event.stopPropagation();
-            hideResetPasswordFormIfVisible();
+                event.preventDefault();
+                event.stopPropagation();
+                hideResetPasswordFormIfVisible();
 
-            // ✅ GET CURRENT SELECTED COLOR
-            const selectedColorId = document.getElementById('selected-color-id');
-            const colorId = selectedColorId ? selectedColorId.value : null;
-            const productId = this.dataset.id;
+                // ✅ GET CURRENT SELECTED COLOR
+                const selectedColorId = document.getElementById('selected-color-id');
+                const colorId = selectedColorId ? selectedColorId.value : null;
+                const productId = this.dataset.id;
 
-            console.log("💖 Wishlist Data:", {
-                productId: productId,
-                colorId: colorId,
-                activeColor: document.querySelector('.color-option.active')?.dataset.colorName
-            });
-
-            if (!productId) {
-                alert("⚠️ Product information missing.");
-                return;
-            }
-
-            if (!colorId) {
-                alert("⚠️ Please select a color before adding to wishlist.");
-                return;
-            }
-
-            const originalText = this.textContent;
-            this.disabled = true;
-            this.textContent = "Adding...";
-
-            try {
-                const formData = new URLSearchParams();
-                formData.append("product_id", productId);
-                formData.append("color_id", colorId); // ✅ Send color_id
-
-                const res = await fetch(SITE_URL + "actions/wishlist-add.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: formData,
-                    credentials: "include",
+                console.log("💖 Wishlist Data:", {
+                    productId: productId,
+                    colorId: colorId,
+                    activeColor: document.querySelector('.color-option.active')?.dataset.colorName
                 });
 
-                const data = await res.json();
-                console.log("💖 Wishlist API response:", data);
+                if (!productId) {
+                    alert("⚠️ Product information missing.");
+                    return;
+                }
 
-                if (data.status === "success") {
-                    this.textContent = "✓ Added";
-                    updateWishlistCount();
-                    // Show success message with color info
-                    const colorName = document.querySelector('.color-option.active')?.dataset.colorName || 'selected color';
-                    showNotification(`Added ${colorName} variant to wishlist!`, 'success');
-                } else if (data.status === "exists") {
-                    this.textContent = "✓ Already in wishlist";
-                    showNotification(data.message || 'Already in wishlist', 'info');
-                } else if (data.status === "not_logged_in" || data.message === "not_logged_in") {
-                    showLoginModal();
-                    this.textContent = originalText;
-                    this.disabled = false;
-                } else {
-                    alert(data.message || "⚠️ Something went wrong.");
+                if (!colorId) {
+                    alert("⚠️ Please select a color before adding to wishlist.");
+                    return;
+                }
+
+                const originalText = this.textContent;
+                this.disabled = true;
+                this.textContent = "Adding...";
+
+                try {
+                    const formData = new URLSearchParams();
+                    formData.append("product_id", productId);
+                    formData.append("color_id", colorId); // ✅ Send color_id
+
+                    const res = await fetch(SITE_URL + "actions/wishlist-add.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: formData,
+                        credentials: "include",
+                    });
+
+                    const data = await res.json();
+                    console.log("💖 Wishlist API response:", data);
+
+                    if (data.status === "success") {
+                        this.textContent = "✓ Added";
+                        updateWishlistCount();
+                        // Show success message with color info
+                        const colorName = document.querySelector('.color-option.active')?.dataset.colorName || 'selected color';
+                        showNotification(`Added ${colorName} variant to wishlist!`, 'success');
+                    } else if (data.status === "exists") {
+                        this.textContent = "✓ Already in wishlist";
+                        showNotification(data.message || 'Already in wishlist', 'info');
+                    } else if (data.status === "not_logged_in" || data.message === "not_logged_in") {
+                        showLoginModal();
+                        this.textContent = originalText;
+                        this.disabled = false;
+                    } else {
+                        alert(data.message || "⚠️ Something went wrong.");
+                        this.textContent = originalText;
+                        this.disabled = false;
+                    }
+                } catch (err) {
+                    console.error("💖 NETWORK ERROR:", err);
+                    alert("⚠️ Network error. Please try again.");
                     this.textContent = originalText;
                     this.disabled = false;
                 }
-            } catch (err) {
-                console.error("💖 NETWORK ERROR:", err);
-                alert("⚠️ Network error. Please try again.");
-                this.textContent = originalText;
-                this.disabled = false;
-            }
+            });
         });
-    });
 
-    console.log("✅ Wishlist event listeners attached successfully");
-}
-
-// 🆕 ADD NOTIFICATION FUNCTION
-function showNotification(message, type = 'info') {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notif => notif.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <span>${message}</span>
-        <button onclick="this.parentElement.remove()">×</button>
-    `;
-    
-    // Add styles if not exists
-    if (!document.querySelector('#notification-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'notification-styles';
-        styles.textContent = `
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 12px 20px;
-                border-radius: 6px;
-                color: white;
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                max-width: 300px;
-                animation: slideIn 0.3s ease;
-            }
-            .notification-success { background: #27ae60; }
-            .notification-error { background: #e74c3c; }
-            .notification-info { background: #3498db; }
-            .notification button {
-                background: none;
-                border: none;
-                color: white;
-                font-size: 18px;
-                cursor: pointer;
-            }
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(styles);
+        console.log("✅ Wishlist event listeners attached successfully");
     }
-    
-    document.body.appendChild(notification);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
+
+    // 🆕 ADD NOTIFICATION FUNCTION
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(notif => notif.remove());
+        
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <span>${message}</span>
+            <button onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        // Add styles if not exists
+        if (!document.querySelector('#notification-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'notification-styles';
+            styles.textContent = `
+                .notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 6px;
+                    color: white;
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    max-width: 300px;
+                    animation: slideIn 0.3s ease;
+                }
+                .notification-success { background: #27ae60; }
+                .notification-error { background: #e74c3c; }
+                .notification-info { background: #3498db; }
+                .notification button {
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 18px;
+                    cursor: pointer;
+                }
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(styles);
         }
-    }, 3000);
-}
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 3000);
+    }
 
     // 💌 UPDATE WISHLIST BADGE
     function updateWishlistCount() {
@@ -438,113 +585,144 @@ function showNotification(message, type = 'info') {
             .catch((err) => console.error("💌 Error updating wishlist badge:", err));
     }
 
-   // 🚀 BUY NOW FUNCTIONALITY - COMPLETELY FIXED
-function initializeBuyNow() {
-    console.log("🚀 Initializing Buy Now functionality...");
+    // 🚀 BUY NOW FUNCTIONALITY - COMPLETELY FIXED
+    function initializeBuyNow() {
+        console.log("🚀 Initializing Buy Now functionality...");
 
-    const buyNowBtn = document.getElementById("buy-now-btn");
-    if (!buyNowBtn) {
-        console.error("❌ BUY NOW BUTTON NOT FOUND!");
-        return;
-    }
-
-    buyNowBtn.addEventListener("click", async function (event) {
-        console.log("🚀 Buy Now button CLICKED!");
-        
-        event.preventDefault();
-        event.stopPropagation();
-
-        // ✅ CRITICAL FIX: Get the CURRENT selected color from hidden field
-        const selectedColorId = document.getElementById('selected-color-id');
-        const colorId = selectedColorId ? selectedColorId.value : null;
-        
-        const productId = this.dataset.productId;
-        const price = this.dataset.price;
-        
-        // Get current size and quantity
-        const activeSize = document.querySelector('.size-option.active');
-        const size = activeSize ? activeSize.dataset.size : 'M';
-        const quantity = document.getElementById("quantity")?.value || 1;
-
-        console.log("📦 Buy Now - FINAL SELECTION:", {
-            colorId: colorId,
-            productId: productId,
-            quantity: quantity,
-            size: size,
-            price: price
-        });
-
-        // Validation
-        if (!colorId) {
-            alert("⚠️ Please select a color before buying.");
+        const buyNowBtn = document.getElementById("buy-now-btn");
+        if (!buyNowBtn) {
+            console.error("❌ BUY NOW BUTTON NOT FOUND!");
             return;
         }
 
-        if (!productId) {
-            alert("⚠️ Product information missing.");
-            return;
-        }
+        buyNowBtn.addEventListener("click", async function (event) {
+            console.log("🚀 Buy Now button CLICKED!");
+            
+            event.preventDefault();
+            event.stopPropagation();
 
-        const originalText = this.textContent;
-        this.disabled = true;
-        this.textContent = "Processing...";
+            // ✅ CRITICAL FIX: Get the CURRENT selected color from hidden field
+            const selectedColorId = document.getElementById('selected-color-id');
+            const colorId = selectedColorId ? selectedColorId.value : null;
+            
+            const productId = this.dataset.productId;
+            const price = this.dataset.price;
+            
+            // Get current size and quantity
+            const activeSize = document.querySelector('.size-option.active');
+            const size = activeSize ? activeSize.dataset.size : 'M';
+            const quantity = document.getElementById("quantity")?.value || 1;
 
-        try {
-            const formData = new URLSearchParams();
-            formData.append("color_id", colorId);
-            formData.append("product_id", productId);
-            formData.append("quantity", quantity);
-            formData.append("size", size);
-            formData.append("price", price);
-
-            console.log("📤 Sending Buy Now request...");
-            console.log("🎯 Color ID being sent:", colorId);
-
-            const response = await fetch(SITE_URL + "actions/buy_now.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData,
-                credentials: "include",
+            console.log("📦 Buy Now - FINAL SELECTION:", {
+                colorId: colorId,
+                productId: productId,
+                quantity: quantity,
+                size: size,
+                price: price
             });
 
-            const result = await response.json();
-            console.log("🚀 Buy Now API response:", result);
+            // Validation
+            if (!colorId) {
+                alert("⚠️ Please select a color before buying.");
+                return;
+            }
 
-            if (result.success) {
-                console.log("✅ Buy Now successful!");
-                window.location.href = result.redirect_url || SITE_URL + "pages/checkout.php";
-            } else if (result.message === 'not_logged_in' || result.requires_login) {
-                showLoginModal();
-                this.textContent = originalText;
-                this.disabled = false;
-            } else {
-                alert(result.message || "⚠️ Something went wrong.");
+            if (!productId) {
+                alert("⚠️ Product information missing.");
+                return;
+            }
+
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = "Processing...";
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append("color_id", colorId);
+                formData.append("product_id", productId);
+                formData.append("quantity", quantity);
+                formData.append("size", size);
+                formData.append("price", price);
+
+                console.log("📤 Sending Buy Now request...");
+                console.log("🎯 Color ID being sent:", colorId);
+
+                const response = await fetch(SITE_URL + "actions/buy_now.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: formData,
+                    credentials: "include",
+                });
+
+                const result = await response.json();
+                console.log("🚀 Buy Now API response:", result);
+
+                if (result.success) {
+                    console.log("✅ Buy Now successful!");
+                    window.location.href = result.redirect_url || SITE_URL + "pages/checkout.php";
+                } else if (result.message === 'not_logged_in' || result.requires_login) {
+                    showLoginModal();
+                    this.textContent = originalText;
+                    this.disabled = false;
+                } else {
+                    alert(result.message || "⚠️ Something went wrong.");
+                    this.textContent = originalText;
+                    this.disabled = false;
+                }
+            } catch (error) {
+                console.error("🚀 Buy Now Network Error:", error);
+                alert("⚠️ Network error. Please try again.");
                 this.textContent = originalText;
                 this.disabled = false;
             }
-        } catch (error) {
-            console.error("🚀 Buy Now Network Error:", error);
-            alert("⚠️ Network error. Please try again.");
-            this.textContent = originalText;
-            this.disabled = false;
-        }
+        });
+
+        console.log("✅ Buy Now event listener attached");
+    }
+
+      // ✅ SIMPLE COLOR CHANGE - FORCE PAGE RELOAD
+    document.addEventListener('colorChanged', function(e) {
+        const newUrl = `${SITE_URL}pages/product.php?id=${e.detail.colorId}`;
+        console.log('🎨 Color changed, reloading page:', newUrl);
+        
+        // Force immediate page reload to properly reset everything
+        window.location.href = newUrl;
     });
 
-    console.log("✅ Buy Now event listener attached");
-}
+    // ✅ RESET SIZE SELECTION ON COLOR CHANGE
+    function handleColorChangeReset() {
+        if (sessionStorage.getItem('color_changed') === 'true') {
+            // Clear the flag
+            sessionStorage.removeItem('color_changed');
+            
+            // Force size selection reset after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                initializeSizeSelection();
+                updateQuantityLimits();
+            }, 100);
+        }
+    }
 
     // 🚀 INITIALIZE EVERYTHING
     function initialize() {
         console.log("🚀 Starting full initialization...");
-        addModalStyles(); // 🆕 ADD THIS LINE - Adds the CSS styles first
+        addModalStyles();
+        initializeSizeSelection(); // 🆕 ADD THIS LINE
+        initializeQuantityControls(); // 🆕 ADD THIS LINE
         initializeWishlist();
         initializeBuyNow();
         setupForgotPasswordReset();
         updateWishlistCount();
         updateCartAfterAdd();
+        handleColorChangeReset(); // 🆕 ADD THIS LINE
+        
+        // Initialize quantity limits
+        updateQuantityLimits();
+        
         console.log("✅ Full initialization complete");
     }
 
     // Start the application
     initialize();
 });
+

@@ -4,14 +4,15 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../functions.php';
 
-// ✅ Get ID from URL
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+// ✅ Get ID from URL - FIXED: Check for both id and color_id parameters
+$id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_GET['color_id']) ? (int)$_GET['color_id'] : 0);
 if ($id <= 0) {
   die('<p>Invalid ID.</p>');
 }
 
 // DEBUG: Check what's on line 121
 echo "<!-- Debug: Current line count: " . __LINE__ . " -->";
+echo "<!-- Debug: Received ID: $id -->";
 
 // First, check if this is a COLOR ID
 $is_color_id = false;
@@ -52,15 +53,6 @@ if (!isset($_SESSION['product_state'])) {
     $_SESSION['product_state'] = [];
 }
 
-// Get current product state from session
-$current_size = $_SESSION['product_state'][$product_id]['size'] ?? 'M';
-$current_quantity = $_SESSION['product_state'][$product_id]['quantity'] ?? 1;
-
-// If color_id is in session, use it (unless URL has different color_id)
-if (isset($_SESSION['product_state'][$product_id]['color_id']) && !isset($_GET['color_id'])) {
-    $color_id = $_SESSION['product_state'][$product_id]['color_id'];
-}
-
 $color_stmt = $conn->prepare($color_sql);
 if (!$color_stmt) {
     die('Prepare failed: (' . $conn->errno . ') ' . $conn->error);
@@ -74,6 +66,7 @@ if ($product) {
     // This is a COLOR ID
     $is_color_id = true;
     $product_id = $product['product_id'];
+    echo "<!-- Debug: Found as COLOR ID. Product ID: $product_id -->";
 } else {
     // If not found as color ID, try as PRODUCT ID - WITH PRICE FROM PRODUCTS TABLE
     $product_sql = "SELECT p.id as product_id, p.name, p.price, p.sale_price, p.actual_sale_price, 
@@ -94,6 +87,7 @@ if ($product) {
     }
     
     $product_id = $product['product_id'] = $id;
+    echo "<!-- Debug: Found as PRODUCT ID: $product_id -->";
     
     // Get default color for this product
     $default_color = getDefaultProductColor($product_id, $conn);
@@ -101,18 +95,32 @@ if ($product) {
         $color_id = $default_color['id'];
         $is_color_id = true;
         
-        // Update URL to use color ID instead of product ID
+        // Update URL to use color ID instead of product ID - FIXED: Use proper escaping
         echo "<script>
             if (window.history.replaceState) {
                 var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?id=' + $color_id;
                 window.history.replaceState({}, '', newUrl);
             }
         </script>";
+        echo "<!-- Debug: Redirected to color ID: $color_id -->";
+    } else {
+        die('<p>No colors available for this product.</p>');
     }
+}
+
+// Get current product state from session - MOVED HERE to ensure product_id is set
+$current_size = $_SESSION['product_state'][$product_id]['size'] ?? 'M';
+$current_quantity = $_SESSION['product_state'][$product_id]['quantity'] ?? 1;
+
+// If color_id is in session, use it (unless URL has different color_id)
+if (isset($_SESSION['product_state'][$product_id]['color_id']) && !isset($_GET['color_id'])) {
+    $color_id = $_SESSION['product_state'][$product_id]['color_id'];
+    echo "<!-- Debug: Using color ID from session: $color_id -->";
 }
 
 // ✅ GET PRODUCT COLORS WITH IMAGES
 $colors = getProductColorsWithImages($product_id, $conn);
+echo "<!-- Debug: Found " . count($colors) . " colors for product $product_id -->";
 
 // ✅ Get current color
 $current_color = null;
@@ -126,6 +134,7 @@ foreach ($colors as $color) {
 if (!$current_color && !empty($colors)) {
     $current_color = $colors[0];
     $color_id = $current_color['id'];
+    echo "<!-- Debug: Using first color as default: $color_id -->";
 }
 
 // ✅ GET STOCK INFORMATION FOR CURRENT COLOR
@@ -166,14 +175,34 @@ if (empty($stock_by_size)) {
 }
 
 // 🟣 Handle blob image conversion - USE COLOR IMAGE IF AVAILABLE
+// ✅ FIXED: Enhanced image selection logic
+$imageSrc = SITE_URL . 'uploads/sample1.jpg'; // Default fallback
+
 if ($current_color && !empty($current_color['image'])) {
+    // Use the specific color image
     $mimeType = $current_color['image_format'] ?? 'image/jpeg';
     $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($current_color['image']);
-} elseif (!empty($product['image'])) {
-    $mimeType = !empty($product['image_format']) ? $product['image_format'] : 'image/jpeg';
-    $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($product['image']);
+    echo "<!-- Debug: Using color-specific image for color ID: $color_id -->";
 } else {
-    $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+    // Try to get any product image as fallback
+    $fallback_sql = "SELECT image, image_format FROM product_images WHERE product_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1";
+    $fallback_stmt = $conn->prepare($fallback_sql);
+    $fallback_stmt->bind_param("i", $product_id);
+    $fallback_stmt->execute();
+    $fallback_result = $fallback_stmt->get_result();
+    
+    if ($fallback_result && $fallback_row = $fallback_result->fetch_assoc()) {
+        $mimeType = $fallback_row['image_format'] ?? 'image/jpeg';
+        $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($fallback_row['image']);
+        echo "<!-- Debug: Using fallback product image -->";
+    } elseif (!empty($product['image'])) {
+        // Use product main image as last resort
+        $mimeType = !empty($product['image_format']) ? $product['image_format'] : 'image/jpeg';
+        $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($product['image']);
+        echo "<!-- Debug: Using main product image -->";
+    } else {
+        echo "<!-- Debug: Using default sample image -->";
+    }
 }
 
 // ✅ FIXED: Price calculation using data from products table
@@ -186,6 +215,12 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
     // Use actual_sale_price if available, otherwise use sale_price
     $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
 }
+
+// ✅ DEBUG: Add detailed color information
+echo "<!-- Debug: Current Color ID: $color_id -->";
+echo "<!-- Debug: Current Color Name: " . ($current_color['color_name'] ?? 'None') . " -->";
+echo "<!-- Debug: Current Color Image: " . (!empty($current_color['image']) ? 'Exists' : 'Missing') . " -->";
+echo "<!-- Debug: Image Source: " . htmlspecialchars(substr($imageSrc, 0, 100)) . " -->";
 ?>
 
 <!doctype html>
@@ -233,12 +268,10 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
         <?php if ($current_stock > 0): ?>
           <?php if ($current_stock <= 10): ?>
             <div class="stock-low">
-              
               <span class="stock-text">Only <?= $current_stock ?> left in stock!</span>
             </div>
           <?php else: ?>
             <div class="stock-available">
-              
               <span class="stock-text">In Stock (<?= $current_stock ?> available)</span>
             </div>
           <?php endif; ?>
@@ -272,6 +305,7 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       <?php if (!empty($colors)): ?>
         <?php 
           $current_color_id = $current_color['id'] ?? $color_id;
+          echo "<!-- Debug: Passing to color-selector - Current Color ID: $current_color_id -->";
           include __DIR__ . '/../includes/color-selector.php'; 
         ?>
       <?php endif; ?>
@@ -285,28 +319,47 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
         </p>
       </div>
 
-      <!-- ✅ Size Selection -->
-      <div class="size-selector">
-        <label>Size:</label>
-        <div class="size-options">
-          <?php 
-          foreach ($sizes as $size): 
+    <!-- ✅ Size Selection - IMPROVED WITH AUTO-RESET -->
+<div class="size-selector">
+    <label>Size:</label>
+    <div class="size-options">
+        <?php 
+        // Always reset to first available size when page loads
+        $current_size = 'M'; // Default fallback
+        $has_active_size = false;
+        
+        foreach ($sizes as $size): 
             $size_qty = $stock_by_size[$size] ?? 0;
             $is_disabled = $size_qty == 0;
-            $is_active = $size === $current_size && !$is_disabled;
-          ?>
+            
+            // Auto-select first available size
+            if (!$has_active_size && !$is_disabled) {
+                $is_active = true;
+                $has_active_size = true;
+                $current_size = $size;
+            } else {
+                $is_active = false;
+            }
+        ?>
             <button type="button" 
                     class="size-option <?= $is_active ? 'active' : '' ?> <?= $is_disabled ? 'disabled' : '' ?>" 
                     data-size="<?= $size ?>"
+                    data-stock="<?= $size_qty ?>"
                     <?= $is_disabled ? 'disabled' : '' ?>>
-              <?= $size ?>
-              <?php if ($is_disabled): ?>
-                <span class="size-out-of-stock">(X)</span>
-              <?php endif; ?>
+                <?= $size ?>
+                <?php if ($is_disabled): ?>
+                    <span class="size-out-of-stock">(X)</span>
+                <?php endif; ?>
             </button>
-          <?php endforeach; ?>
-        </div>
-      </div>
+        <?php endforeach; ?>
+        
+        <?php if (!$has_active_size): ?>
+            <!-- If all sizes are out of stock, show message -->
+            <div class="no-sizes-available">
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
 
       <!-- ✅ Quantity Selector -->
       <div class="quantity-selector <?= $current_stock == 0 ? 'out-of-stock' : '' ?>">
@@ -319,7 +372,7 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
 
       <div class="action-buttons">
         <!-- ✅ Add to Cart button with ONLY COLOR ID -->
-        <button class="add-to-cart" data-id="<?= $current_color_id ?>" <?= $current_stock == 0 ? 'disabled' : '' ?>>
+        <button class="add-to-cart" data-id="<?= $color_id ?>" <?= $current_stock == 0 ? 'disabled' : '' ?>>
           <?= $current_stock == 0 ? 'Out of Stock' : 'Add to Cart' ?>
         </button>
         <button class="wishlist-btn" data-id="<?= $product_id ?>" <?= $current_stock == 0 ? 'disabled' : '' ?>>♡ Add to Wishlist</button>
@@ -327,7 +380,7 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
 
       <!-- ✅ Buy Now Button -->
       <button class="checkout-btn" id="buy-now-btn" 
-        data-color-id="<?= $current_color_id ?>" 
+        data-color-id="<?= $color_id ?>" 
         data-product-id="<?= $product_id ?>"
         data-price="<?= $displayPrice ?>"
         <?= $current_stock == 0 ? 'disabled' : '' ?>>
@@ -335,7 +388,7 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
       </button>
       
       <!-- Hidden field for selected color -->
-      <input type="hidden" id="selected-color-id" value="<?= $current_color_id ?>">
+      <input type="hidden" id="selected-color-id" value="<?= $color_id ?>">
       <input type="hidden" id="selected-size" value="<?= $current_size ?>">
     </div>
   </div>
@@ -344,111 +397,26 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sa
 
   <script src="<?= SITE_URL; ?>js/color-selector.js?v=<?= time() ?>"></script>
 
-  <script>
-    // ✅ Size selection
-    document.querySelectorAll('.size-option:not(.disabled)').forEach(btn => {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        document.getElementById('selected-size').value = this.dataset.size;
-        
-        // Update quantity limits based on selected size
-        updateQuantityLimits();
-      });
-    });
-
-    // ✅ Quantity logic
-    const minusBtn = document.getElementById('minus-btn');
-    const plusBtn = document.getElementById('plus-btn');
-    const quantityInput = document.getElementById('quantity');
-
-    function updateQuantityLimits() {
-      const selectedSize = document.querySelector('.size-option.active')?.dataset.size;
-      const sizeStockElements = document.querySelectorAll('.size-stock-item');
-      let maxQuantity = <?= $current_stock ?>;
-      
-      // Find the stock for selected size
-      sizeStockElements.forEach(item => {
-        const sizeLabel = item.querySelector('.size-label');
-        if (sizeLabel && sizeLabel.textContent.includes(selectedSize)) {
-          const quantityElement = item.querySelector('.size-quantity');
-          if (quantityElement) {
-            const stockText = quantityElement.textContent;
-            const match = stockText.match(/(\d+)/);
-            if (match) {
-              maxQuantity = parseInt(match[1]);
-            }
-          }
-        }
-      });
-      
-      // Update quantity input limits
-      quantityInput.max = Math.max(1, maxQuantity);
-      
-      // Adjust current quantity if it exceeds new limit
-      const currentQuantity = parseInt(quantityInput.value);
-      if (currentQuantity > maxQuantity) {
-        quantityInput.value = maxQuantity;
-      }
-    }
-
-    minusBtn.addEventListener('click', () => {
-      let val = parseInt(quantityInput.value);
-      if (val > 1) {
-        quantityInput.value = val - 1;
-      }
-    });
-
-    plusBtn.addEventListener('click', () => {
-      let val = parseInt(quantityInput.value);
-      const max = parseInt(quantityInput.max);
-      if (val < max) {
-        quantityInput.value = val + 1;
-      }
-    });
-
-    quantityInput.addEventListener('change', () => {
-      let val = parseInt(quantityInput.value);
-      const max = parseInt(quantityInput.max);
-      const min = parseInt(quantityInput.min);
-      
-      if (val < min) quantityInput.value = min;
-      if (val > max) quantityInput.value = max;
-    });
-
-    // ✅ Update URL when color changes
-    document.addEventListener('colorChanged', function(e) {
-      const newUrl = `<?= SITE_URL ?>pages/product.php?id=${e.detail.colorId}`;
-      window.history.replaceState({}, '', newUrl);
-      console.log('URL updated to:', newUrl);
-      
-      // Reload page to show new color's stock
-      window.location.reload();
-    });
-
-    // Initialize quantity limits
-    updateQuantityLimits();
-  </script>
-
-  <script>
+<script>
+    // This script is now handled in product.js - keeping minimal
     document.addEventListener("DOMContentLoaded", () => {
-      const productId = document.querySelector(".color-selector")?.dataset.productId;
-      const selectedColorId = document.getElementById("selected-color-id");
+        const productId = document.querySelector(".color-selector")?.dataset.productId;
+        const selectedColorId = document.getElementById("selected-color-id");
 
-      const markCartAction = () => {
-        if (productId && selectedColorId.value) {
-          sessionStorage.setItem("selected_color_" + productId, selectedColorId.value);
-          sessionStorage.setItem("from_cart_actions", "true");
-        }
-      };
+        const markCartAction = () => {
+            if (productId && selectedColorId.value) {
+                sessionStorage.setItem("selected_color_" + productId, selectedColorId.value);
+                sessionStorage.setItem("from_cart_actions", "true");
+            }
+        };
 
-      document.querySelectorAll(".add-to-cart, .wishlist-btn, .checkout-btn").forEach(btn => {
-        btn.addEventListener("click", markCartAction);
-      });
+        document.querySelectorAll(".add-to-cart, .wishlist-btn, .checkout-btn").forEach(btn => {
+            btn.addEventListener("click", markCartAction);
+        });
     });
-  </script>
+</script>
 
-  <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
+<script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>
 </html>
-<?php ob_end_flush(); ?>asa   
+<?php ob_end_flush(); ?>
