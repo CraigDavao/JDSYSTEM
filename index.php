@@ -150,7 +150,7 @@ function isOnSale($product) {
         </div>
     </div>
     <div class="hero-image">
-        <img src="<?= SITE_URL ?>uploads/hero-main.png" alt="Jolly Dolly Kids Fashion" onerror="this.src='<?= SITE_URL ?>uploads/hero-main.jpg'">
+        <img src="<?= SITE_URL ?>uploads/jimmy.png" alt="Jolly Dolly Kids Fashion" onerror="this.src='<?= SITE_URL ?>uploads/jimmy.png'">
     </div>
 </section>
 

@@ -4,125 +4,65 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../functions.php';
 
-// ✅ Get ID from URL - FIXED: Check for both id and color_id parameters
-$id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_GET['color_id']) ? (int)$_GET['color_id'] : 0);
-if ($id <= 0) {
-  die('<p>Invalid ID.</p>');
-}
-
-// DEBUG: Check what's on line 121
-echo "<!-- Debug: Current line count: " . __LINE__ . " -->";
-echo "<!-- Debug: Received ID: $id -->";
-
-// First, check if this is a COLOR ID
-$is_color_id = false;
-$color_id = $id;
-$product_id = 0;
-
-// Try to fetch as color ID first - WITH PRICE FROM PRODUCTS TABLE
-$color_sql = "SELECT 
-                pc.id as color_id,
-                pc.product_id,
-                pc.color_name,
-                pc.quantity as color_quantity,
-                pc.is_default,
-                p.name, 
-                p.price,
-                p.sale_price,
-                p.actual_sale_price,
-                p.description, 
-                p.created_at, 
-                p.category, 
-                p.category_group,
-                p.gender, 
-                p.subcategory, 
-                p.sale_start, 
-                p.sale_end,
-                pi.image, 
-                pi.image_format
-            FROM product_colors pc
-            INNER JOIN products p ON pc.product_id = p.id
-            LEFT JOIN product_images pi ON pc.product_id = pi.product_id AND pi.color_name = pc.color_name
-            WHERE pc.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
-            LIMIT 1";
-
-echo "<!-- Debug: SQL Query: " . htmlspecialchars($color_sql) . " -->";
-
-// Initialize product state from session
+// ✅ Initialize product state from session
 if (!isset($_SESSION['product_state'])) {
     $_SESSION['product_state'] = [];
 }
 
-$color_stmt = $conn->prepare($color_sql);
-if (!$color_stmt) {
+// ✅ Get COLOR ID from URL (from wishlist)
+$color_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($color_id <= 0) {
+  die('<p>Invalid ID.</p>');
+}
+
+echo "<!-- Debug: Received Color ID from URL: $color_id -->";
+
+// ✅ DIRECT QUERY: Get product data using COLOR ID
+$sql = "SELECT 
+            pc.id as color_id,
+            pc.product_id,
+            pc.color_name,
+            pc.quantity as color_quantity,
+            pc.is_default,
+            p.name, 
+            p.price,
+            p.sale_price,
+            p.actual_sale_price,
+            p.description, 
+            p.created_at, 
+            p.category, 
+            p.category_group,
+            p.gender, 
+            p.subcategory, 
+            p.sale_start, 
+            p.sale_end
+        FROM product_colors pc
+        INNER JOIN products p ON pc.product_id = p.id
+        WHERE pc.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
+        LIMIT 1";
+
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
     die('Prepare failed: (' . $conn->errno . ') ' . $conn->error);
 }
 
-$color_stmt->bind_param("i", $color_id);
-$color_stmt->execute();
-$product = $color_stmt->get_result()->fetch_assoc();
+$stmt->bind_param("i", $color_id);
+$stmt->execute();
+$product = $stmt->get_result()->fetch_assoc();
 
-if ($product) {
-    // This is a COLOR ID
-    $is_color_id = true;
-    $product_id = $product['product_id'];
-    echo "<!-- Debug: Found as COLOR ID. Product ID: $product_id -->";
-} else {
-    // If not found as color ID, try as PRODUCT ID - WITH PRICE FROM PRODUCTS TABLE
-    $product_sql = "SELECT p.id as product_id, p.name, p.price, p.sale_price, p.actual_sale_price, 
-                           p.description, p.created_at, p.category, p.category_group,
-                           p.gender, p.subcategory, p.sale_start, p.sale_end,
-                           pi.image, pi.image_format
-                    FROM products p
-                    LEFT JOIN product_images pi ON p.id = pi.product_id
-                    WHERE p.id = ? AND (p.is_active IS NULL OR p.is_active = 1)
-                    LIMIT 1";
-    $product_stmt = $conn->prepare($product_sql);
-    $product_stmt->bind_param("i", $id);
-    $product_stmt->execute();
-    $product = $product_stmt->get_result()->fetch_assoc();
-    
-    if (!$product) {
-        die('<p>Product not found.</p>');
-    }
-    
-    $product_id = $product['product_id'] = $id;
-    echo "<!-- Debug: Found as PRODUCT ID: $product_id -->";
-    
-    // Get default color for this product
-    $default_color = getDefaultProductColor($product_id, $conn);
-    if ($default_color) {
-        $color_id = $default_color['id'];
-        $is_color_id = true;
-        
-        // Update URL to use color ID instead of product ID - FIXED: Use proper escaping
-        echo "<script>
-            if (window.history.replaceState) {
-                var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?id=' + $color_id;
-                window.history.replaceState({}, '', newUrl);
-            }
-        </script>";
-        echo "<!-- Debug: Redirected to color ID: $color_id -->";
-    } else {
-        die('<p>No colors available for this product.</p>');
-    }
+if (!$product) {
+    die('<p>Product color not found.</p>');
 }
 
-// Get current product state from session - MOVED HERE to ensure product_id is set
-$current_size = $_SESSION['product_state'][$product_id]['size'] ?? 'M';
-$current_quantity = $_SESSION['product_state'][$product_id]['quantity'] ?? 1;
-
-// If color_id is in session, use it (unless URL has different color_id)
-if (isset($_SESSION['product_state'][$product_id]['color_id']) && !isset($_GET['color_id'])) {
-    $color_id = $_SESSION['product_state'][$product_id]['color_id'];
-    echo "<!-- Debug: Using color ID from session: $color_id -->";
-}
+$product_id = $product['product_id'];
+$current_color_name = $product['color_name'];
+echo "<!-- Debug: Product ID: $product_id, Color Name: $current_color_name -->";
 
 // ✅ GET PRODUCT COLORS WITH IMAGES
 $colors = getProductColorsWithImages($product_id, $conn);
 echo "<!-- Debug: Found " . count($colors) . " colors for product $product_id -->";
 
-// ✅ Get current color
+// ✅ Get current color from the colors array
 $current_color = null;
 foreach ($colors as $color) {
     if ($color['id'] == $color_id) {
@@ -140,7 +80,7 @@ if (!$current_color && !empty($colors)) {
 // ✅ GET STOCK INFORMATION FOR CURRENT COLOR
 $current_stock = $current_color['quantity'] ?? 0;
 
-// ✅ GET STOCK BY SIZE FOR CURRENT COLOR - FIXED QUERY
+// ✅ GET STOCK BY SIZE FOR CURRENT COLOR
 $stock_by_size = [];
 $sizes = ['S', 'M', 'L', 'XL'];
 
@@ -161,66 +101,74 @@ if ($table_exists) {
         $size_stmt->close();
     }
 } else {
-    // If product_sizes table doesn't exist, use the color quantity for all sizes
     foreach ($sizes as $size) {
-        $stock_by_size[$size] = $current_stock; // Use total color quantity for each size
+        $stock_by_size[$size] = $current_stock;
     }
 }
 
-// If no size-specific data, distribute total stock evenly or use same for all sizes
 if (empty($stock_by_size)) {
     foreach ($sizes as $size) {
-        $stock_by_size[$size] = $current_stock; // Use total color quantity for each size
+        $stock_by_size[$size] = $current_stock;
     }
 }
 
-// 🟣 Handle blob image conversion - USE COLOR IMAGE IF AVAILABLE
-// ✅ FIXED: Enhanced image selection logic
+// 🟣 FIXED: Get the CORRECT image for the specific color
 $imageSrc = SITE_URL . 'uploads/sample1.jpg'; // Default fallback
 
+// ✅ METHOD 1: Use the image from $current_color (from getProductColorsWithImages)
 if ($current_color && !empty($current_color['image'])) {
-    // Use the specific color image
     $mimeType = $current_color['image_format'] ?? 'image/jpeg';
     $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($current_color['image']);
-    echo "<!-- Debug: Using color-specific image for color ID: $color_id -->";
+    echo "<!-- Debug: Using image from current_color array -->";
+
+// ✅ METHOD 2: Direct query for the specific color image
 } else {
-    // Try to get any product image as fallback
-    $fallback_sql = "SELECT image, image_format FROM product_images WHERE product_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1";
-    $fallback_stmt = $conn->prepare($fallback_sql);
-    $fallback_stmt->bind_param("i", $product_id);
-    $fallback_stmt->execute();
-    $fallback_result = $fallback_stmt->get_result();
-    
-    if ($fallback_result && $fallback_row = $fallback_result->fetch_assoc()) {
-        $mimeType = $fallback_row['image_format'] ?? 'image/jpeg';
-        $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($fallback_row['image']);
-        echo "<!-- Debug: Using fallback product image -->";
-    } elseif (!empty($product['image'])) {
-        // Use product main image as last resort
-        $mimeType = !empty($product['image_format']) ? $product['image_format'] : 'image/jpeg';
-        $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($product['image']);
-        echo "<!-- Debug: Using main product image -->";
+    $image_sql = "SELECT image, image_format FROM product_images 
+                  WHERE product_id = ? AND color_name = ? 
+                  ORDER BY sort_order ASC, id ASC 
+                  LIMIT 1";
+    $image_stmt = $conn->prepare($image_sql);
+    $image_stmt->bind_param("is", $product_id, $current_color_name);
+    $image_stmt->execute();
+    $image_result = $image_stmt->get_result();
+
+    if ($image_result && $image_row = $image_result->fetch_assoc() && !empty($image_row['image'])) {
+        $mimeType = $image_row['image_format'] ?? 'image/jpeg';
+        $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($image_row['image']);
+        echo "<!-- Debug: Using direct query image for color: $current_color_name -->";
     } else {
-        echo "<!-- Debug: Using default sample image -->";
+        // ✅ METHOD 3: Get any product image as fallback
+        $fallback_sql = "SELECT image, image_format FROM product_images 
+                         WHERE product_id = ? 
+                         ORDER BY sort_order ASC, id ASC 
+                         LIMIT 1";
+        $fallback_stmt = $conn->prepare($fallback_sql);
+        $fallback_stmt->bind_param("i", $product_id);
+        $fallback_stmt->execute();
+        $fallback_result = $fallback_stmt->get_result();
+        
+        if ($fallback_result && $fallback_row = $fallback_result->fetch_assoc() && !empty($fallback_row['image'])) {
+            $mimeType = $fallback_row['image_format'] ?? 'image/jpeg';
+            $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($fallback_row['image']);
+            echo "<!-- Debug: Using fallback product image -->";
+        } else {
+            echo "<!-- Debug: Using default sample image -->";
+        }
     }
 }
 
-// ✅ FIXED: Price calculation using data from products table
-$hasSale = false;
-$displayPrice = $product['price']; // Default to regular price
+// ✅ DEBUG: Show which image we're using
+echo "<!-- Debug: Final Image Source - Color ID: $color_id, Color Name: $current_color_name -->";
+echo "<!-- Debug: Image exists in current_color: " . (!empty($current_color['image']) ? 'YES' : 'NO') . " -->";
 
-// Check if product is on sale
+// ✅ FIXED: Price calculation
+$hasSale = false;
+$displayPrice = $product['price'];
+
 if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price']) {
     $hasSale = true;
-    // Use actual_sale_price if available, otherwise use sale_price
     $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
 }
-
-// ✅ DEBUG: Add detailed color information
-echo "<!-- Debug: Current Color ID: $color_id -->";
-echo "<!-- Debug: Current Color Name: " . ($current_color['color_name'] ?? 'None') . " -->";
-echo "<!-- Debug: Current Color Image: " . (!empty($current_color['image']) ? 'Exists' : 'Missing') . " -->";
-echo "<!-- Debug: Image Source: " . htmlspecialchars(substr($imageSrc, 0, 100)) . " -->";
 ?>
 
 <!doctype html>
@@ -276,12 +224,10 @@ echo "<!-- Debug: Image Source: " . htmlspecialchars(substr($imageSrc, 0, 100)) 
             </div>
           <?php endif; ?>
           
-          <!-- ✅ Stock by Size -->
           <div class="size-stock-info">
             <h4>Available by Size:</h4>
             <div class="size-stock-grid">
-              <?php 
-              foreach ($sizes as $size): 
+              <?php foreach ($sizes as $size): 
                 $size_qty = $stock_by_size[$size] ?? 0;
               ?>
                 <div class="size-stock-item">
@@ -320,46 +266,46 @@ echo "<!-- Debug: Image Source: " . htmlspecialchars(substr($imageSrc, 0, 100)) 
       </div>
 
     <!-- ✅ Size Selection - IMPROVED WITH AUTO-RESET -->
-<div class="size-selector">
-    <label>Size:</label>
-    <div class="size-options">
-        <?php 
-        // Always reset to first available size when page loads
-        $current_size = 'M'; // Default fallback
-        $has_active_size = false;
-        
-        foreach ($sizes as $size): 
-            $size_qty = $stock_by_size[$size] ?? 0;
-            $is_disabled = $size_qty == 0;
+    <div class="size-selector">
+        <label>Size:</label>
+        <div class="size-options">
+            <?php 
+            // Always reset to first available size when page loads
+            $current_size = 'M'; // Default fallback
+            $has_active_size = false;
             
-            // Auto-select first available size
-            if (!$has_active_size && !$is_disabled) {
-                $is_active = true;
-                $has_active_size = true;
-                $current_size = $size;
-            } else {
-                $is_active = false;
-            }
-        ?>
-            <button type="button" 
-                    class="size-option <?= $is_active ? 'active' : '' ?> <?= $is_disabled ? 'disabled' : '' ?>" 
-                    data-size="<?= $size ?>"
-                    data-stock="<?= $size_qty ?>"
-                    <?= $is_disabled ? 'disabled' : '' ?>>
-                <?= $size ?>
-                <?php if ($is_disabled): ?>
-                    <span class="size-out-of-stock">(X)</span>
-                <?php endif; ?>
-            </button>
-        <?php endforeach; ?>
-        
-        <?php if (!$has_active_size): ?>
-            <!-- If all sizes are out of stock, show message -->
-            <div class="no-sizes-available">
-            </div>
-        <?php endif; ?>
+            foreach ($sizes as $size): 
+                $size_qty = $stock_by_size[$size] ?? 0;
+                $is_disabled = $size_qty == 0;
+                
+                // Auto-select first available size
+                if (!$has_active_size && !$is_disabled) {
+                    $is_active = true;
+                    $has_active_size = true;
+                    $current_size = $size;
+                } else {
+                    $is_active = false;
+                }
+            ?>
+                <button type="button" 
+                        class="size-option <?= $is_active ? 'active' : '' ?> <?= $is_disabled ? 'disabled' : '' ?>" 
+                        data-size="<?= $size ?>"
+                        data-stock="<?= $size_qty ?>"
+                        <?= $is_disabled ? 'disabled' : '' ?>>
+                    <?= $size ?>
+                    <?php if ($is_disabled): ?>
+                        <span class="size-out-of-stock">(X)</span>
+                    <?php endif; ?>
+                </button>
+            <?php endforeach; ?>
+            
+            <?php if (!$has_active_size): ?>
+                <!-- If all sizes are out of stock, show message -->
+                <div class="no-sizes-available">
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
-</div>
 
       <!-- ✅ Quantity Selector -->
       <div class="quantity-selector <?= $current_stock == 0 ? 'out-of-stock' : '' ?>">
@@ -397,8 +343,8 @@ echo "<!-- Debug: Image Source: " . htmlspecialchars(substr($imageSrc, 0, 100)) 
 
   <script src="<?= SITE_URL; ?>js/color-selector.js?v=<?= time() ?>"></script>
 
-<script>
-    // This script is now handled in product.js - keeping minimal
+  <!-- ✅ Cart action marking script -->
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
         const productId = document.querySelector(".color-selector")?.dataset.productId;
         const selectedColorId = document.getElementById("selected-color-id");
@@ -414,9 +360,9 @@ echo "<!-- Debug: Image Source: " . htmlspecialchars(substr($imageSrc, 0, 100)) 
             btn.addEventListener("click", markCartAction);
         });
     });
-</script>
+  </script>
 
-<script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
+  <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>
 </html>
 <?php ob_end_flush(); ?>
