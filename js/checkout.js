@@ -1,14 +1,12 @@
-// checkout.js - Complete version with all functionality
+// checkout.js - Simple and reliable version
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🛒 Checkout page loaded');
     
-    // API Endpoints - Using relative paths
+    // API Endpoints
     const GET_ADDRESS_URL = '../actions/get-address.php';
     const SAVE_ADDRESS_URL = '../actions/save-address.php';
     const GET_ADDRESSES_URL = '../actions/get-addresses.php';
     const PLACE_ORDER_URL = '../actions/place-order.php';
-    
-    console.log('🔧 API Endpoints configured');
     
     // Elements
     const changeAddressBtn = document.getElementById('change-address-btn');
@@ -24,6 +22,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageContainer = document.getElementById('message-container');
     const currentAddressDisplay = document.getElementById('current-address');
     const selectedAddressIdInput = document.getElementById('selected-address-id');
+
+    // Storage keys
+    const CHECKOUT_SELECTED_ADDRESS = 'checkout_selected_address';
+    const CHECKOUT_VISIT_TIMESTAMP = 'checkout_visit_timestamp';
+
+    // Initialize
+    initializeAddressSelection();
 
     // Modal functionality
     if (changeAddressBtn && addressModal) {
@@ -57,7 +62,6 @@ document.addEventListener('DOMContentLoaded', function() {
             addAddressForm.style.display = isVisible ? 'none' : 'block';
             
             if (!isVisible) {
-                // Reset form when showing
                 resetAddressForm();
             }
         });
@@ -86,6 +90,117 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Initialize address selection with smart detection
+    function initializeAddressSelection() {
+        console.log('🔍 Initializing address selection...');
+        
+        const defaultAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
+        const previousTimestamp = sessionStorage.getItem(CHECKOUT_VISIT_TIMESTAMP);
+        const currentTimestamp = Date.now();
+        
+        // Check if we have a saved selection
+        const savedSelection = sessionStorage.getItem(CHECKOUT_SELECTED_ADDRESS);
+        
+        console.log('💾 Saved selection:', savedSelection);
+        console.log('🏠 Default address ID:', defaultAddressId);
+        console.log('⏰ Previous visit:', previousTimestamp);
+        console.log('⏰ Current visit:', currentTimestamp);
+        
+        // Determine if this is a refresh or new visit
+        const isRefresh = previousTimestamp && (currentTimestamp - parseInt(previousTimestamp)) < 2000; // 2 second window
+        
+        let addressIdToUse;
+        
+        if (isRefresh && savedSelection) {
+            // This is a refresh - use saved selection
+            console.log('🔄 Page refresh detected - using saved selection');
+            addressIdToUse = savedSelection;
+        } else {
+            // This is a new visit - use default address
+            console.log('🚀 New checkout visit - using default address');
+            addressIdToUse = defaultAddressId;
+            // Clear any old selection
+            sessionStorage.removeItem(CHECKOUT_SELECTED_ADDRESS);
+        }
+        
+        // Save current timestamp for next visit detection
+        sessionStorage.setItem(CHECKOUT_VISIT_TIMESTAMP, currentTimestamp.toString());
+        
+        if (addressIdToUse && addressIdToUse !== '0') {
+            console.log('🎯 Using address ID:', addressIdToUse);
+            
+            if (selectedAddressIdInput) {
+                selectedAddressIdInput.value = addressIdToUse;
+            }
+            
+            fetchAddressDetails(addressIdToUse);
+        } else {
+            console.log('❌ No address available');
+            if (currentAddressDisplay) {
+                currentAddressDisplay.textContent = 'No address selected. Please add a shipping address.';
+            }
+        }
+    }
+
+    // Save selection
+    function saveSelection(addressId) {
+        sessionStorage.setItem(CHECKOUT_SELECTED_ADDRESS, addressId);
+        console.log('💾 Saved selection:', addressId);
+    }
+
+    // Clear selection
+    function clearSelection() {
+        sessionStorage.removeItem(CHECKOUT_SELECTED_ADDRESS);
+        sessionStorage.removeItem(CHECKOUT_VISIT_TIMESTAMP);
+        console.log('🗑️ Cleared all checkout data');
+    }
+
+    // Fetch address details for display
+    function fetchAddressDetails(addressId) {
+        console.log('📋 Fetching details for address:', addressId);
+        
+        if (!addressId || addressId === '0') {
+            return;
+        }
+        
+        fetch(GET_ADDRESS_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ address_id: parseInt(addressId) }),
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('✅ Address details fetched successfully');
+                updateSelectedAddressDisplay(data.address);
+            } else {
+                console.error('❌ Failed to fetch address details');
+                clearSelection();
+                useDefaultAddress();
+            }
+        })
+        .catch(error => {
+            console.error('💥 Error fetching address details:', error);
+            clearSelection();
+            useDefaultAddress();
+        });
+    }
+
+    // Fall back to default address
+    function useDefaultAddress() {
+        const defaultAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
+        if (defaultAddressId && defaultAddressId !== '0') {
+            console.log('🔄 Falling back to default address');
+            if (selectedAddressIdInput) {
+                selectedAddressIdInput.value = defaultAddressId;
+            }
+            fetchAddressDetails(defaultAddressId);
+        }
+    }
+
     // Load addresses for modal
     function loadAddresses() {
         console.log('🔄 Loading addresses...');
@@ -101,34 +216,23 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             credentials: 'same-origin'
         })
-        .then(response => response.text().then(text => {
-            console.log('📄 Raw response:', text);
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('❌ JSON parse error:', e);
-                throw new Error('Invalid JSON response');
-            }
-        }))
+        .then(response => response.json())
         .then(data => {
-            console.log('📦 Address data received:', data);
-            
             if (data.status === 'success') {
                 console.log(`✅ Found ${data.addresses.length} addresses`);
                 renderAddressList(data.addresses);
             } else {
-                console.error('❌ API Error:', data.message);
-                showMessage('Error loading addresses: ' + (data.message || 'Unknown error'), 'error');
+                showMessage('Error loading addresses', 'error');
                 if (addressList) {
-                    addressList.innerHTML = '<div class="error-message">❌ ' + (data.message || 'Failed to load addresses') + '</div>';
+                    addressList.innerHTML = '<div class="error-message">Failed to load addresses</div>';
                 }
             }
         })
         .catch(error => {
             console.error('💥 Fetch error:', error);
-            showMessage('Error loading addresses. Please check console.', 'error');
+            showMessage('Error loading addresses', 'error');
             if (addressList) {
-                addressList.innerHTML = '<div class="error-message">💥 Error loading addresses</div>';
+                addressList.innerHTML = '<div class="error-message">Error loading addresses</div>';
             }
         });
     }
@@ -137,38 +241,50 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderAddressList(addresses) {
         if (!addressList) return;
         
-        console.log('🎨 Rendering addresses:', addresses);
+        console.log('🎨 Rendering addresses');
         
         if (!addresses || addresses.length === 0) {
             addressList.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #666;">
-                    <p style="font-size: 16px; margin-bottom: 15px;">No addresses found.</p>
-                    <p style="font-size: 14px; color: #888;">Click "Add New Address" to create your first shipping address.</p>
+                    <p>No addresses found.</p>
+                    <p>Click "Add New Address" to create your first shipping address.</p>
                 </div>
             `;
             return;
         }
 
-        addressList.innerHTML = addresses.map((address, index) => {
+        const savedSelection = sessionStorage.getItem(CHECKOUT_SELECTED_ADDRESS);
+        const defaultAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
+
+        addressList.innerHTML = addresses.map((address) => {
             const addressId = address.id;
             const displayName = address.fullname || 'No Name Specified';
             
+            // Check if this address is currently selected
+            const isSavedSelection = savedSelection && addressId.toString() === savedSelection;
+            const isDefault = address.is_default === 1;
+            const isCurrentlySelected = isSavedSelection || (!savedSelection && isDefault);
+            
             return `
-                <div class="address-item ${address.is_default ? 'selected' : ''}" data-id="${addressId}">
+                <div class="address-item ${isCurrentlySelected ? 'selected' : ''}" data-id="${addressId}">
                     <div class="address-details">
                         <p style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">${displayName}</p>
                         <p style="color: #555; line-height: 1.5; margin-bottom: 8px;">
                             ${address.street}, ${address.city}, ${address.state}, ${address.zip_code}, ${address.country}
                         </p>
                         <div class="address-meta">
-                            ${address.is_default ? 
-                                '<span class="address-badge badge-default">Default Address</span>' : 
-                                '<span class="address-badge badge-other">Additional Address</span>'
+                            ${isDefault ? 
+                                '<span class="address-badge badge-default">⭐ Default Address</span>' : 
+                                '<span class="address-badge badge-other">📍 Additional Address</span>'
+                            }
+                            ${isSavedSelection ? 
+                                '<span class="address-badge badge-selected">✅ Selected</span>' : 
+                                ''
                             }
                         </div>
                     </div>
-                    <button class="select-address-btn" data-id="${addressId}">
-                        ${address.is_default ? 'Selected' : 'Select'}
+                    <button class="select-address-btn ${isCurrentlySelected ? 'selected' : ''}" data-id="${addressId}">
+                        ${isCurrentlySelected ? 'Selected' : 'Select'}
                     </button>
                 </div>
             `;
@@ -181,8 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('🔘 Address selection clicked:', addressId);
                 
                 if (!addressId || addressId === '0') {
-                    console.error('❌ Invalid address ID');
-                    showMessage('Error: Invalid address selection', 'error');
+                    showMessage('Invalid address selection', 'error');
                     return;
                 }
                 
@@ -200,10 +315,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Show loading state on the button
-        const selectedButton = document.querySelector(`.select-address-btn[data-id="${addressId}"]`);
-        const originalText = selectedButton ? selectedButton.textContent : 'Select';
+        // Save selection
+        saveSelection(addressId);
         
+        // Show loading state
+        const selectedButton = document.querySelector(`.select-address-btn[data-id="${addressId}"]`);
         if (selectedButton) {
             selectedButton.textContent = 'Selecting...';
             selectedButton.disabled = true;
@@ -217,18 +333,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({ address_id: parseInt(addressId) }),
             credentials: 'same-origin'
         })
-        .then(response => response.text().then(text => {
-            console.log('📄 Raw select response:', text);
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('❌ JSON parse error:', e);
-                throw new Error('Invalid JSON response');
-            }
-        }))
+        .then(response => response.json())
         .then(data => {
-            console.log('✅ Select address response:', data);
-            
             // Reset button state
             if (selectedButton) {
                 selectedButton.textContent = 'Selected';
@@ -236,28 +342,41 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (data.status === 'success') {
-                const address = data.address;
-                updateSelectedAddress(address);
+                updateSelectedAddress(data.address);
                 addressModal.style.display = 'none';
-                showMessage('✅ Shipping address updated successfully!', 'success');
+                showMessage('✅ Shipping address selected!', 'success');
+                
+                // Reload addresses to update selection indicators
+                setTimeout(() => {
+                    loadAddresses();
+                }, 500);
             } else {
-                showMessage('❌ Error selecting address: ' + (data.message || 'Unknown error'), 'error');
+                showMessage('Error selecting address', 'error');
+                clearSelection();
             }
         })
         .catch(error => {
             console.error('💥 Error selecting address:', error);
-            // Reset button state
             if (selectedButton) {
-                selectedButton.textContent = originalText;
+                selectedButton.textContent = 'Select';
                 selectedButton.disabled = false;
             }
-            showMessage('❌ Error selecting address. Please try again.', 'error');
+            showMessage('Error selecting address', 'error');
+            clearSelection();
         });
     }
 
-    // Update selected address display
+    // Update selected address display and input
     function updateSelectedAddress(address) {
-        if (currentAddressDisplay && selectedAddressIdInput) {
+        if (selectedAddressIdInput) {
+            selectedAddressIdInput.value = address.id;
+        }
+        updateSelectedAddressDisplay(address);
+    }
+
+    // Update the address display only
+    function updateSelectedAddressDisplay(address) {
+        if (currentAddressDisplay) {
             const displayName = address.fullname || '';
             const fullAddress = `${address.street}, ${address.city}, ${address.state}, ${address.zip_code}, ${address.country}`;
             
@@ -269,9 +388,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 currentAddressDisplay.textContent = fullAddress;
             }
-            
-            selectedAddressIdInput.value = address.id;
-            console.log('📍 Updated selected address to ID:', address.id);
         }
     }
 
@@ -286,11 +402,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const country = document.getElementById('new-country').value.trim();
         const setAsDefault = document.getElementById('set-as-default').checked;
 
-        console.log('📝 Saving new address:', { fullname, street, city, state, zip, country, setAsDefault });
-
         // Simple validation
         if (!fullname || !street || !city || !state || !zip) {
-            showMessage('❌ Please fill in all required fields.', 'error');
+            showMessage('Please fill in all required fields', 'error');
             return;
         }
 
@@ -306,8 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'shipping'
         };
 
-        console.log('📤 Sending address data:', addressData);
-
         // Show loading state
         const saveButton = document.getElementById('save-address-btn');
         const originalText = saveButton.textContent;
@@ -322,18 +434,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(addressData),
             credentials: 'same-origin'
         })
-        .then(response => response.text().then(text => {
-            console.log('📄 Raw save response:', text);
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('❌ JSON parse error:', e);
-                throw new Error('Invalid JSON response');
-            }
-        }))
+        .then(response => response.json())
         .then(data => {
-            console.log('✅ Save address response:', data);
-            
             // Reset button state
             saveButton.textContent = originalText;
             saveButton.disabled = false;
@@ -346,25 +448,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 addAddressForm.style.display = 'none';
                 
                 // Reload addresses
-                console.log('🔄 Reloading addresses...');
                 loadAddresses();
                 
                 // If set as default, select it automatically
                 if (setAsDefault && data.address_id) {
-                    console.log('⭐ New address set as default, selecting it...');
                     setTimeout(() => {
                         selectAddress(data.address_id);
                     }, 1000);
                 }
             } else {
-                showMessage('❌ Error: ' + (data.message || 'Failed to save address'), 'error');
+                showMessage('Error saving address', 'error');
             }
         })
         .catch(error => {
             console.error('💥 Error saving address:', error);
             saveButton.textContent = originalText;
             saveButton.disabled = false;
-            showMessage('❌ Network error. Please try again.', 'error');
+            showMessage('Network error', 'error');
         });
     }
 
@@ -386,16 +486,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Validation
         if (!selectedAddressId) {
-            showMessage('❌ Please select a shipping address.', 'error');
+            showMessage('Please select a shipping address', 'error');
             return;
         }
 
         if (!paymentMethod) {
-            showMessage('❌ Please select a payment method.', 'error');
+            showMessage('Please select a payment method', 'error');
             return;
         }
 
-        // Get order data from button data attributes
+        // Get order data
         const items = JSON.parse(placeOrderBtn.getAttribute('data-items'));
         const totals = JSON.parse(placeOrderBtn.getAttribute('data-totals'));
         const isBuyNow = placeOrderBtn.getAttribute('data-is-buy-now') === '1';
@@ -407,8 +507,6 @@ document.addEventListener('DOMContentLoaded', function() {
             totals: totals,
             is_buy_now: isBuyNow
         };
-
-        console.log('🛍️ Placing order:', orderData);
 
         // Show loading
         showLoading(true);
@@ -424,12 +522,12 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             showLoading(false);
-            console.log('✅ Place order response:', data);
             
             if (data.status === 'success') {
                 showMessage('✅ Order placed successfully! Redirecting...', 'success');
                 
-                // Clear checkout sessions
+                // Clear all checkout data after successful order
+                clearSelection();
                 if (isBuyNow) {
                     sessionStorage.removeItem('buy_now_product');
                 } else {
@@ -441,13 +539,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.href = SITE_URL + 'pages/order-confirmation.php?order_id=' + data.order_id;
                 }, 2000);
             } else {
-                showMessage('❌ Error placing order: ' + data.message, 'error');
+                showMessage('Error placing order: ' + data.message, 'error');
             }
         })
         .catch(error => {
             showLoading(false);
-            console.error('💥 Error placing order:', error);
-            showMessage('❌ Error placing order. Please try again.', 'error');
+            console.error('Error placing order:', error);
+            showMessage('Error placing order', 'error');
         });
     }
 
@@ -467,23 +565,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!messageContainer) return;
         
         const messageDiv = document.createElement('div');
-        messageDiv.className = type === 'success' ? 'success-message' : 
-                              type === 'error' ? 'error-message' : 'info-message';
+        messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
         messageDiv.textContent = message;
         
         messageContainer.innerHTML = '';
         messageContainer.appendChild(messageDiv);
         
-        // Auto remove after 5 seconds (except for success messages that might redirect)
-        if (type !== 'success') {
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.remove();
-                }
-            }, 5000);
-        }
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 5000);
     }
 
-    // Initialize
-    console.log('✅ Checkout initialized successfully');
+    console.log('✅ Checkout initialized with smart refresh detection');
 });

@@ -1,5 +1,5 @@
 <?php
-// actions/get-address.php
+// actions/get-address.php (FIXED VERSION)
 error_reporting(0);
 ini_set('display_errors', 0);
 
@@ -45,29 +45,9 @@ try {
         throw new Exception('Database connection failed');
     }
 
-    // Start transaction
-    $conn->begin_transaction();
+    // REMOVED: The transaction that sets address as default
+    // This function should ONLY get address details, not modify them
     
-    // Unset old default
-    $unsetStmt = $conn->prepare("UPDATE addresses SET is_default = 0 WHERE user_id = ?");
-    if (!$unsetStmt) {
-        throw new Exception('Failed to prepare unset statement');
-    }
-    $unsetStmt->bind_param("i", $user_id);
-    $unsetStmt->execute();
-    $unsetStmt->close();
-
-    // Set new one as default
-    $setStmt = $conn->prepare("UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?");
-    if (!$setStmt) {
-        throw new Exception('Failed to prepare set statement');
-    }
-    $setStmt->bind_param("ii", $address_id, $user_id);
-    $setStmt->execute();
-    $setStmt->close();
-    
-    $conn->commit();
-
     // Check if fullname column exists
     $checkColumn = $conn->query("SHOW COLUMNS FROM addresses LIKE 'fullname'");
     $hasFullname = $checkColumn->num_rows > 0;
@@ -95,10 +75,7 @@ try {
     }
 
 } catch (Exception $e) {
-    if (isset($conn)) {
-        $conn->rollback();
-    }
     error_log("get-address.php error: " . $e->getMessage());
-    echo json_encode(['status' => 'error', 'message' => 'Unable to update address']);
+    echo json_encode(['status' => 'error', 'message' => 'Unable to fetch address']);
 }
 ?>
