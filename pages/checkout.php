@@ -5,14 +5,13 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
 /* ------------------------------------------------------------
-   HELPER FUNCTION: Get product image by color_id - ULTRA SIMPLIFIED
+   HELPER FUNCTION: Get product image by color_id
 ------------------------------------------------------------ */
 function getProductImageByColorId($color_id, $conn) {
     if (!$color_id || $color_id <= 0) {
         return SITE_URL . 'uploads/sample1.jpg';
     }
     
-    // ULTRA SIMPLIFIED: Just get ANY image for this product via color_id
     $sql = "
         SELECT pi.image, pi.image_format 
         FROM product_images pi 
@@ -51,8 +50,6 @@ function getProductImageByColorId($color_id, $conn) {
         $mimeType = !empty($imageData['image_format']) ? $imageData['image_format'] : 'image/jpeg';
         $imageBase64 = base64_encode($imageData['image']);
         $imageUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
-        
-        error_log("✅ SUCCESS: Found image for color_id: $color_id, Type: $mimeType, Size: " . strlen($imageBase64));
         return $imageUrl;
     }
     
@@ -93,24 +90,46 @@ try {
     // Silently continue with default values
 }
 
-// 🟣 CHECK FOR CHECKOUT ITEMS - ULTRA RELIABLE VERSION
+/* ============================
+   Fetch user's default address
+   ============================ */
+$addr_street = $addr_city = $addr_state = $addr_zip = $addr_country = '';
+$has_default_address = false;
+$default_address_id = null;
+
+try {
+    $addrStmt = $conn->prepare("SELECT id, street, city, state, zip_code, country FROM addresses WHERE user_id = ? AND is_default = 1 LIMIT 1");
+    if ($addrStmt) {
+        $addrStmt->bind_param("i", $user_id);
+        $addrStmt->execute();
+        $addrRes = $addrStmt->get_result();
+        $addrRow = $addrRes ? $addrRes->fetch_assoc() : null;
+        if ($addrRow) {
+            $default_address_id = $addrRow['id'];
+            $addr_street = htmlspecialchars($addrRow['street'] ?? '');
+            $addr_city = htmlspecialchars($addrRow['city'] ?? '');
+            $addr_state = htmlspecialchars($addrRow['state'] ?? '');
+            $addr_zip = htmlspecialchars($addrRow['zip_code'] ?? '');
+            $addr_country = htmlspecialchars($addrRow['country'] ?? '');
+            $has_default_address = true;
+        }
+        $addrStmt->close();
+    }
+} catch (Exception $e) {
+    error_log("❌ Failed to fetch default address for user {$user_id}: " . $e->getMessage());
+}
+
+// CHECK FOR CHECKOUT ITEMS
 $checkout_items = [];
 $totals = ['subtotal' => 0, 'shipping' => 0, 'total' => 0];
 $is_buy_now = false;
-
-error_log("=== CHECKOUT START == User: $user_id ===");
 
 // Check for buy now product FIRST (takes priority)
 if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product'])) {
     $buyNowProduct = $_SESSION['buy_now_product'];
     
-    error_log("🛒 BUY NOW DETECTED: " . print_r($buyNowProduct, true));
-    
-    // 🟣 VALIDATE BUY NOW PRODUCT DATA
     if (isset($buyNowProduct['color_id']) && $buyNowProduct['color_id'] > 0) {
-        // 🟣 ENSURE ALL REQUIRED FIELDS ARE PRESENT
         if (!isset($buyNowProduct['price']) || $buyNowProduct['price'] <= 0) {
-            // Fetch the correct price from database via color_id
             $priceStmt = $conn->prepare("
                 SELECT p.price, p.sale_price, p.actual_sale_price 
                 FROM products p 
@@ -126,7 +145,6 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
                 $salePrice = (float)$priceResult['sale_price'];
                 $actualSale = (float)$priceResult['actual_sale_price'];
                 
-                // Use the same price logic as product page
                 $buyNowProduct['price'] = $regularPrice;
                 if ($actualSale > 0 && $actualSale < $regularPrice) {
                     $buyNowProduct['price'] = $actualSale;
@@ -134,23 +152,19 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
                     $buyNowProduct['price'] = $salePrice;
                 }
             } else {
-                // Fallback price if product not found
                 $buyNowProduct['price'] = 820.00;
             }
             $priceStmt->close();
         }
         
-        // 🟣 ENSURE QUANTITY IS VALID
         if (!isset($buyNowProduct['quantity']) || $buyNowProduct['quantity'] <= 0) {
             $buyNowProduct['quantity'] = 1;
         }
         
-        // 🟣 ENSURE SIZE IS SET
         if (!isset($buyNowProduct['size']) || empty($buyNowProduct['size'])) {
             $buyNowProduct['size'] = 'M';
         }
         
-        // 🟣 ENSURE COLOR NAME IS SET - FETCH FROM DATABASE
         if (!isset($buyNowProduct['color_name']) || empty($buyNowProduct['color_name'])) {
             $colorStmt = $conn->prepare("SELECT color_name FROM product_colors WHERE id = ?");
             $colorStmt->bind_param("i", $buyNowProduct['color_id']);
@@ -160,7 +174,6 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
             $colorStmt->close();
         }
         
-        // 🟣 ENSURE PRODUCT NAME IS SET - FETCH FROM DATABASE
         if (!isset($buyNowProduct['name']) || empty($buyNowProduct['name'])) {
             $nameStmt = $conn->prepare("
                 SELECT p.name 
@@ -175,18 +188,12 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
             $nameStmt->close();
         }
         
-        // 🟣 CRITICAL FIX: ALWAYS FETCH FRESH IMAGE FOR BUY NOW
         $buyNowProduct['image'] = getProductImageByColorId($buyNowProduct['color_id'], $conn);
-        error_log("🖼️ BUY NOW IMAGE: Color ID {$buyNowProduct['color_id']} -> " . 
-                 (strpos($buyNowProduct['image'], 'data:') === 0 ? 'Base64 Image' : 'Fallback Image'));
-        
-        // 🟣 CALCULATE SUBTOTAL
         $buyNowProduct['subtotal'] = $buyNowProduct['price'] * $buyNowProduct['quantity'];
         
         $checkout_items = [$buyNowProduct];
         $is_buy_now = true;
         
-        // Calculate totals
         $subtotal = $buyNowProduct['subtotal'];
         $shipping = $subtotal > 500 ? 0 : 50;
         $total = $subtotal + $shipping;
@@ -194,17 +201,12 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
         $totals['subtotal'] = $subtotal;
         $totals['shipping'] = $shipping;
         $totals['total'] = $total;
-        
-        error_log("✅ Buy Now Checkout - Product: {$buyNowProduct['name']}, Color: {$buyNowProduct['color_name']}, Size: {$buyNowProduct['size']}, Price: {$buyNowProduct['price']}, Qty: {$buyNowProduct['quantity']}");
     }
 } 
 // Check for cart checkout items (regular cart checkout)
 else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
     $placeholders = str_repeat('?,', count($_SESSION['checkout_items']) - 1) . '?';
     
-    error_log("🛒 CART CHECKOUT DETECTED: " . count($_SESSION['checkout_items']) . " items");
-    
-    // 🟣 SIMPLIFIED QUERY: Only get basic cart data
     $sql = "
         SELECT 
             cart.id AS cart_id,
@@ -226,7 +228,6 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
     
     $stmt = $conn->prepare($sql);
     if ($stmt) {
-        // Bind parameters dynamically
         $types = str_repeat('i', count($_SESSION['checkout_items'])) . 'i';
         $params = array_merge($_SESSION['checkout_items'], [$user_id]);
         $stmt->bind_param($types, ...$params);
@@ -234,24 +235,12 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
         $result = $stmt->get_result();
         
         $subtotal = 0;
-        $item_count = 0;
 
         while ($row = $result->fetch_assoc()) {
-            $item_count++;
-            if (!isset($row['product_id']) || $row['product_id'] <= 0) {
-                error_log("❌ INVALID CART ITEM: No product_id");
-                continue;
-            }
-
-            // 🟣 CRITICAL FIX: ALWAYS FETCH FRESH IMAGE FOR EACH CART ITEM
             $image_data = getProductImageByColorId($row['color_id'], $conn);
-            error_log("🖼️ CART ITEM #$item_count: Color ID {$row['color_id']} -> " . 
-                     (strpos($image_data, 'data:') === 0 ? 'Base64 Image' : 'Fallback Image'));
             
-            // 🟣 Use the price from cart (already calculated during add to cart)
             $displayPrice = (float)$row['cart_price'];
             
-            // 🟣 Safety check: if displayPrice is 0, calculate from product prices
             if ($displayPrice <= 0) {
                 $regularPrice = (float)$row['product_price'];
                 $salePrice = (float)$row['sale_price'];
@@ -265,10 +254,8 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
                 }
             }
 
-            // 🟣 FIX: Ensure price is never 0
             if ($displayPrice <= 0) {
-                error_log("❌ ERROR: Product {$row['product_id']} has price 0. Using fallback.");
-                $displayPrice = 820.00; // Fallback price
+                $displayPrice = 820.00;
             }
 
             $itemSubtotal = $displayPrice * $row['quantity'];
@@ -287,8 +274,6 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
                 'subtotal' => $itemSubtotal,
                 'is_buy_now' => false
             ];
-            
-            error_log("🛒 Cart Checkout Item - ID: {$row['product_id']}, Color: {$row['color_name']}, Size: {$row['size']}, Price: $displayPrice, Qty: {$row['quantity']}, Image: " . (!empty($image_data) ? 'Found' : 'Not found'));
         }
         
         $shipping = $subtotal > 500 ? 0 : 50;
@@ -298,24 +283,16 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
         $totals['shipping'] = $shipping;
         $totals['total'] = $total;
         
-        error_log("📊 CART TOTALS: Subtotal: $subtotal, Shipping: $shipping, Total: $total");
-        
         $stmt->close();
-    } else {
-        error_log("❌ DATABASE ERROR: " . $conn->error);
-        die("Database error: " . $conn->error);
     }
 }
 
 // If no items, redirect to cart
 if (empty($checkout_items)) {
-    error_log("❌ NO CHECKOUT ITEMS: Redirecting to cart");
     $_SESSION['error'] = 'No items to checkout. Please add items to your cart first.';
     header("Location: " . SITE_URL . "pages/cart.php");
     exit;
 }
-
-error_log("✅ CHECKOUT READY: " . count($checkout_items) . " items, Total: ₱" . $totals['total']);
 ?>
 
 <!DOCTYPE html>
@@ -325,55 +302,22 @@ error_log("✅ CHECKOUT READY: " . count($checkout_items) . " items, Total: ₱"
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout | Jolly Dolly</title>
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/checkout.css?v=<?= time(); ?>">
-    <style>
-        .buy-now-notice {
-            background: #e3f2fd;
-            border: 2px solid #2196f3;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: center;
-            font-weight: bold;
-            color: #1976d2;
-            font-size: 16px;
-        }
-        .color-badge {
-            display: inline-block;
-            background: #f0f0f0;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        .size-badge {
-            display: inline-block;
-            background: #e8f5e8;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        /* Improved image styling */
-        .checkout-item img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            background-color: #f8f8f8;
-        }
-        
-        /* Image error handling */
-        .checkout-item img[src*='sample1.jpg'] {
-            border: 2px dashed #ccc;
-        }
-    </style>
 </head>
 <body>
 
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div style="text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+        <div>Processing your order...</div>
+    </div>
+</div>
+
 <div class="checkout-dashboard">
     <h2>Checkout</h2>
+    
+    <!-- Messages -->
+    <div id="message-container"></div>
     
     <!-- Buy Now Notice -->
     <?php if ($is_buy_now): ?>
@@ -388,49 +332,19 @@ error_log("✅ CHECKOUT READY: " . count($checkout_items) . " items, Total: ₱"
             <!-- Shipping Information -->
             <div class="checkout-section">
                 <h3>🚚 Shipping Information</h3>
-                <form id="shipping-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="fullname">Full Name *</label>
-                            <input type="text" id="fullname" name="fullname" value="<?= $fullname ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" value="<?= $email ?>" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="phone">Phone Number *</label>
-                            <input type="tel" id="phone" name="phone" value="<?= $phone ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="address">Address *</label>
-                            <input type="text" id="address" name="address" placeholder="Street Address" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="city">City *</label>
-                            <input type="text" id="city" name="city" placeholder="City" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="province">Province *</label>
-                            <input type="text" id="province" name="province" placeholder="Province" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="zipcode">ZIP Code *</label>
-                            <input type="text" id="zipcode" name="zipcode" placeholder="ZIP Code" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="notes">Delivery Notes (Optional)</label>
-                        <textarea id="notes" name="notes" placeholder="Any special delivery instructions..."></textarea>
-                    </div>
-                </form>
+
+                <div class="address-display-box">
+                    <?php if ($has_default_address): ?>
+                        <p id="current-address">
+                            <?= $addr_street ?>, <?= $addr_city ?>, <?= $addr_state ?>, <?= $addr_zip ?>, <?= $addr_country ?>
+                        </p>
+                        <input type="hidden" id="selected-address-id" value="<?= $default_address_id ?>">
+                    <?php else: ?>
+                        <p id="current-address">No default address set. Please add an address to continue.</p>
+                        <input type="hidden" id="selected-address-id" value="">
+                    <?php endif; ?>
+                    <button type="button" id="change-address-btn" class="btn-change-address">Change / Add New Address</button>
+                </div>
             </div>
 
             <!-- Payment Method -->
@@ -477,7 +391,7 @@ error_log("✅ CHECKOUT READY: " . count($checkout_items) . " items, Total: ₱"
                             <img src="<?= $item['image'] ?>" 
                                  alt="<?= htmlspecialchars($item['name']) ?>" 
                                  data-color-id="<?= $item['color_id'] ?>"
-                                 onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'; console.log('Image failed for color <?= $item['color_id'] ?>')">
+                                 onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
                             <div class="item-info">
                                 <h4><?= htmlspecialchars($item['name']) ?></h4>
                                 <p>
@@ -519,89 +433,86 @@ error_log("✅ CHECKOUT READY: " . count($checkout_items) . " items, Total: ₱"
     </div>
 </div>
 
+<!-- Address Modal -->
+<div id="address-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <h3>Your Addresses</h3>
+        </div>
+        
+        <!-- Modal Body -->
+        <div class="modal-body">
+            <!-- Address List -->
+            <div id="address-list">
+                <div class="loading-message">Loading addresses...</div>
+            </div>
+            
+            <!-- Add Address Section -->
+            <div class="add-address-section">
+                <button id="add-new-address-btn" class="btn-add-address">
+                    <span style="font-size: 18px; margin-right: 8px;">+</span>
+                    Add New Address
+                </button>
+                
+                <!-- Add Address Form -->
+                <div id="add-address-form" style="display:none;">
+                    <h4 style="margin-bottom: 25px; color: #2c3e50; font-size: 1.3em; font-weight: 600;">Add New Shipping Address</h4>
+                    
+                    <!-- Person's Name -->
+                    <div class="form-group">
+                        <label for="new-fullname">Recipient's Full Name *</label>
+                        <input type="text" id="new-fullname" placeholder="Enter recipient's full name" required>
+                    </div>
+
+                    <!-- Address Information -->
+                    <div class="form-group">
+                        <label for="new-street">Street Address *</label>
+                        <input type="text" id="new-street" placeholder="House number, street, barangay" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-city">City/Municipality *</label>
+                        <input type="text" id="new-city" placeholder="Enter your city or municipality" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-state">Province *</label>
+                        <input type="text" id="new-state" placeholder="Enter your province" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-zip">ZIP Code *</label>
+                        <input type="text" id="new-zip" placeholder="Enter ZIP code" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-country">Country *</label>
+                        <input type="text" id="new-country" value="Philippines" required>
+                    </div>
+
+                    <!-- Default Address Option -->
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="set-as-default">
+                        Set as default shipping address
+                    </label>
+                    
+                    <!-- Form Buttons -->
+                    <div class="form-buttons">
+                        <button id="save-address-btn" class="btn-save-address">Save Address</button>
+                        <button id="cancel-address-btn" type="button" class="btn-cancel-address">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const SITE_URL = "<?= SITE_URL ?>";
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('Checkout page loaded successfully');
-  
-  // Enhanced image error handling
-  document.querySelectorAll('.checkout-item img').forEach(img => {
-    img.addEventListener('error', function() {
-      console.log('Image error detected for color ID:', this.dataset.colorId);
-      this.src = SITE_URL + 'uploads/sample1.jpg';
-    });
-    
-    img.addEventListener('load', function() {
-      console.log('Image loaded successfully for color ID:', this.dataset.colorId);
-    });
-  });
-
-  // Debug: Check all images
-  console.log('=== CHECKOUT IMAGES DEBUG ===');
-  document.querySelectorAll('.checkout-item img').forEach((img, index) => {
-    console.log(`Image ${index + 1}:`, {
-      src: img.src.substring(0, 100) + '...',
-      colorId: img.dataset.colorId,
-      alt: img.alt
-    });
-  });
-});
-</script>
-
-<script>
-// Keep your existing session storage code
-document.addEventListener('DOMContentLoaded', () => {
-  const productId = <?= json_encode($product_id) ?>;
-
-  // Restore previous selections (if exist)
-  const savedData = JSON.parse(sessionStorage.getItem(`product_${productId}`) || "{}");
-
-  if (savedData.colorId) {
-    const colorBtn = document.querySelector(`[data-color-id="${savedData.colorId}"]`);
-    if (colorBtn) colorBtn.click();
-  }
-
-  if (savedData.size) {
-    const sizeBtn = document.querySelector(`[data-size="${savedData.size}"]`);
-    if (sizeBtn) sizeBtn.click();
-  }
-
-  if (savedData.quantity) {
-    const qtyInput = document.querySelector('#quantity');
-    if (qtyInput) qtyInput.value = savedData.quantity;
-  }
-
-  // Save selections whenever user changes them
-  document.querySelectorAll('[data-color-id]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      saveSelection('colorId', btn.dataset.colorId);
-    });
-  });
-
-  document.querySelectorAll('[data-size]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      saveSelection('size', btn.dataset.size);
-    });
-  });
-
-  const qtyInput = document.querySelector('#quantity');
-  if (qtyInput) {
-    qtyInput.addEventListener('input', () => {
-      saveSelection('quantity', qtyInput.value);
-    });
-  }
-
-  function saveSelection(key, value) {
-    const current = JSON.parse(sessionStorage.getItem(`product_${productId}`) || "{}");
-    current[key] = value;
-    sessionStorage.setItem(`product_${productId}`, JSON.stringify(current));
-  }
-
-  sessionStorage.removeItem(`product_${productId}`);
-});
+const USER_ID = <?= $user_id ?>;
 </script>
 
 <script src="<?php echo SITE_URL; ?>js/checkout.js?v=<?= time(); ?>"></script>
