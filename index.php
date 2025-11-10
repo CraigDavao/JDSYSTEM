@@ -129,13 +129,32 @@ foreach ($category_names as $category_key => $display_name) {
 }
 
 /* ------------------------------------------------------------
-   HELPER: Sale condition
+   HELPER: Sale condition and price calculation - FIXED
 ------------------------------------------------------------ */
 function isOnSale($product) {
-    return isset($product['sale_price']) &&
-           is_numeric($product['sale_price']) &&
-           $product['sale_price'] > 0 &&
-           $product['sale_price'] < $product['price'];
+    // Check if we have an actual sale price that's different from regular price
+    if (!empty($product['actual_sale_price']) && $product['actual_sale_price'] > 0 && $product['actual_sale_price'] < $product['price']) {
+        return true;
+    }
+    // Fallback: if only sale_price (percentage) is available
+    else if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < 100) {
+        return true;
+    }
+    return false;
+}
+
+function getDisplayPrice($product) {
+    // Check if we have an actual sale price that's different from regular price
+    if (!empty($product['actual_sale_price']) && $product['actual_sale_price'] > 0 && $product['actual_sale_price'] < $product['price']) {
+        return $product['actual_sale_price'];
+    }
+    // Fallback: if only sale_price (percentage) is available, calculate it
+    else if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < 100) {
+        $discountAmount = $product['price'] * ($product['sale_price'] / 100);
+        return $product['price'] - $discountAmount;
+    }
+    // No sale
+    return $product['price'];
 }
 ?>
 
@@ -198,26 +217,28 @@ function isOnSale($product) {
                         ? 'data:image/jpeg;base64,' . $product['product_image'] 
                         : SITE_URL . 'uploads/una.jpg';
                     
-                    // Use color_id if available, otherwise fallback to product id
+                    // ✅ FIXED: Use color_id for the product link instead of product id
                     $link_id = !empty($product['color_id']) ? $product['color_id'] : $product['id'];
+                    $hasSale = isOnSale($product);
+                    $displayPrice = getDisplayPrice($product);
                 ?>
                     <a href="<?= SITE_URL ?>pages/product.php?id=<?= $link_id ?>" class="product-card">
                         <div class="product-image-container">
                             <img src="<?= $img ?>" 
                                  alt="<?= htmlspecialchars($product['name']); ?>"
                                  class="product-thumb">
-                            <?php if (isOnSale($product)): ?>
+                            <?php if ($hasSale): ?>
                                 <div class="sale-badge">Sale</div>
                             <?php endif; ?>
                         </div>
                         <div class="product-info">
                             <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
                             <div class="product-price">
-                                <?php if (isOnSale($product)): ?>
-                                    <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                                <?php if ($hasSale): ?>
+                                    <span class="sale-price">₱<?= number_format($displayPrice, 2); ?></span>
                                     <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
                                 <?php else: ?>
-                                    <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+                                    <span class="current-price">₱<?= number_format($displayPrice, 2); ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -251,26 +272,28 @@ function isOnSale($product) {
                                 ? 'data:image/jpeg;base64,' . $product['product_image'] 
                                 : SITE_URL . 'uploads/sample1.jpg';
                             
-                            // Use color_id if available, otherwise fallback to product id
+                            // ✅ FIXED: Use color_id for the product link instead of product id
                             $link_id = !empty($product['color_id']) ? $product['color_id'] : $product['id'];
+                            $hasSale = isOnSale($product);
+                            $displayPrice = getDisplayPrice($product);
                         ?>
                             <a href="<?= SITE_URL ?>pages/product.php?id=<?= $link_id ?>" class="product-card">
                                 <div class="product-image-container">
                                     <img src="<?= $img ?>" 
                                          alt="<?= htmlspecialchars($product['name']); ?>"
                                          class="product-thumb">
-                                    <?php if (isOnSale($product)): ?>
+                                    <?php if ($hasSale): ?>
                                         <div class="sale-badge">Sale</div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="product-info">
                                     <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
                                     <div class="product-price">
-                                        <?php if (isOnSale($product)): ?>
-                                            <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                                        <?php if ($hasSale): ?>
+                                            <span class="sale-price">₱<?= number_format($displayPrice, 2); ?></span>
                                             <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
                                         <?php else: ?>
-                                            <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+                                            <span class="current-price">₱<?= number_format($displayPrice, 2); ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </div>

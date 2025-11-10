@@ -161,13 +161,19 @@ if ($current_color && !empty($current_color['image'])) {
 echo "<!-- Debug: Final Image Source - Color ID: $color_id, Color Name: $current_color_name -->";
 echo "<!-- Debug: Image exists in current_color: " . (!empty($current_color['image']) ? 'YES' : 'NO') . " -->";
 
-// ✅ FIXED: Price calculation
+// ✅ FIXED: Price calculation - treat sale_price as percentage discount
 $hasSale = false;
 $displayPrice = $product['price'];
 
-if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price']) {
+// Check if we have a sale price (percentage) and actual sale price (calculated amount)
+if (!empty($product['sale_price']) && $product['sale_price'] > 0 && !empty($product['actual_sale_price'])) {
     $hasSale = true;
-    $displayPrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
+    $displayPrice = $product['actual_sale_price'];
+    
+    // Debug output to see what's happening
+    echo "<!-- Debug: Sale Price (percentage): " . $product['sale_price'] . "% -->";
+    echo "<!-- Debug: Actual Sale Price: " . $product['actual_sale_price'] . " -->";
+    echo "<!-- Debug: Display Price: " . $displayPrice . " -->";
 }
 ?>
 

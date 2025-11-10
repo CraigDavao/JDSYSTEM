@@ -2,6 +2,36 @@
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../backend/get-products.php';
 
+/* ------------------------------------------------------------
+   HELPER FUNCTION: Get default color ID for a product
+------------------------------------------------------------ */
+function getDefaultColorId($product_id, $conn) {
+    $sql = "SELECT id FROM product_colors WHERE product_id = ? AND is_default = 1 LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['id'];
+    }
+    
+    // If no default color, get the first available color
+    $sql = "SELECT id FROM product_colors WHERE product_id = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['id'];
+    }
+    
+    return null;
+}
+
 // 🩷 Special filter for sale items
 $category = 'sale items';
 
@@ -17,7 +47,7 @@ $data = getProducts([
     'orderBy' => 'p.created_at DESC'
 ]);
 
-// 🟡 Filter products to show only sale items
+// 🟡 Filter products to show only sale items - FIXED LOGIC
 $saleProducts = [];
 $totalSaleCount = 0;
 
@@ -26,11 +56,29 @@ if ($data['products']->num_rows > 0) {
     $data['products']->data_seek(0);
     
     while ($product = $data['products']->fetch_assoc()) {
-        $hasSale = !empty($product['sale_price']) && 
-                   $product['sale_price'] > 0 && 
-                   $product['sale_price'] < $product['price'];
+        // ✅ FIXED: Check if product has an actual sale price that's valid
+        $hasSale = false;
+        $displaySalePrice = $product['price'];
+        
+        // Check if we have an actual sale price that's different from regular price
+        if (!empty($product['actual_sale_price']) && $product['actual_sale_price'] > 0 && $product['actual_sale_price'] < $product['price']) {
+            $hasSale = true;
+            $displaySalePrice = $product['actual_sale_price'];
+        } 
+        // Fallback: if only sale_price (percentage) is available, calculate it
+        else if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < 100) {
+            $hasSale = true;
+            $discountAmount = $product['price'] * ($product['sale_price'] / 100);
+            $displaySalePrice = $product['price'] - $discountAmount;
+        }
         
         if ($hasSale) {
+            // Add color_id to sale products
+            if (empty($product['color_id'])) {
+                $product['color_id'] = getDefaultColorId($product['id'], $conn);
+            }
+            // Store the calculated sale price for display
+            $product['calculated_sale_price'] = $displaySalePrice;
             $saleProducts[] = $product;
             $totalSaleCount++;
         }
@@ -60,11 +108,13 @@ $totalPages = max(1, ceil($totalSaleCount / $perPage));
     <?php if (!empty($paginatedSaleProducts)): ?>
       <?php foreach ($paginatedSaleProducts as $product): ?>
         <?php
-          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
-          $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
-
-          // Use actual_sale_price if available, otherwise use sale_price
-          $displaySalePrice = !empty($product['actual_sale_price']) ? $product['actual_sale_price'] : $product['sale_price'];
+          // ✅ FIXED: Use color_id for the product link instead of product id
+          $link_id = !empty($product['color_id']) ? $product['color_id'] : $product['id'];
+          $product_link = SITE_URL . "pages/product.php?id=" . $link_id;
+          
+          // ✅ FIXED: Use the pre-calculated sale price
+          $displaySalePrice = $product['calculated_sale_price'] ?? $product['price'];
+          $hasSale = true; // All products here are on sale
 
           // 🩵 Use product_image directly (already Base64 from get-products.php)
           $imageSrc = !empty($product['product_image']) 

@@ -2,6 +2,65 @@
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../backend/get-products.php';
 
+/* ------------------------------------------------------------
+   HELPER FUNCTION: Get default color ID for a product
+------------------------------------------------------------ */
+function getDefaultColorId($product_id, $conn) {
+    $sql = "SELECT id FROM product_colors WHERE product_id = ? AND is_default = 1 LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['id'];
+    }
+    
+    // If no default color, get the first available color
+    $sql = "SELECT id FROM product_colors WHERE product_id = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['id'];
+    }
+    
+    return null;
+}
+
+/* ------------------------------------------------------------
+   HELPER: Sale condition and price calculation - FIXED
+------------------------------------------------------------ */
+function isOnSale($product) {
+    // Check if we have an actual sale price that's different from regular price
+    if (!empty($product['actual_sale_price']) && $product['actual_sale_price'] > 0 && $product['actual_sale_price'] < $product['price']) {
+        return true;
+    }
+    // Fallback: if only sale_price (percentage) is available
+    else if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < 100) {
+        return true;
+    }
+    return false;
+}
+
+function getDisplayPrice($product) {
+    // Check if we have an actual sale price that's different from regular price
+    if (!empty($product['actual_sale_price']) && $product['actual_sale_price'] > 0 && $product['actual_sale_price'] < $product['price']) {
+        return $product['actual_sale_price'];
+    }
+    // Fallback: if only sale_price (percentage) is available, calculate it
+    else if (!empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < 100) {
+        $discountAmount = $product['price'] * ($product['sale_price'] / 100);
+        return $product['price'] - $discountAmount;
+    }
+    // No sale
+    return $product['price'];
+}
+
 // 🩷 Fixed filters for this page
 $categoryGroup = 'baby';
 $gender = 'girls';
@@ -31,6 +90,18 @@ $data = getProducts([
 $products = $data['products'];
 $count = $data['count'];
 $totalPages = max(1, ceil($count / $perPage));
+
+// Process products to ensure color_id is available
+$processed_products = [];
+if ($products && $products->num_rows > 0) {
+    while ($product = $products->fetch_assoc()) {
+        // If no color_id from the query, get it manually
+        if (empty($product['color_id'])) {
+            $product['color_id'] = getDefaultColorId($product['id'], $conn);
+        }
+        $processed_products[] = $product;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -44,15 +115,20 @@ $totalPages = max(1, ceil($count / $perPage));
 <body>
 
   <div class="new-header">
-    <h1 class="new-title">Baby Girls <?= ucfirst(str_replace('-', ' ', $subcategory)) ?></h1>
+    <h1 class="new-title">Baby Girls Set <?= ucfirst(str_replace('-', ' ', $subcategory)) ?></h1>
   </div>
 
   <div class="product-grid">
-    <?php if ($products->num_rows): ?>
-      <?php while ($product = $products->fetch_assoc()): ?>
+    <?php if (!empty($processed_products)): ?>
+      <?php foreach ($processed_products as $product): ?>
         <?php
-          $product_link = SITE_URL . "pages/product.php?id=" . (int)$product['id'];
-          $hasSale = !empty($product['sale_price']) && $product['sale_price'] > 0 && $product['sale_price'] < $product['price'];
+          // ✅ FIXED: Use color_id for the product link instead of product id
+          $link_id = !empty($product['color_id']) ? $product['color_id'] : $product['id'];
+          $product_link = SITE_URL . "pages/product.php?id=" . $link_id;
+          
+          // ✅ FIXED: Price calculation using helper functions
+          $hasSale = isOnSale($product);
+          $displayPrice = getDisplayPrice($product);
 
           // 🩵 Use product_image directly (already Base64 from get-products.php)
           $imageSrc = !empty($product['product_image']) 
@@ -75,15 +151,15 @@ $totalPages = max(1, ceil($count / $perPage));
             <h3 class="product-name"><?= htmlspecialchars($product['name']); ?></h3>
             <div class="product-price">
               <?php if ($hasSale): ?>
-                <span class="sale-price">₱<?= number_format($product['sale_price'], 2); ?></span>
+                <span class="sale-price">₱<?= number_format($displayPrice, 2); ?></span>
                 <span class="original-price">₱<?= number_format($product['price'], 2); ?></span>
               <?php else: ?>
-                <span class="current-price">₱<?= number_format($product['price'], 2); ?></span>
+                <span class="current-price">₱<?= number_format($displayPrice, 2); ?></span>
               <?php endif; ?>
             </div>
           </div>
         </a>
-      <?php endwhile; ?>
+      <?php endforeach; ?>
     <?php else: ?>
       <p style="grid-column:1/-1;opacity:.7;">No baby girls <?= htmlspecialchars($subcategory) ?> found.</p>
     <?php endif; ?>
