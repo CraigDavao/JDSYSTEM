@@ -4,6 +4,62 @@ ob_start();
 require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
+/* ------------------------------------------------------------
+   HELPER FUNCTION: Get product image by color_id - ULTRA SIMPLIFIED
+------------------------------------------------------------ */
+function getProductImageByColorId($color_id, $conn) {
+    if (!$color_id || $color_id <= 0) {
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    // ULTRA SIMPLIFIED: Just get ANY image for this product via color_id
+    $sql = "
+        SELECT pi.image, pi.image_format 
+        FROM product_images pi 
+        INNER JOIN product_colors pc ON pi.product_id = pc.product_id 
+        WHERE pc.id = ? 
+        AND pi.image IS NOT NULL 
+        LIMIT 1
+    ";
+    
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("❌ FAILED to prepare image query for color_id: $color_id");
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $stmt->bind_param("i", $color_id);
+    
+    if (!$stmt->execute()) {
+        error_log("❌ FAILED to execute image query for color_id: $color_id");
+        $stmt->close();
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $result = $stmt->get_result();
+    
+    if (!$result) {
+        error_log("❌ FAILED to get result for color_id: $color_id");
+        $stmt->close();
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $imageData = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!empty($imageData['image'])) {
+        $mimeType = !empty($imageData['image_format']) ? $imageData['image_format'] : 'image/jpeg';
+        $imageBase64 = base64_encode($imageData['image']);
+        $imageUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
+        
+        error_log("✅ SUCCESS: Found image for color_id: $color_id, Type: $mimeType, Size: " . strlen($imageBase64));
+        return $imageUrl;
+    }
+    
+    error_log("❌ NO IMAGE: No image found for color_id: $color_id, using fallback");
+    return SITE_URL . 'uploads/sample1.jpg';
+}
+
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     ob_end_clean();
@@ -37,14 +93,18 @@ try {
     // Silently continue with default values
 }
 
-// 🟣 CHECK FOR CHECKOUT ITEMS - IMPROVED COLOR HANDLING
+// 🟣 CHECK FOR CHECKOUT ITEMS - ULTRA RELIABLE VERSION
 $checkout_items = [];
 $totals = ['subtotal' => 0, 'shipping' => 0, 'total' => 0];
 $is_buy_now = false;
 
+error_log("=== CHECKOUT START == User: $user_id ===");
+
 // Check for buy now product FIRST (takes priority)
 if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product'])) {
     $buyNowProduct = $_SESSION['buy_now_product'];
+    
+    error_log("🛒 BUY NOW DETECTED: " . print_r($buyNowProduct, true));
     
     // 🟣 VALIDATE BUY NOW PRODUCT DATA
     if (isset($buyNowProduct['color_id']) && $buyNowProduct['color_id'] > 0) {
@@ -115,28 +175,10 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
             $nameStmt->close();
         }
         
-        // 🟣 ENSURE IMAGE IS SET - FETCH CORRECT IMAGE FOR THE SELECTED COLOR
-        if (!isset($buyNowProduct['image']) || empty($buyNowProduct['image'])) {
-            $imageStmt = $conn->prepare("
-                SELECT pi.image, pi.image_format, pc.color_name
-                FROM product_images pi 
-                INNER JOIN product_colors pc ON pi.product_id = pc.product_id 
-                WHERE pc.id = ? AND (pi.color_name = pc.color_name OR pi.color_name IS NULL)
-                ORDER BY pi.color_name = pc.color_name DESC
-                LIMIT 1
-            ");
-            $imageStmt->bind_param("i", $buyNowProduct['color_id']);
-            $imageStmt->execute();
-            $imageResult = $imageStmt->get_result()->fetch_assoc();
-            
-            if (!empty($imageResult['image'])) {
-                $mimeType = !empty($imageResult['image_format']) ? $imageResult['image_format'] : 'image/jpeg';
-                $buyNowProduct['image'] = 'data:' . $mimeType . ';base64,' . base64_encode($imageResult['image']);
-            } else {
-                $buyNowProduct['image'] = SITE_URL . 'uploads/sample1.jpg';
-            }
-            $imageStmt->close();
-        }
+        // 🟣 CRITICAL FIX: ALWAYS FETCH FRESH IMAGE FOR BUY NOW
+        $buyNowProduct['image'] = getProductImageByColorId($buyNowProduct['color_id'], $conn);
+        error_log("🖼️ BUY NOW IMAGE: Color ID {$buyNowProduct['color_id']} -> " . 
+                 (strpos($buyNowProduct['image'], 'data:') === 0 ? 'Base64 Image' : 'Fallback Image'));
         
         // 🟣 CALCULATE SUBTOTAL
         $buyNowProduct['subtotal'] = $buyNowProduct['price'] * $buyNowProduct['quantity'];
@@ -160,7 +202,9 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
 else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'])) {
     $placeholders = str_repeat('?,', count($_SESSION['checkout_items']) - 1) . '?';
     
-    // 🟣 UPDATED QUERY: Get cart items with complete color information
+    error_log("🛒 CART CHECKOUT DETECTED: " . count($_SESSION['checkout_items']) . " items");
+    
+    // 🟣 SIMPLIFIED QUERY: Only get basic cart data
     $sql = "
         SELECT 
             cart.id AS cart_id,
@@ -173,15 +217,10 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
             products.name,
             products.price as product_price,
             products.sale_price,
-            products.actual_sale_price,
-            product_images.image,
-            product_images.image_format
+            products.actual_sale_price
         FROM cart 
         INNER JOIN products ON cart.product_id = products.id 
-        LEFT JOIN product_images ON products.id = product_images.product_id 
-            AND (product_images.color_name = cart.color_name OR product_images.color_name IS NULL)
         WHERE cart.id IN ($placeholders) AND cart.user_id = ?
-        GROUP BY cart.id
         ORDER BY cart.id
     ";
     
@@ -195,19 +234,19 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
         $result = $stmt->get_result();
         
         $subtotal = 0;
+        $item_count = 0;
 
         while ($row = $result->fetch_assoc()) {
+            $item_count++;
             if (!isset($row['product_id']) || $row['product_id'] <= 0) {
+                error_log("❌ INVALID CART ITEM: No product_id");
                 continue;
             }
 
-            // Handle blob image
-            if (!empty($row['image'])) {
-                $mimeType = !empty($row['image_format']) ? $row['image_format'] : 'image/jpeg';
-                $image_data = 'data:' . $mimeType . ';base64,' . base64_encode($row['image']);
-            } else {
-                $image_data = SITE_URL . 'uploads/sample1.jpg';
-            }
+            // 🟣 CRITICAL FIX: ALWAYS FETCH FRESH IMAGE FOR EACH CART ITEM
+            $image_data = getProductImageByColorId($row['color_id'], $conn);
+            error_log("🖼️ CART ITEM #$item_count: Color ID {$row['color_id']} -> " . 
+                     (strpos($image_data, 'data:') === 0 ? 'Base64 Image' : 'Fallback Image'));
             
             // 🟣 Use the price from cart (already calculated during add to cart)
             $displayPrice = (float)$row['cart_price'];
@@ -249,7 +288,7 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
                 'is_buy_now' => false
             ];
             
-            error_log("🛒 Cart Checkout Item - ID: {$row['product_id']}, Color: {$row['color_name']}, Size: {$row['size']}, Price: $displayPrice, Qty: {$row['quantity']}");
+            error_log("🛒 Cart Checkout Item - ID: {$row['product_id']}, Color: {$row['color_name']}, Size: {$row['size']}, Price: $displayPrice, Qty: {$row['quantity']}, Image: " . (!empty($image_data) ? 'Found' : 'Not found'));
         }
         
         $shipping = $subtotal > 500 ? 0 : 50;
@@ -259,18 +298,24 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
         $totals['shipping'] = $shipping;
         $totals['total'] = $total;
         
+        error_log("📊 CART TOTALS: Subtotal: $subtotal, Shipping: $shipping, Total: $total");
+        
         $stmt->close();
     } else {
+        error_log("❌ DATABASE ERROR: " . $conn->error);
         die("Database error: " . $conn->error);
     }
 }
 
 // If no items, redirect to cart
 if (empty($checkout_items)) {
+    error_log("❌ NO CHECKOUT ITEMS: Redirecting to cart");
     $_SESSION['error'] = 'No items to checkout. Please add items to your cart first.';
     header("Location: " . SITE_URL . "pages/cart.php");
     exit;
 }
+
+error_log("✅ CHECKOUT READY: " . count($checkout_items) . " items, Total: ₱" . $totals['total']);
 ?>
 
 <!DOCTYPE html>
@@ -307,6 +352,21 @@ if (empty($checkout_items)) {
             border-radius: 4px;
             font-size: 12px;
             margin-right: 5px;
+        }
+        
+        /* Improved image styling */
+        .checkout-item img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background-color: #f8f8f8;
+        }
+        
+        /* Image error handling */
+        .checkout-item img[src*='sample1.jpg'] {
+            border: 2px dashed #ccc;
         }
     </style>
 </head>
@@ -412,10 +472,12 @@ if (empty($checkout_items)) {
             <h3>Order Summary</h3>
             <div id="checkout-items">
                 <?php if (!empty($checkout_items)): ?>
-                    <?php foreach ($checkout_items as $item): ?>
-                        <div class="checkout-item">
-                            <img src="<?= $item['image'] ?>" alt="<?= htmlspecialchars($item['name']) ?>" 
-                                 onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'">
+                    <?php foreach ($checkout_items as $index => $item): ?>
+                        <div class="checkout-item" data-item-index="<?= $index ?>">
+                            <img src="<?= $item['image'] ?>" 
+                                 alt="<?= htmlspecialchars($item['name']) ?>" 
+                                 data-color-id="<?= $item['color_id'] ?>"
+                                 onerror="this.src='<?= SITE_URL ?>uploads/sample1.jpg'; console.log('Image failed for color <?= $item['color_id'] ?>')">
                             <div class="item-info">
                                 <h4><?= htmlspecialchars($item['name']) ?></h4>
                                 <p>
@@ -462,6 +524,35 @@ const SITE_URL = "<?= SITE_URL ?>";
 </script>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Checkout page loaded successfully');
+  
+  // Enhanced image error handling
+  document.querySelectorAll('.checkout-item img').forEach(img => {
+    img.addEventListener('error', function() {
+      console.log('Image error detected for color ID:', this.dataset.colorId);
+      this.src = SITE_URL + 'uploads/sample1.jpg';
+    });
+    
+    img.addEventListener('load', function() {
+      console.log('Image loaded successfully for color ID:', this.dataset.colorId);
+    });
+  });
+
+  // Debug: Check all images
+  console.log('=== CHECKOUT IMAGES DEBUG ===');
+  document.querySelectorAll('.checkout-item img').forEach((img, index) => {
+    console.log(`Image ${index + 1}:`, {
+      src: img.src.substring(0, 100) + '...',
+      colorId: img.dataset.colorId,
+      alt: img.alt
+    });
+  });
+});
+</script>
+
+<script>
+// Keep your existing session storage code
 document.addEventListener('DOMContentLoaded', () => {
   const productId = <?= json_encode($product_id) ?>;
 
@@ -510,7 +601,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   sessionStorage.removeItem(`product_${productId}`);
-
 });
 </script>
 
