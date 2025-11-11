@@ -476,3 +476,175 @@
     color: #999;
     font-size: 0.95rem;
 }
+
+/* Wishlist Grid Styles */
+.wishlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.wishlist-item {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+}
+
+.wishlist-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.wishlist-item-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    cursor: pointer;
+}
+
+.wishlist-item .item-image {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+}
+
+.wishlist-item .item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.wishlist-item:hover .item-image img {
+    transform: scale(1.05);
+}
+
+.wishlist-item .remove-item {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0;
+}
+
+.wishlist-item:hover .remove-item {
+    opacity: 1;
+}
+
+.wishlist-item .remove-item:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.wishlist-item .item-details {
+    padding: 15px;
+}
+
+.wishlist-item .item-details h4 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    line-height: 1.4;
+}
+
+.wishlist-item .item-price {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wishlist-item .item-price .current {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e74c3c;
+}
+
+.wishlist-item .item-price .original {
+    font-size: 14px;
+    color: #95a5a6;
+    text-decoration: line-through;
+}
+
+/* Make entire wishlist item clickable */
+.wishlist-item {
+    cursor: pointer;
+}
+
+/* Animation for removal */
+@keyframes fadeOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.8); }
+}
+
+.wishlist-item.removing {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+/* Address Panel Clickable Styles */
+.address-panel {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.address-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-color: #3498db;
+}
+
+.address-panel::after {
+    content: 'Click to edit';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.address-panel:hover::after {
+    opacity: 1;
+}
+
+.address-actions {
+    z-index: 2;
+    position: relative;
+}
+
+/* Make sure buttons don't get the hover effect */
+.address-panel .action-icon,
+.address-panel .set-default-btn,
+.address-panel .default-indicator {
+    cursor: pointer;
+    position: relative;
+    z-index: 3;
+}
+
+/* Prevent text selection on click */
+.address-panel {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}

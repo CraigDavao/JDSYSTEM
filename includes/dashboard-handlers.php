@@ -62,54 +62,6 @@ if (isset($_POST['ajax_set_default_address'])) {
     }
 }
 
-// Handle address operations from modal
-if (isset($_POST['address_data'])) {
-    $address_data = json_decode($_POST['address_data'], true);
-    
-    $fullname = trim($address_data['fullname']);
-    $type = $address_data['type'];
-    $street = trim($address_data['street']);
-    $city = trim($address_data['city']);
-    $state = trim($address_data['state']);
-    $zip_code = trim($address_data['zip_code']);
-    $country = 'Philippines';
-    $is_default = $address_data['set_as_default'] ? 1 : 0;
-    $is_update = isset($_POST['update_address']);
-    $address_id = $is_update ? $address_data['address_id'] : null;
-    
-    if ($is_default) {
-        $stmt = $conn->prepare("UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ?");
-        $stmt->bind_param("is", $user_id, $type);
-        $stmt->execute();
-    }
-    
-    if ($is_update && $address_id) {
-        // Update existing address
-        $stmt = $conn->prepare("UPDATE addresses SET fullname = ?, type = ?, street = ?, city = ?, state = ?, zip_code = ?, country = ?, is_default = ? WHERE id = ? AND user_id = ?");
-        $stmt->bind_param("sssssssiii", $fullname, $type, $street, $city, $state, $zip_code, $country, $is_default, $address_id, $user_id);
-    } else {
-        // Insert new address
-        $stmt = $conn->prepare("INSERT INTO addresses (user_id, fullname, type, street, city, state, zip_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssssssi", $user_id, $fullname, $type, $street, $city, $state, $zip_code, $country, $is_default);
-    }
-    
-    if ($stmt->execute()) {
-        $_SESSION['success_message'] = $is_update ? "Address updated successfully!" : "Address added successfully!";
-        echo json_encode([
-            'success' => true,
-            'message' => $is_update ? "Address updated successfully!" : "Address added successfully!",
-            'address_id' => $is_update ? $address_id : $stmt->insert_id
-        ]);
-        exit();
-    } else {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Error saving address.'
-        ]);
-        exit();
-    }
-}
-
 // Handle address removal
 if (isset($_POST['remove_address'])) {
     $address_id = $_POST['address_id'];
@@ -130,6 +82,101 @@ if (isset($_POST['remove_address'])) {
         ]);
         exit();
     }
+}
+
+// For updating address - FIXED VERSION
+if (isset($_POST['update_address'])) {
+    $address_id = $_POST['address_id'];
+    $fullname = $_POST['fullname'];
+    $type = $_POST['type'];
+    $street = $_POST['street'];
+    $city = $_POST['city'];
+    $state = $_POST['state'];
+    $zip_code = $_POST['zip_code'];
+    $country = $_POST['country'];
+    $is_default = isset($_POST['is_default']) ? (int)$_POST['is_default'] : 0;
+    
+    // DEBUG: Check what values we're receiving
+    error_log("=== UPDATE ADDRESS DEBUG ===");
+    error_log("is_default: " . $is_default . ", type: " . $type);
+    
+    // ONLY set as default if checkbox is checked (is_default == 1)
+    if ($is_default == 1) {
+        // Remove default from all addresses of this type (except the one we're updating)
+        $reset_sql = "UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ? AND id != ?";
+        $reset_stmt = $conn->prepare($reset_sql);
+        $reset_stmt->bind_param("isi", $user_id, $type, $address_id);
+        $reset_stmt->execute();
+        $reset_stmt->close();
+        
+        // This address will be updated with is_default = 1
+        $final_is_default = 1;
+        error_log("Setting address as DEFAULT - removed defaults from others");
+    } else {
+        // Checkbox is NOT checked - this address should NOT be default
+        $final_is_default = 0;
+        error_log("Setting address as REGULAR - no changes to other addresses");
+    }
+    
+    // Update the address with the correct is_default value
+    $sql = "UPDATE addresses SET fullname = ?, type = ?, street = ?, city = ?, state = ?, zip_code = ?, country = ?, is_default = ? WHERE id = ? AND user_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sssssssiii", $fullname, $type, $street, $city, $state, $zip_code, $country, $final_is_default, $address_id, $user_id);
+    
+    if ($stmt->execute()) {
+        error_log("SUCCESS: Updated address with is_default = " . $final_is_default);
+        echo json_encode(['success' => true, 'message' => 'Address updated successfully!']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to update address']);
+    }
+    $stmt->close();
+    exit();
+}
+
+// For adding new address - FIXED VERSION
+if (isset($_POST['add_address'])) {
+    $fullname = $_POST['fullname'];
+    $type = $_POST['type'];
+    $street = $_POST['street'];
+    $city = $_POST['city'];
+    $state = $_POST['state'];
+    $zip_code = $_POST['zip_code'];
+    $country = $_POST['country'];
+    $is_default = isset($_POST['is_default']) ? (int)$_POST['is_default'] : 0;
+    
+    // DEBUG: Log what we received
+    error_log("=== ADD ADDRESS DEBUG ===");
+    error_log("Checkbox value received: " . $is_default);
+    error_log("Checkbox checked: " . ($is_default == 1 ? 'YES' : 'NO'));
+    error_log("Address Type: " . $type);
+    
+    // ONLY set as default if checkbox is explicitly checked
+    if ($is_default == 1) {
+        // Remove default from all addresses of this type
+        $reset_sql = "UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ?";
+        $reset_stmt = $conn->prepare($reset_sql);
+        $reset_stmt->bind_param("is", $user_id, $type);
+        $reset_stmt->execute();
+        $reset_stmt->close();
+        error_log("REMOVED defaults from other addresses because checkbox was checked");
+    } else {
+        error_log("Checkbox NOT checked - adding as REGULAR address");
+    }
+    
+    // Insert with the exact is_default value (0 if unchecked, 1 if checked)
+    $sql = "INSERT INTO addresses (user_id, fullname, type, street, city, state, zip_code, country, is_default) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("isssssssi", $user_id, $fullname, $type, $street, $city, $state, $zip_code, $country, $is_default);
+    
+    if ($stmt->execute()) {
+        error_log("SUCCESS: Added address with is_default = " . $is_default);
+        echo json_encode(['success' => true, 'message' => 'Address added successfully!']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to add address']);
+    }
+    $stmt->close();
+    exit();
 }
 
 // Addresses
@@ -271,82 +318,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['error_message'] = "Error updating profile.";
         }
     }
-    
-    // Handle address submission
-if (isset($_POST['add_address'])) {
-    error_log("=== ADDRESS SUBMISSION START ===");
-    
-    $fullname = trim($_POST['fullname'] ?? '');
-    $type = $_POST['type'] ?? 'shipping';
-    $street = trim($_POST['street'] ?? '');
-    $city = trim($_POST['city'] ?? '');
-    $state = trim($_POST['state'] ?? '');
-    $zip_code = trim($_POST['zip_code'] ?? '');
-    $country = 'Philippines';
-    $is_default = isset($_POST['is_default']) ? 1 : 0;
-    
-    error_log("Form Data:");
-    error_log("Fullname: " . $fullname);
-    error_log("Type: " . $type);
-    error_log("Street: " . $street);
-    error_log("City: " . $city);
-    error_log("State: " . $state);
-    error_log("ZIP: " . $zip_code);
-    error_log("Default: " . $is_default);
-    error_log("User ID: " . $user_id);
-    
-    // Validate required fields
-    if (empty($fullname) || empty($street) || empty($city) || empty($state) || empty($zip_code)) {
-        $_SESSION['error_message'] = "Please fill in all required fields.";
-        error_log("Validation failed: Empty fields");
-    } else {
-        try {
-            // Set other addresses as non-default if this is set as default
-            if ($is_default) {
-                $stmt = $conn->prepare("UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ?");
-                if ($stmt) {
-                    $stmt->bind_param("is", $user_id, $type);
-                    $stmt->execute();
-                    $stmt->close();
-                    error_log("Updated other addresses to non-default");
-                } else {
-                    error_log("Failed to prepare update statement: " . $conn->error);
-                }
-            }
-            
-            // Insert new address
-            $stmt = $conn->prepare("INSERT INTO addresses (user_id, fullname, type, street, city, state, zip_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            
-            if ($stmt) {
-                $stmt->bind_param("isssssssi", $user_id, $fullname, $type, $street, $city, $state, $zip_code, $country, $is_default);
-                
-                if ($stmt->execute()) {
-                    $_SESSION['success_message'] = "Address added successfully!";
-                    error_log("Address inserted successfully. ID: " . $stmt->insert_id);
-                    
-                    // Close the statement
-                    $stmt->close();
-                    
-                    // Redirect to avoid form resubmission
-                    header("Location: " . SITE_URL . "dashboard.php");
-                    exit();
-                } else {
-                    $_SESSION['error_message'] = "Error adding address: " . $stmt->error;
-                    error_log("Execute failed: " . $stmt->error);
-                }
-            } else {
-                $_SESSION['error_message'] = "Database error: " . $conn->error;
-                error_log("Prepare failed: " . $conn->error);
-            }
-            
-        } catch (Exception $e) {
-            $_SESSION['error_message'] = "System error: " . $e->getMessage();
-            error_log("Exception: " . $e->getMessage());
-        }
-    }
-    
-    error_log("=== ADDRESS SUBMISSION END ===");
-}
     
     if (isset($_POST['security_verify'])) {
         $password = $_POST['password'];

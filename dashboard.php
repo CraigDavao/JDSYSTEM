@@ -210,67 +210,68 @@ ob_end_flush();
           </div>
         </div>
 
-        <!-- Addresses Section -->
-        <div class="section" id="addresses">
-          <div class="section-title">
-            <h2>Address Book</h2>
-            <button class="primary-button" onclick="openAddressModal()">
-              <i class="fas fa-plus"></i> Add New Address
-            </button>
-          </div>
+       <!-- Addresses Section -->
+<div class="section" id="addresses">
+    <div class="section-title">
+        <h2>Address Book</h2>
+        <button class="primary-button" onclick="openAddressModal()">
+            <i class="fas fa-plus"></i> Add New Address
+        </button>
+    </div>
 
-          <div class="address-grid" id="addressesContainer">
-            <?php if (count($addresses) > 0): ?>
-              <?php foreach ($addresses as $address): ?>
+    <div class="address-grid" id="addressesContainer">
+        <?php if (count($addresses) > 0): ?>
+            <?php foreach ($addresses as $address): ?>
                 <div class="address-panel <?php echo $address['is_default'] ? 'default-address' : ''; ?>" 
                      data-address-id="<?php echo $address['id']; ?>"
-                     data-address-type="<?php echo $address['type']; ?>">
-                  <div class="address-header">
-                    <h4>
-                      <?php echo ucfirst($address['type']); ?> Address 
-                      <?php if ($address['is_default']): ?>
-                        <span class="default-tag"><i class="fas fa-star"></i> Default</span>
-                      <?php endif; ?>
-                    </h4>
-                    <div class="address-actions">
-                      <button class="action-icon" onclick="editAddress(<?php echo $address['id']; ?>)">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button class="action-icon delete-icon" onclick="removeAddress(<?php echo $address['id']; ?>)">
-                        <i class="fas fa-trash"></i>
-                      </button>
+                     data-address-type="<?php echo $address['type']; ?>"
+                     onclick="editAddress(<?php echo $address['id']; ?>)">
+                    <div class="address-header">
+                        <h4>
+                            <?php echo ucfirst($address['type']); ?> Address 
+                            <?php if ($address['is_default']): ?>
+                                <span class="default-tag"><i class="fas fa-star"></i> Default</span>
+                            <?php endif; ?>
+                        </h4>
+                        <div class="address-actions">
+                            <button class="action-icon" onclick="event.stopPropagation(); editAddress(<?php echo $address['id']; ?>)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-icon delete-icon" onclick="event.stopPropagation(); removeAddress(<?php echo $address['id']; ?>)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                  </div>
-                  <div class="address-info">
-                    <p><strong><?php echo htmlspecialchars($address['fullname'] ?? $_SESSION['user_name']); ?></strong></p>
-                    <p><?php echo htmlspecialchars($address['street']); ?></p>
-                    <p><?php echo htmlspecialchars($address['city'] . ', ' . $address['state'] . ' ' . $address['zip_code']); ?></p>
-                    <p>Philippines</p>
-                  </div>
-                  <?php if (!$address['is_default']): ?>
-                    <button class="secondary-button set-default-btn" 
-                            onclick="setDefaultAddress(<?php echo $address['id']; ?>, '<?php echo $address['type']; ?>')">
-                      <i class="fas fa-star"></i> Set as Default
-                    </button>
-                  <?php else: ?>
-                    <div class="default-indicator">
-                      <i class="fas fa-check-circle"></i> Default Address
+                    <div class="address-info">
+                        <p><strong><?php echo htmlspecialchars($address['fullname'] ?? $_SESSION['user_name']); ?></strong></p>
+                        <p><?php echo htmlspecialchars($address['street']); ?></p>
+                        <p><?php echo htmlspecialchars($address['city'] . ', ' . $address['state'] . ' ' . $address['zip_code']); ?></p>
+                        <p>Philippines</p>
                     </div>
-                  <?php endif; ?>
+                    <?php if (!$address['is_default']): ?>
+                        <button class="secondary-button set-default-btn" 
+                                onclick="event.stopPropagation(); setDefaultAddress(<?php echo $address['id']; ?>, '<?php echo $address['type']; ?>')">
+                            <i class="fas fa-star"></i> Set as Default
+                        </button>
+                    <?php else: ?>
+                        <div class="default-indicator">
+                            <i class="fas fa-check-circle"></i> Default Address
+                        </div>
+                    <?php endif; ?>
                 </div>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <div class="empty-state">
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="empty-state">
                 <i class="fas fa-map-marker-alt"></i>
                 <h3>No addresses saved</h3>
                 <p>Add your first address to make checkout easier.</p>
                 <button class="primary-button" onclick="openAddressModal()">
-                  <i class="fas fa-plus"></i> Add Address
+                    <i class="fas fa-plus"></i> Add Address
                 </button>
-              </div>
-            <?php endif; ?>
-          </div>
-        </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
 
       <!-- Wishlist Section -->
 <div class="section" id="wishlist">
@@ -450,7 +451,7 @@ ob_end_flush();
     </div>
   </div>
 
-  <!-- Add Address Modal -->
+ <!-- Add/Edit Address Modal -->
 <div id="addressModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
@@ -459,22 +460,19 @@ ob_end_flush();
         </div>
         
         <div class="modal-body">
-            <!-- Simple form that will submit traditionally -->
-            <form method="POST" id="addressForm">
-                <input type="hidden" name="add_address" value="1">
-                
+            <div id="addAddressForm">
                 <h4 style="margin-bottom: 25px; color: #2c3e50; font-size: 1.3em; font-weight: 600;">Add New Shipping Address</h4>
                 
                 <!-- Person's Name -->
                 <div class="form-group">
-                    <label for="fullname">Recipient's Full Name *</label>
-                    <input type="text" id="fullname" name="fullname" placeholder="Enter recipient's full name" required>
+                    <label for="newFullname">Recipient's Full Name *</label>
+                    <input type="text" id="newFullname" placeholder="Enter recipient's full name" required>
                 </div>
 
                 <!-- Address Type -->
                 <div class="form-group">
-                    <label for="type">Address Type *</label>
-                    <select id="type" name="type" required>
+                    <label for="newType">Address Type *</label>
+                    <select id="newType" required>
                         <option value="shipping">Shipping Address</option>
                         <option value="billing">Billing Address</option>
                     </select>
@@ -482,38 +480,43 @@ ob_end_flush();
 
                 <!-- Address Information -->
                 <div class="form-group">
-                    <label for="street">Street Address *</label>
-                    <input type="text" id="street" name="street" placeholder="House number, street, barangay" required>
+                    <label for="newStreet">Street Address *</label>
+                    <input type="text" id="newStreet" placeholder="House number, street, barangay" required>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="city">City/Municipality *</label>
-                        <input type="text" id="city" name="city" placeholder="Enter your city or municipality" required>
+                        <label for="newCity">City/Municipality *</label>
+                        <input type="text" id="newCity" placeholder="Enter your city or municipality" required>
                     </div>
                     <div class="form-group">
-                        <label for="state">Province *</label>
-                        <input type="text" id="state" name="state" placeholder="Enter your province" required>
+                        <label for="newState">Province *</label>
+                        <input type="text" id="newState" placeholder="Enter your province" required>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="zip_code">ZIP Code *</label>
-                    <input type="text" id="zip_code" name="zip_code" placeholder="Enter ZIP code" required>
+                    <label for="newZip">ZIP Code *</label>
+                    <input type="text" id="newZip" placeholder="Enter ZIP code" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newCountry">Country *</label>
+                    <input type="text" id="newCountry" value="Philippines" readonly>
                 </div>
 
                 <!-- Default Address Option -->
                 <label class="form-check">
-                    <input type="checkbox" id="is_default" name="is_default" value="1">
+                    <input type="checkbox" id="setAsDefault">
                     Set as default address
                 </label>
                 
                 <!-- Form Buttons -->
                 <div class="form-buttons">
-                    <button type="submit" class="primary-button">Save Address</button>
+                    <button id="saveAddressBtn" class="primary-button" onclick="saveOrUpdateAddress()">Save Address</button>
                     <button type="button" class="secondary-button" onclick="closeAddressModal()">Cancel</button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>

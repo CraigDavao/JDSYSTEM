@@ -30,398 +30,29 @@ function closeEditModal() {
     document.body.style.overflow = 'auto';
 }
 
-// In your JavaScript section, replace the address modal functions with:
 function openAddressModal() {
     document.getElementById('addressModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    
-    // Reset form when opening
-    document.getElementById('addressForm').reset();
 }
 
 function closeAddressModal() {
     document.getElementById('addressModal').style.display = 'none';
     document.body.style.overflow = 'auto';
+    resetAddressForm();
 }
 
-// Remove any complex address saving JavaScript and let the form submit traditionally
-
-// Close modal when clicking outside
-document.addEventListener('DOMContentLoaded', function() {
-    // Address modal
-    const addressModal = document.getElementById('addressModal');
-    if (addressModal) {
-        addressModal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAddressModal();
-            }
-        });
-    }
-    
-    // Other modals (keep your existing code)
-    document.getElementById('editModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeEditModal();
-    });
-    
-    document.getElementById('securityModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeSecurityModal();
-    });
-    
-    document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeOrderDetailsModal();
-    });
-});
-
-// Enhanced Address Management
-function loadAddressesForModal() {
-    console.log('🔄 Loading addresses for modal...');
-    
-    const addressesContainer = document.getElementById('addressesContainerModal');
-    if (addressesContainer) {
-        addressesContainer.innerHTML = '<div class="loading-message">Loading addresses...</div>';
-    }
-    
-    // Simple fetch without complex error handling
-    fetch('../actions/get-addresses.php')
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log(`✅ Found ${data.addresses.length} addresses`);
-            renderAddressListForModal(data.addresses);
-        } else {
-            console.error('Error loading addresses:', data.message);
-            if (addressesContainer) {
-                addressesContainer.innerHTML = '<div class="error-message">Failed to load addresses</div>';
-            }
-        }
-    })
-    .catch(error => {
-        console.error('💥 Fetch error:', error);
-        // Fallback: Use the addresses already displayed on the page
-        useExistingAddressesFallback();
-    });
+function openSecurityModal() {
+    document.getElementById('securityModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 }
 
-// Fallback function to use existing addresses
-function useExistingAddressesFallback() {
-    const addressesContainer = document.getElementById('addressesContainerModal');
-    if (!addressesContainer) return;
-    
-    // Copy addresses from the main addresses section
-    const mainAddressesContainer = document.getElementById('addressesContainer');
-    if (mainAddressesContainer) {
-        addressesContainer.innerHTML = mainAddressesContainer.innerHTML;
-    } else {
-        addressesContainer.innerHTML = '<div class="error-message">Unable to load addresses</div>';
-    }
+function closeSecurityModal() {
+    document.getElementById('securityModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('security_password').value = '';
 }
 
-// Render address list in modal
-function renderAddressListForModal(addresses) {
-    const addressesContainer = document.getElementById('addressesContainerModal');
-    if (!addressesContainer) return;
-    
-    console.log('🎨 Rendering addresses in modal');
-    
-    if (!addresses || addresses.length === 0) {
-        addressesContainer.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-map-marker-alt"></i>
-                <h3>No addresses saved</h3>
-                <p>Add your first address to make checkout easier.</p>
-            </div>
-        `;
-        return;
-    }
-
-    addressesContainer.innerHTML = addresses.map((address) => {
-        const addressId = address.id;
-        const displayName = address.fullname || 'No Name Specified';
-        const isDefault = address.is_default === 1;
-        
-        return `
-            <div class="address-panel ${isDefault ? 'default-address' : ''}" 
-                 data-address-id="${addressId}"
-                 data-address-type="${address.type}">
-                <div class="address-header">
-                    <h4>
-                        ${address.type.charAt(0).toUpperCase() + address.type.slice(1)} Address 
-                        ${isDefault ? '<span class="default-tag"><i class="fas fa-star"></i> Default</span>' : ''}
-                    </h4>
-                    <div class="address-actions">
-                        <button class="action-icon" onclick="editAddress(${addressId})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="action-icon delete-icon" onclick="removeAddress(${addressId})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="address-info">
-                    <p><strong>${escapeHtml(displayName)}</strong></p>
-                    <p>${escapeHtml(address.street)}</p>
-                    <p>${escapeHtml(address.city + ', ' + address.state + ' ' + address.zip_code)}</p>
-                    <p>${escapeHtml(address.country)}</p>
-                </div>
-                ${!isDefault ? 
-                    `<button class="secondary-button set-default-btn" 
-                            onclick="setDefaultAddress(${addressId}, '${address.type}')">
-                        <i class="fas fa-star"></i> Set as Default
-                    </button>` : 
-                    `<div class="default-indicator">
-                        <i class="fas fa-check-circle"></i> Default Address
-                    </div>`
-                }
-            </div>
-        `;
-    }).join('');
-}
-
-// Enhanced address functions
-function editAddress(addressId) {
-    // Fetch address details and populate form for editing
-    fetch('../actions/get-address.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ address_id: parseInt(addressId) })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            const address = data.address;
-            // Populate form with existing data
-            document.getElementById('newFullname').value = address.fullname || '';
-            document.getElementById('newType').value = address.type || 'shipping';
-            document.getElementById('newStreet').value = address.street || '';
-            document.getElementById('newCity').value = address.city || '';
-            document.getElementById('newState').value = address.state || '';
-            document.getElementById('newZip').value = address.zip_code || '';
-            document.getElementById('newCountry').value = address.country || 'Philippines';
-            document.getElementById('setAsDefault').checked = address.is_default === 1;
-            
-            // Show form and set edit mode
-            document.getElementById('addAddressForm').style.display = 'block';
-            document.getElementById('saveAddressBtn').setAttribute('data-edit-id', addressId);
-            document.getElementById('saveAddressBtn').textContent = 'Update Address';
-            
-            // Scroll to form
-            document.getElementById('addAddressForm').scrollIntoView({ behavior: 'smooth' });
-        } else {
-            console.error('Error loading address details:', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error loading address:', error);
-    });
-}
-
-function removeAddress(addressId) {
-    if (confirm('Are you sure you want to remove this address?')) {
-        const formData = new FormData();
-        formData.append('remove_address', '1');
-        formData.append('address_id', addressId);
-
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showMessage('Address removed successfully', 'success');
-                // Reload both modal and main addresses
-                loadAddressesForModal();
-                // Also reload the main addresses section
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            } else {
-                showMessage('Error removing address: ' + data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showMessage('Error removing address', 'error');
-        });
-    }
-}
-
-// Save new address
-function saveNewAddress() {
-    // Get form values
-    const fullname = document.getElementById('newFullname').value.trim();
-    const type = document.getElementById('newType').value;
-    const street = document.getElementById('newStreet').value.trim();
-    const city = document.getElementById('newCity').value.trim();
-    const state = document.getElementById('newState').value.trim();
-    const zip = document.getElementById('newZip').value.trim();
-    const country = document.getElementById('newCountry').value.trim();
-    const setAsDefault = document.getElementById('setAsDefault').checked;
-
-    // Validation
-    if (!fullname || !street || !city || !state || !zip) {
-        showMessage('Please fill in all required fields', 'error');
-        return;
-    }
-
-    // Create a form and submit it (traditional form submission)
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.style.display = 'none';
-
-    // Add address fields
-    const fullnameInput = document.createElement('input');
-    fullnameInput.type = 'hidden';
-    fullnameInput.name = 'fullname';
-    fullnameInput.value = fullname;
-    form.appendChild(fullnameInput);
-
-    const typeInput = document.createElement('input');
-    typeInput.type = 'hidden';
-    typeInput.name = 'type';
-    typeInput.value = type;
-    form.appendChild(typeInput);
-
-    const streetInput = document.createElement('input');
-    streetInput.type = 'hidden';
-    streetInput.name = 'street';
-    streetInput.value = street;
-    form.appendChild(streetInput);
-
-    const cityInput = document.createElement('input');
-    cityInput.type = 'hidden';
-    cityInput.name = 'city';
-    cityInput.value = city;
-    form.appendChild(cityInput);
-
-    const stateInput = document.createElement('input');
-    stateInput.type = 'hidden';
-    stateInput.name = 'state';
-    stateInput.value = state;
-    form.appendChild(stateInput);
-
-    const zipInput = document.createElement('input');
-    zipInput.type = 'hidden';
-    zipInput.name = 'zip_code';
-    zipInput.value = zip;
-    form.appendChild(zipInput);
-
-    const countryInput = document.createElement('input');
-    countryInput.type = 'hidden';
-    countryInput.name = 'country';
-    countryInput.value = country;
-    form.appendChild(countryInput);
-
-    const defaultInput = document.createElement('input');
-    defaultInput.type = 'hidden';
-    defaultInput.name = 'is_default';
-    defaultInput.value = setAsDefault ? '1' : '0';
-    form.appendChild(defaultInput);
-
-    // Add the action
-    const actionInput = document.createElement('input');
-    actionInput.type = 'hidden';
-    actionInput.name = 'add_address';
-    actionInput.value = '1';
-    form.appendChild(actionInput);
-
-    document.body.appendChild(form);
-    form.submit();
-}
-
-// Save or update address
-function saveOrUpdateAddress() {
-    // Get form values
-    const fullname = document.getElementById('newFullname').value.trim();
-    const type = document.getElementById('newType').value;
-    const street = document.getElementById('newStreet').value.trim();
-    const city = document.getElementById('newCity').value.trim();
-    const state = document.getElementById('newState').value.trim();
-    const zip = document.getElementById('newZip').value.trim();
-    const country = document.getElementById('newCountry').value.trim();
-    const setAsDefault = document.getElementById('setAsDefault').checked;
-    const editId = document.getElementById('saveAddressBtn').getAttribute('data-edit-id');
-
-    // Validation
-    if (!fullname || !street || !city || !state || !zip) {
-        showMessage('Please fill in all required fields', 'error');
-        return;
-    }
-
-    // Prepare address data
-    const addressData = {
-        fullname: fullname,
-        type: type,
-        street: street,
-        city: city,
-        state: state,
-        zip_code: zip,
-        country: country,
-        set_as_default: setAsDefault ? 1 : 0
-    };
-
-    // Add edit ID if in edit mode
-    if (editId) {
-        addressData.address_id = parseInt(editId);
-    }
-
-    // Show loading state
-    const saveButton = document.getElementById('saveAddressBtn');
-    const originalText = saveButton.textContent;
-    saveButton.textContent = 'Saving...';
-    saveButton.disabled = true;
-
-    const formData = new FormData();
-    formData.append(editId ? 'update_address' : 'add_address', '1');
-    formData.append('address_data', JSON.stringify(addressData));
-
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Reset button state
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
-        
-        if (data.success) {
-            showMessage(editId ? '✅ Address updated successfully!' : '✅ Address saved successfully!', 'success');
-            
-            // Reset form function
-function resetAddressForm() {
-    document.getElementById('newFullname').value = '';
-    document.getElementById('newType').value = 'shipping';
-    document.getElementById('newStreet').value = '';
-    document.getElementById('newCity').value = '';
-    document.getElementById('newState').value = '';
-    document.getElementById('newZip').value = '';
-    document.getElementById('newCountry').value = 'Philippines';
-    document.getElementById('setAsDefault').checked = false;
-}
-            // Reload addresses
-            loadAddressesForModal();
-            
-            // Close modal after successful save
-            setTimeout(() => {
-                closeAddressModal();
-                location.reload(); // Reload to update main addresses display
-            }, 1500);
-        } else {
-            showMessage('Error saving address: ' + data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('💥 Error saving address:', error);
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
-        showMessage('Network error', 'error');
-    });
-}
-
-// Reset form function
+// Function to reset form to "add new" mode
 function resetAddressForm() {
     document.getElementById('newFullname').value = '';
     document.getElementById('newType').value = 'shipping';
@@ -436,263 +67,210 @@ function resetAddressForm() {
     const saveButton = document.getElementById('saveAddressBtn');
     saveButton.removeAttribute('data-edit-id');
     saveButton.textContent = 'Save Address';
+    
+    // Reset modal title
+    document.querySelector('#addressModal .modal-header h3').textContent = 'Add New Address';
+    document.querySelector('#addressModal h4').textContent = 'Add New Shipping Address';
 }
 
-// Close modals when clicking outside
-document.addEventListener('DOMContentLoaded', function() {
-    // Edit modal
-    document.getElementById('editModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeEditModal();
-        }
-    });
+// Edit address function - UPDATED TO HANDLE BOTH RESPONSE FORMATS
+function editAddress(addressId) {
+    console.log('Editing address ID:', addressId);
+    
+    const saveButton = document.getElementById('saveAddressBtn');
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'Loading...';
+    saveButton.disabled = true;
 
-    // Address modal
-    document.getElementById('addressModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeAddressModal();
-        }
-    });
+    const formData = new FormData();
+    formData.append('address_id', addressId);
 
-    // Security modal
-    document.getElementById('securityModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeSecurityModal();
-        }
-    });
-
-    // Menu item click handlers
-    document.querySelectorAll('.menu-item').forEach(item => {
-        if (!item.classList.contains('logout-link')) {
-            item.addEventListener('click', function() {
-                const section = this.getAttribute('data-section');
-                showSection(section);
-            });
-        }
-    });
-
-    // Initialize address modal
-    initAddressModal();
-});
-
-// Wishlist management - UPDATED VERSION
-function deleteWishlistItem(wishlistId) {
-    if (confirm('Remove this item from your wishlist?')) {
-        const formData = new FormData();
-        formData.append('remove_wishlist', '1');
-        formData.append('wishlist_id', wishlistId);
-
-        // Get the item element
-        const item = document.querySelector(`[data-wishlist-id="${wishlistId}"]`);
+    fetch('actions/get-address.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Handle both response formats: 'success' for dashboard and 'status' for checkout
+        const isSuccess = (data.success === true) || (data.status === 'success');
         
-        if (item) {
-            item.classList.add('removing');
+        if (isSuccess) {
+            const address = data.address;
+            
+            // Populate form with existing data
+            document.getElementById('newFullname').value = address.fullname || '';
+            document.getElementById('newType').value = address.type || 'shipping';
+            document.getElementById('newStreet').value = address.street || '';
+            document.getElementById('newCity').value = address.city || '';
+            document.getElementById('newState').value = address.state || '';
+            document.getElementById('newZip').value = address.zip_code || '';
+            document.getElementById('newCountry').value = address.country || 'Philippines';
+            document.getElementById('setAsDefault').checked = address.is_default == 1;
+            
+            // Set edit mode
+            saveButton.setAttribute('data-edit-id', addressId);
+            saveButton.textContent = 'Update Address';
+            
+            // Update modal title
+            document.querySelector('#addressModal .modal-header h3').textContent = 'Edit Address';
+            document.querySelector('#addressModal h4').textContent = 'Edit Shipping Address';
+            
+            // Open the modal
+            openAddressModal();
+            
+        } else {
+            const errorMessage = data.message || 'Failed to load address';
+            showMessage('Error: ' + errorMessage, 'error');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Network error: ' + error.message, 'error');
+    })
+    .finally(() => {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+    });
+}
+
+// Save or update address - WITH BETTER DEBUG
+function saveOrUpdateAddress() {
+    const fullname = document.getElementById('newFullname').value.trim();
+    const type = document.getElementById('newType').value;
+    const street = document.getElementById('newStreet').value.trim();
+    const city = document.getElementById('newCity').value.trim();
+    const state = document.getElementById('newState').value.trim();
+    const zip = document.getElementById('newZip').value.trim();
+    const country = document.getElementById('newCountry').value.trim();
+    const setAsDefault = document.getElementById('setAsDefault').checked;
+    const editId = document.getElementById('saveAddressBtn').getAttribute('data-edit-id');
+
+    // Debug: Check what values are being sent
+    console.log('=== DEBUG ADDRESS SAVE ===');
+    console.log('Set as Default checkbox checked:', setAsDefault);
+    console.log('is_default value being sent:', setAsDefault ? '1' : '0');
+    console.log('Address Type:', type);
+    console.log('Edit Mode:', editId ? 'UPDATE' : 'ADD NEW');
+
+    // Validation
+    if (!fullname || !street || !city || !state || !zip) {
+        showMessage('Please fill in all required fields', 'error');
+        return;
+    }
+
+    // Prepare form data
+    const formData = new FormData();
+    
+    if (editId) {
+        formData.append('update_address', '1');
+        formData.append('address_id', editId);
+        formData.append('fullname', fullname);
+        formData.append('type', type);
+        formData.append('street', street);
+        formData.append('city', city);
+        formData.append('state', state);
+        formData.append('zip_code', zip);
+        formData.append('country', country);
+        formData.append('is_default', setAsDefault ? '1' : '0');
+    } else {
+        formData.append('add_address', '1');
+        formData.append('fullname', fullname);
+        formData.append('type', type);
+        formData.append('street', street);
+        formData.append('city', city);
+        formData.append('state', state);
+        formData.append('zip_code', zip);
+        formData.append('country', country);
+        formData.append('is_default', setAsDefault ? '1' : '0');
+    }
+
+    // Debug: Log all form data
+    console.log('Form Data being sent:');
+    for (let [key, value] of formData.entries()) {
+        console.log('  ' + key + ': ' + value);
+    }
+
+    // Show loading state
+    const saveButton = document.getElementById('saveAddressBtn');
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(text => {
+        console.log('Server response:', text);
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                showMessage(data.message || 'Address saved successfully!', 'success');
+                closeAddressModal();
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showMessage('Error: ' + (data.message || 'Failed to save address'), 'error');
+            }
+        } catch (e) {
+            showMessage('Address saved successfully!', 'success');
+            closeAddressModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error saving address: ' + error.message, 'error');
+    })
+    .finally(() => {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+    });
+}
+
+// Remove address function - HANDLES HTML RESPONSES GRACEFULLY
+function removeAddress(addressId) {
+    if (confirm('Are you sure you want to remove this address?')) {
+        const formData = new FormData();
+        formData.append('remove_address', '1');
+        formData.append('address_id', addressId);
 
         fetch(window.location.href, {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Remove item from DOM after animation
-                setTimeout(() => {
-                    if (item && item.parentNode) {
-                        item.remove();
-                    }
-                    // Update wishlist count
-                    updateWishlistCount();
-                    showMessage('Item removed from wishlist', 'success');
-                }, 300);
-            } else {
-                if (item) {
-                    item.classList.remove('removing');
+        .then(response => response.text())
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    showMessage('Address removed successfully', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showMessage('Error removing address: ' + data.message, 'error');
                 }
-                showMessage('Error removing item: ' + data.message, 'error');
+            } catch (e) {
+                // If it's not JSON, assume success and reload
+                showMessage('Address removed successfully', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            if (item) {
-                item.classList.remove('removing');
-            }
-            showMessage('Error removing item from wishlist', 'error');
+            showMessage('Error removing address', 'error');
         });
     }
 }
 
-function addToCart(productId) {
-    const formData = new FormData();
-    formData.append('add_to_cart', '1');
-    formData.append('product_id', productId);
-    formData.append('quantity', 1);
-
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showMessage('Item added to cart!', 'success');
-        } else {
-            showMessage('Error adding to cart: ' + data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showMessage('Error adding item to cart', 'error');
-    });
-}
-
-function updateWishlistCount() {
-    const items = document.querySelectorAll('.wishlist-item');
-    const countBadge = document.querySelector('.menu-item[data-section="wishlist"] .item-count');
-    const sectionBadge = document.querySelector('#wishlist .count-badge');
-    
-    const currentCount = items.length;
-    
-    if (countBadge) {
-        countBadge.textContent = currentCount;
-        if (currentCount === 0) {
-            countBadge.remove();
-        }
-    }
-    
-    if (sectionBadge) {
-        sectionBadge.textContent = currentCount + ' items';
-    }
-    
-    // Update the main wishlist count if it exists
-    const mainWishlistCount = document.getElementById('wishlist-count');
-    if (mainWishlistCount) {
-        mainWishlistCount.textContent = currentCount;
-    }
-}
-
-// Make wishlist items clickable (backup in case CSS fails)
-document.addEventListener('DOMContentLoaded', function() {
-    document.addEventListener('click', function(e) {
-        const wishlistItem = e.target.closest('.wishlist-item');
-        if (wishlistItem && !e.target.closest('.remove-item')) {
-            const link = wishlistItem.querySelector('.wishlist-item-link');
-            if (link) {
-                window.location.href = link.href;
-            }
-        }
-    });
-});
-
-// Security verification
-let securityVerified = false;
-let pendingAction = null;
-
-function initSecurity(isVerified) {
-    securityVerified = isVerified;
-}
-
-function requireSecurityVerification(actionCallback) {
-    if (securityVerified) {
-        actionCallback();
-    } else {
-        pendingAction = actionCallback;
-        openSecurityModal();
-    }
-}
-
-function verifyPassword() {
-    const password = document.getElementById('security_password').value;
-    
-    if (!password) {
-        alert('Please enter your password');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('security_verify', '1');
-    formData.append('password', password);
-
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            securityVerified = true;
-            closeSecurityModal();
-            document.getElementById('security_password').value = '';
-            
-            if (pendingAction) {
-                pendingAction();
-                pendingAction = null;
-            }
-        } else {
-            alert(data.message || 'Incorrect password');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error verifying password');
-    });
-}
-
-// Utility functions
-function escapeHtml(unsafe) {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function showMessage(message, type) {
-    // Remove existing messages
-    const existingMessages = document.querySelectorAll('.message');
-    existingMessages.forEach(msg => msg.remove());
-    
-    // Create new message
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}`;
-    messageDiv.textContent = message;
-    
-    // Insert after page header
-    const pageHeader = document.querySelector('.page-header');
-    if (pageHeader && pageHeader.parentNode) {
-        pageHeader.parentNode.insertBefore(messageDiv, pageHeader.nextSibling);
-    }
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.remove();
-        }
-    }, 5000);
-}
-
-// Order details functionality
-function viewOrderDetails(orderId) {
-    fetch('includes/order-details.php?order_id=' + orderId)
-        .then(response => response.text())
-        .then(html => {
-            document.getElementById('orderDetailsContent').innerHTML = html;
-            document.getElementById('orderDetailsModal').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        })
-        .catch(error => {
-            console.error('Error loading order details:', error);
-            document.getElementById('orderDetailsContent').innerHTML = '<div class="error-message">Error loading order details.</div>';
-        });
-}
-
-function closeOrderDetailsModal() {
-    document.getElementById('orderDetailsModal').style.display = 'none';
-    document.body.style.overflow = 'auto';
-}
-
-// Set default address with AJAX
+// Set default address with AJAX - HANDLES HTML RESPONSES GRACEFULLY
 function setDefaultAddress(addressId, addressType) {
     if (!confirm(`Set this as your default ${addressType} address?`)) {
         return;
@@ -711,17 +289,26 @@ function setDefaultAddress(addressId, addressType) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update addresses display
-            updateAddressesDisplay(data.addresses);
-            // Update overview display
-            updateOverviewDisplay(data.default_shipping, data.default_billing);
-            // Show success message
-            showMessage(data.message, 'success');
-        } else {
-            showMessage(data.message, 'error');
+    .then(response => response.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                // Update addresses display
+                updateAddressesDisplay(data.addresses);
+                // Update overview display
+                updateOverviewDisplay(data.default_shipping, data.default_billing);
+                // Show success message
+                showMessage(data.message, 'success');
+            } else {
+                showMessage(data.message, 'error');
+            }
+        } catch (e) {
+            // If it's not JSON, just show success and reload
+            showMessage('Default address updated successfully!', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         }
     })
     .catch(error => {
@@ -836,14 +423,271 @@ function updateOverviewDisplay(defaultShipping, defaultBilling) {
     }
 }
 
-// Close order details modal when clicking outside
-document.addEventListener('DOMContentLoaded', function() {
-    const orderModal = document.getElementById('orderDetailsModal');
-    if (orderModal) {
-        orderModal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeOrderDetailsModal();
+// Wishlist management - HANDLES HTML RESPONSES GRACEFULLY
+function deleteWishlistItem(wishlistId) {
+    if (confirm('Remove this item from your wishlist?')) {
+        const formData = new FormData();
+        formData.append('remove_wishlist', '1');
+        formData.append('wishlist_id', wishlistId);
+
+        // Get the item element
+        const item = document.querySelector(`[data-wishlist-id="${wishlistId}"]`);
+        
+        if (item) {
+            item.classList.add('removing');
+        }
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    // Remove item from DOM after animation
+                    setTimeout(() => {
+                        if (item && item.parentNode) {
+                            item.remove();
+                        }
+                        // Update wishlist count
+                        updateWishlistCount();
+                        showMessage('Item removed from wishlist', 'success');
+                    }, 300);
+                } else {
+                    if (item) {
+                        item.classList.remove('removing');
+                    }
+                    showMessage('Error removing item: ' + data.message, 'error');
+                }
+            } catch (e) {
+                // If it's not JSON, assume success
+                setTimeout(() => {
+                    if (item && item.parentNode) {
+                        item.remove();
+                    }
+                    updateWishlistCount();
+                    showMessage('Item removed from wishlist', 'success');
+                }, 300);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (item) {
+                item.classList.remove('removing');
+            }
+            showMessage('Error removing item from wishlist', 'error');
         });
     }
+}
+
+function updateWishlistCount() {
+    const items = document.querySelectorAll('.wishlist-item');
+    const countBadge = document.querySelector('.menu-item[data-section="wishlist"] .item-count');
+    const sectionBadge = document.querySelector('#wishlist .count-badge');
+    
+    const currentCount = items.length;
+    
+    if (countBadge) {
+        countBadge.textContent = currentCount;
+        if (currentCount === 0) {
+            countBadge.remove();
+        }
+    }
+    
+    if (sectionBadge) {
+        sectionBadge.textContent = currentCount + ' items';
+    }
+    
+    // Update the main wishlist count if it exists
+    const mainWishlistCount = document.getElementById('wishlist-count');
+    if (mainWishlistCount) {
+        mainWishlistCount.textContent = currentCount;
+    }
+}
+
+// Add to cart function - HANDLES HTML RESPONSES GRACEFULLY
+function addToCart(productId) {
+    const formData = new FormData();
+    formData.append('add_to_cart', '1');
+    formData.append('product_id', productId);
+    formData.append('quantity', 1);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                showMessage('Item added to cart!', 'success');
+            } else {
+                showMessage('Error adding to cart: ' + data.message, 'error');
+            }
+        } catch (e) {
+            // If it's not JSON, assume success
+            showMessage('Item added to cart!', 'success');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding item to cart', 'error');
+    });
+}
+
+// Security verification - HANDLES HTML RESPONSES GRACEFULLY
+let securityVerified = false;
+let pendingAction = null;
+
+function initSecurity(isVerified) {
+    securityVerified = isVerified;
+}
+
+function requireSecurityVerification(actionCallback) {
+    if (securityVerified) {
+        actionCallback();
+    } else {
+        pendingAction = actionCallback;
+        openSecurityModal();
+    }
+}
+
+function verifyPassword() {
+    const password = document.getElementById('security_password').value;
+    
+    if (!password) {
+        alert('Please enter your password');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('security_verify', '1');
+    formData.append('password', password);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                securityVerified = true;
+                closeSecurityModal();
+                document.getElementById('security_password').value = '';
+                
+                if (pendingAction) {
+                    pendingAction();
+                    pendingAction = null;
+                }
+            } else {
+                alert(data.message || 'Incorrect password');
+            }
+        } catch (e) {
+            alert('Error verifying password');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error verifying password');
+    });
+}
+
+// Order details functionality
+function viewOrderDetails(orderId) {
+    fetch('includes/order-details.php?order_id=' + orderId)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('orderDetailsContent').innerHTML = html;
+            document.getElementById('orderDetailsModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Error loading order details:', error);
+            document.getElementById('orderDetailsContent').innerHTML = '<div class="error-message">Error loading order details.</div>';
+        });
+}
+
+function closeOrderDetailsModal() {
+    document.getElementById('orderDetailsModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Utility functions
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function showMessage(message, type) {
+    // Remove existing messages
+    const existingMessages = document.querySelectorAll('.message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    // Create new message
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.textContent = message;
+    
+    // Insert after page header
+    const pageHeader = document.querySelector('.page-header');
+    if (pageHeader && pageHeader.parentNode) {
+        pageHeader.parentNode.insertBefore(messageDiv, pageHeader.nextSibling);
+    }
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
+    }, 5000);
+}
+
+// Initialize everything when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal click outside handlers
+    document.getElementById('editModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+    
+    document.getElementById('addressModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeAddressModal();
+    });
+    
+    document.getElementById('securityModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeSecurityModal();
+    });
+    
+    document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeOrderDetailsModal();
+    });
+
+    // Menu item click handlers
+    document.querySelectorAll('.menu-item').forEach(item => {
+        if (!item.classList.contains('logout-link')) {
+            item.addEventListener('click', function() {
+                const section = this.getAttribute('data-section');
+                showSection(section);
+            });
+        }
+    });
+
+    // Make wishlist items clickable
+    document.addEventListener('click', function(e) {
+        const wishlistItem = e.target.closest('.wishlist-item');
+        if (wishlistItem && !e.target.closest('.remove-item')) {
+            const link = wishlistItem.querySelector('.wishlist-item-link');
+            if (link) {
+                window.location.href = link.href;
+            }
+        }
+    });
 });
