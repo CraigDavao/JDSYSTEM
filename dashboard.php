@@ -4,6 +4,7 @@ require_once 'config.php';
 require_once 'connection/connection.php';
 require_once __DIR__ . '/includes/header.php';
 
+// Authentication and session handling
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_token'])) {
     $token = $_COOKIE['remember_token'];
     $stmt = $conn->prepare("SELECT id, fullname, email, remember_token FROM users");
@@ -35,248 +36,8 @@ $orders = [];
 $wishlist_count = 0;
 $wishlist_items = [];
 
-// User data
-$stmt = $conn->prepare("SELECT id, fullname, number, email FROM users WHERE id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$user_data = $result->fetch_assoc();
-
-// Handle AJAX request for setting default address
-if (isset($_POST['ajax_set_default_address'])) {
-    $address_id = $_POST['address_id'];
-    $address_type = $_POST['address_type'];
-    
-    // First, set all addresses of this type to not default
-    $stmt = $conn->prepare("UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ?");
-    $stmt->bind_param("is", $user_id, $address_type);
-    $stmt->execute();
-    
-    // Then set the selected address as default
-    $stmt = $conn->prepare("UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?");
-    $stmt->bind_param("ii", $address_id, $user_id);
-    
-    if ($stmt->execute()) {
-        // Get updated addresses
-        $stmt = $conn->prepare("SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $address_result = $stmt->get_result();
-        $updated_addresses = [];
-        while ($row = $address_result->fetch_assoc()) {
-            $updated_addresses[] = $row;
-        }
-        
-        // Find new default addresses
-        $default_shipping = null;
-        $default_billing = null;
-        foreach ($updated_addresses as $address) {
-            if ($address['is_default'] && $address['type'] == 'shipping') {
-                $default_shipping = $address;
-            }
-            if ($address['is_default'] && $address['type'] == 'billing') {
-                $default_billing = $address;
-            }
-        }
-        
-        ob_clean();
-        echo json_encode([
-            'success' => true,
-            'message' => 'Default address updated successfully!',
-            'addresses' => $updated_addresses,
-            'default_shipping' => $default_shipping,
-            'default_billing' => $default_billing
-        ]);
-        exit();
-    } else {
-        ob_clean();
-        echo json_encode([
-            'success' => false,
-            'message' => 'Error updating default address.'
-        ]);
-        exit();
-    }
-}
-
-// Addresses
-$stmt = $conn->prepare("SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$address_result = $stmt->get_result();
-while ($row = $address_result->fetch_assoc()) {
-    $addresses[] = $row;
-}
-
-// Orders with product names
-$stmt = $conn->prepare("
-    SELECT o.*, 
-           GROUP_CONCAT(oi.product_name SEPARATOR ', ') as product_names, 
-           COUNT(oi.id) as item_count 
-    FROM orders o 
-    LEFT JOIN order_items oi ON o.id = oi.order_id 
-    WHERE o.user_id = ? 
-    GROUP BY o.id 
-    ORDER BY o.created_at DESC 
-    LIMIT 10
-");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$order_result = $stmt->get_result();
-while ($row = $order_result->fetch_assoc()) {
-    $orders[] = $row;
-}
-
-// Wishlist with BLOB images
-$stmt = $conn->prepare("
-    SELECT 
-        w.*, 
-        p.name, 
-        p.price, 
-        p.sale_price,
-        CONCAT('data:image/', 
-               COALESCE(pi.image_format, 'jpeg'),
-               ';base64,',
-               TO_BASE64(COALESCE(pi.image, ''))) AS product_image
-    FROM wishlist w 
-    LEFT JOIN products p ON w.product_id = p.id 
-    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.id = (
-        SELECT MIN(pi2.id) 
-        FROM product_images pi2 
-        WHERE pi2.product_id = p.id
-    )
-    WHERE w.user_id = ? 
-    ORDER BY w.added_at DESC
-");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$wishlist_result = $stmt->get_result();
-$wishlist_count = $wishlist_result->num_rows;
-while ($row = $wishlist_result->fetch_assoc()) {
-    $wishlist_items[] = $row;
-}
-
-$default_shipping = null;
-$default_billing = null;
-foreach ($addresses as $address) {
-    if ($address['is_default'] && $address['type'] == 'shipping') {
-        $default_shipping = $address;
-    }
-    if ($address['is_default'] && $address['type'] == 'billing') {
-        $default_billing = $address;
-    }
-}
-
-// Handle reorder action
-if (isset($_POST['reorder'])) {
-    $order_id = $_POST['order_id'];
-    
-    // Get order items
-    $stmt = $conn->prepare("SELECT product_id, quantity, size, color FROM order_items WHERE order_id = ?");
-    $stmt->bind_param("i", $order_id);
-    $stmt->execute();
-    $reorder_items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    
-    $added_to_cart = 0;
-    foreach ($reorder_items as $item) {
-        // Check if product exists and is active
-        $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND is_active = 1");
-        $stmt->bind_param("i", $item['product_id']);
-        $stmt->execute();
-        $product_exists = $stmt->get_result()->fetch_assoc();
-        
-        if ($product_exists) {
-            // Add to cart
-            $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, size, color) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("iiiss", $user_id, $item['product_id'], $item['quantity'], $item['size'], $item['color']);
-            if ($stmt->execute()) {
-                $added_to_cart++;
-            }
-        }
-    }
-    
-    if ($added_to_cart > 0) {
-        $_SESSION['success_message'] = "{$added_to_cart} items added to cart from your order!";
-    } else {
-        $_SESSION['error_message'] = "No items could be added to cart. Products may no longer be available.";
-    }
-    
-    ob_end_clean();
-    header("Location: " . SITE_URL . "dashboard.php");
-    exit();
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['update_profile'])) {
-        $fullname = trim($_POST['fullname']);
-        $number = trim($_POST['number']);
-        $stmt = $conn->prepare("UPDATE users SET fullname = ?, number = ? WHERE id = ?");
-        $stmt->bind_param("ssi", $fullname, $number, $user_id);
-        if ($stmt->execute()) {
-            $_SESSION['user_name'] = $fullname;
-            $_SESSION['success_message'] = "Profile updated successfully!";
-            ob_end_clean();
-            header("Location: " . SITE_URL . "dashboard.php");
-            exit();
-        } else {
-            $_SESSION['error_message'] = "Error updating profile.";
-        }
-    }
-    
-    if (isset($_POST['add_address'])) {
-        $type = $_POST['type'];
-        $street = trim($_POST['street']);
-        $city = trim($_POST['city']);
-        $state = trim($_POST['state']);
-        $zip_code = trim($_POST['zip_code']);
-        $country = 'Philippines';
-        $is_default = isset($_POST['is_default']) ? 1 : 0;
-        if ($is_default) {
-            $stmt = $conn->prepare("UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ?");
-            $stmt->bind_param("is", $user_id, $type);
-            $stmt->execute();
-        }
-        $stmt = $conn->prepare("INSERT INTO addresses (user_id, type, street, city, state, zip_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("issssssi", $user_id, $type, $street, $city, $state, $zip_code, $country, $is_default);
-        if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Address added successfully!";
-            ob_end_clean();
-            header("Location: " . SITE_URL . "dashboard.php");
-            exit();
-        } else {
-            $_SESSION['error_message'] = "Error adding address.";
-        }
-    }
-    
-    if (isset($_POST['security_verify'])) {
-        $password = $_POST['password'];
-        $stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $user = $result->fetch_assoc();
-        if (password_verify($password, $user['password'])) {
-            $_SESSION['security_verified'] = true;
-            $_SESSION['security_verified_time'] = time();
-            ob_clean();
-            echo json_encode(['success' => true]);
-            exit();
-        } else {
-            ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Incorrect password']);
-            exit();
-        }
-    }
-}
-
-$security_verified = false;
-if (isset($_SESSION['security_verified']) && isset($_SESSION['security_verified_time'])) {
-    if (time() - $_SESSION['security_verified_time'] < 900) {
-        $security_verified = true;
-    } else {
-        unset($_SESSION['security_verified']);
-        unset($_SESSION['security_verified_time']);
-    }
-}
+// Include the handlers file
+require_once __DIR__ . '/includes/dashboard-handlers.php';
 
 ob_end_flush();
 ?>
@@ -394,7 +155,7 @@ ob_end_flush();
                 <div class="value" id="defaultShippingDisplay">
                   <?php if ($default_shipping): ?>
                     <div class="address-display">
-                      <strong><?php echo $_SESSION['user_name']; ?></strong><br>
+                      <strong><?php echo htmlspecialchars($default_shipping['fullname'] ?? $_SESSION['user_name']); ?></strong><br>
                       <?php echo htmlspecialchars($default_shipping['street']); ?><br>
                       <?php echo htmlspecialchars($default_shipping['city'] . ', ' . $default_shipping['state'] . ' ' . $default_shipping['zip_code']); ?><br>
                       Philippines
@@ -411,7 +172,7 @@ ob_end_flush();
                 <div class="value" id="defaultBillingDisplay">
                   <?php if ($default_billing): ?>
                     <div class="address-display">
-                      <strong><?php echo $_SESSION['user_name']; ?></strong><br>
+                      <strong><?php echo htmlspecialchars($default_billing['fullname'] ?? $_SESSION['user_name']); ?></strong><br>
                       <?php echo htmlspecialchars($default_billing['street']); ?><br>
                       <?php echo htmlspecialchars($default_billing['city'] . ', ' . $default_billing['state'] . ' ' . $default_billing['zip_code']); ?><br>
                       Philippines
@@ -481,6 +242,7 @@ ob_end_flush();
                     </div>
                   </div>
                   <div class="address-info">
+                    <p><strong><?php echo htmlspecialchars($address['fullname'] ?? $_SESSION['user_name']); ?></strong></p>
                     <p><?php echo htmlspecialchars($address['street']); ?></p>
                     <p><?php echo htmlspecialchars($address['city'] . ', ' . $address['state'] . ' ' . $address['zip_code']); ?></p>
                     <p>Philippines</p>
@@ -510,57 +272,73 @@ ob_end_flush();
           </div>
         </div>
 
-        <!-- Wishlist Section -->
-        <div class="section" id="wishlist">
-          <div class="section-title">
-            <h2>My Wishlist</h2>
-            <span class="count-badge"><?php echo $wishlist_count; ?> items</span>
-          </div>
+      <!-- Wishlist Section -->
+<div class="section" id="wishlist">
+    <div class="section-title">
+        <h2>My Wishlist</h2>
+        <span class="count-badge"><?php echo $wishlist_count; ?> items</span>
+    </div>
 
-          <?php if ($wishlist_count > 0): ?>
-            <div class="wishlist-grid">
-              <?php foreach ($wishlist_items as $item): ?>
+    <?php if ($wishlist_count > 0): ?>
+        <div class="wishlist-grid">
+            <?php foreach ($wishlist_items as $item): ?>
+                <?php
+                // Debug: Check what's in product_image
+                // error_log("Product Image for {$item['name']}: " . substr($item['product_image'] ?? 'NULL', 0, 50));
+                
+                // Handle image display - FIXED VERSION
+                if (!empty($item['product_image']) && strpos($item['product_image'], 'base64') !== false) {
+                    $imageSrc = $item['product_image'];
+                } else {
+                    // Fallback to default image
+                    $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+                }
+                
+                // Create product link
+                $product_link = SITE_URL . 'pages/product.php?id=' . ($item['color_id'] ?? $item['product_id']);
+                ?>
+                
                 <div class="wishlist-item" data-wishlist-id="<?php echo $item['id']; ?>" data-product-id="<?php echo $item['product_id']; ?>">
-                  <div class="item-image">
-                    <?php if (!empty($item['product_image']) && strpos($item['product_image'], 'base64') !== false): ?>
-                      <img src="<?php echo htmlspecialchars($item['product_image']); ?>" 
-                           alt="<?php echo htmlspecialchars($item['name']); ?>"
-                           onerror="this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
-                    <?php else: ?>
-                      <div class="no-image">No Image</div>
-                    <?php endif; ?>
-                    <button class="remove-item" onclick="deleteWishlistItem(<?php echo $item['id']; ?>)">
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </div>
-                  <div class="item-details">
-                    <h4><?php echo htmlspecialchars($item['name']); ?></h4>
-                    <div class="item-price">
-                      <?php if ($item['sale_price'] > 0): ?>
-                        <span class="current">₱<?php echo number_format($item['sale_price'], 2); ?></span>
-                        <span class="original">₱<?php echo number_format($item['price'], 2); ?></span>
-                      <?php else: ?>
-                        <span class="current">₱<?php echo number_format($item['price'], 2); ?></span>
-                      <?php endif; ?>
-                    </div>
-                    <button class="primary-button cart-button" onclick="addToCart(<?php echo $item['product_id']; ?>)">
-                      <i class="fas fa-shopping-cart"></i> Add to Cart
-                    </button>
-                  </div>
+                    <a href="<?php echo $product_link; ?>" class="wishlist-item-link">
+                        <div class="item-image">
+                            <img src="<?php echo $imageSrc; ?>" 
+                                 alt="<?php echo htmlspecialchars($item['name']); ?>"
+                                 onerror="this.onerror=null; this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+                            <button class="remove-item" onclick="event.preventDefault(); event.stopPropagation(); deleteWishlistItem(<?php echo $item['id']; ?>)">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="item-details">
+                            <h4><?php echo htmlspecialchars($item['name']); ?></h4>
+                            <?php if (!empty($item['color_name'])): ?>
+                                <div class="item-color">
+                                    <span class="color-badge">Color: <?php echo htmlspecialchars($item['color_name']); ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <div class="item-price">
+                                <?php if ($item['sale_price'] > 0 && $item['sale_price'] < $item['price']): ?>
+                                    <span class="current">₱<?php echo number_format($item['sale_price'], 2); ?></span>
+                                    <span class="original">₱<?php echo number_format($item['price'], 2); ?></span>
+                                <?php else: ?>
+                                    <span class="current">₱<?php echo number_format($item['price'], 2); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-              <?php endforeach; ?>
-            </div>
-          <?php else: ?>
-            <div class="empty-state">
-              <i class="fas fa-heart"></i>
-              <h3>Your wishlist is empty</h3>
-              <p>Start adding items you love to your wishlist.</p>
-              <a href="<?php echo SITE_URL; ?>pages/new.php" class="primary-button">
-                <i class="fas fa-shopping-bag"></i> Start Shopping
-              </a>
-            </div>
-          <?php endif; ?>
+            <?php endforeach; ?>
         </div>
+    <?php else: ?>
+        <div class="empty-state">
+            <i class="fas fa-heart"></i>
+            <h3>Your wishlist is empty</h3>
+            <p>Start adding items you love to your wishlist.</p>
+            <a href="<?php echo SITE_URL; ?>pages/new.php" class="primary-button">
+                <i class="fas fa-shopping-bag"></i> Start Shopping
+            </a>
+        </div>
+    <?php endif; ?>
+</div>
 
         <!-- Orders Section -->
         <div class="section" id="orders">
@@ -673,55 +451,72 @@ ob_end_flush();
   </div>
 
   <!-- Add Address Modal -->
-  <div id="addressModal" class="modal-overlay">
+<div id="addressModal" class="modal-overlay">
     <div class="modal-box">
-      <div class="modal-header">
-        <h3>Add New Address</h3>
-        <button class="close-button" onclick="closeAddressModal()">&times;</button>
-      </div>
-      <form method="POST" class="modal-form">
-        <input type="hidden" name="add_address" value="1">
-        <div class="form-group">
-          <label for="type">Address Type</label>
-          <select id="type" name="type" required>
-            <option value="shipping">Shipping Address</option>
-            <option value="billing">Billing Address</option>
-          </select>
+        <div class="modal-header">
+            <h3>Add New Address</h3>
+            <button class="close-button" onclick="closeAddressModal()">&times;</button>
         </div>
-        <div class="form-group">
-          <label for="street">Street Address</label>
-          <input type="text" id="street" name="street" placeholder="House #, Street, Barangay" required>
+        
+        <div class="modal-body">
+            <!-- Simple form that will submit traditionally -->
+            <form method="POST" id="addressForm">
+                <input type="hidden" name="add_address" value="1">
+                
+                <h4 style="margin-bottom: 25px; color: #2c3e50; font-size: 1.3em; font-weight: 600;">Add New Shipping Address</h4>
+                
+                <!-- Person's Name -->
+                <div class="form-group">
+                    <label for="fullname">Recipient's Full Name *</label>
+                    <input type="text" id="fullname" name="fullname" placeholder="Enter recipient's full name" required>
+                </div>
+
+                <!-- Address Type -->
+                <div class="form-group">
+                    <label for="type">Address Type *</label>
+                    <select id="type" name="type" required>
+                        <option value="shipping">Shipping Address</option>
+                        <option value="billing">Billing Address</option>
+                    </select>
+                </div>
+
+                <!-- Address Information -->
+                <div class="form-group">
+                    <label for="street">Street Address *</label>
+                    <input type="text" id="street" name="street" placeholder="House number, street, barangay" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">City/Municipality *</label>
+                        <input type="text" id="city" name="city" placeholder="Enter your city or municipality" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="state">Province *</label>
+                        <input type="text" id="state" name="state" placeholder="Enter your province" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="zip_code">ZIP Code *</label>
+                    <input type="text" id="zip_code" name="zip_code" placeholder="Enter ZIP code" required>
+                </div>
+
+                <!-- Default Address Option -->
+                <label class="form-check">
+                    <input type="checkbox" id="is_default" name="is_default" value="1">
+                    Set as default address
+                </label>
+                
+                <!-- Form Buttons -->
+                <div class="form-buttons">
+                    <button type="submit" class="primary-button">Save Address</button>
+                    <button type="button" class="secondary-button" onclick="closeAddressModal()">Cancel</button>
+                </div>
+            </form>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="city">City/Municipality</label>
-            <input type="text" id="city" name="city" placeholder="e.g., Manila, Quezon City" required>
-          </div>
-          <div class="form-group">
-            <label for="state">Province/State</label>
-            <input type="text" id="state" name="state" placeholder="e.g., Metro Manila, Laguna" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="zip_code">ZIP Code</label>
-          <input type="text" id="zip_code" name="zip_code" placeholder="e.g., 1000" required>
-        </div>
-        <div class="form-group">
-          <label for="country">Country</label>
-          <input type="text" id="country" value="Philippines" disabled>
-          <small>Currently serving Philippines only</small>
-        </div>
-        <div class="form-check">
-          <input type="checkbox" id="is_default" name="is_default">
-          <label for="is_default">Set as default address</label>
-        </div>
-        <div class="form-buttons">
-          <button type="button" class="secondary-button" onclick="closeAddressModal()">Cancel</button>
-          <button type="submit" class="primary-button">Save Address</button>
-        </div>
-      </form>
     </div>
-  </div>
+</div>
 
   <!-- Security Verification Modal -->
   <div id="securityModal" class="modal-overlay">
@@ -747,7 +542,7 @@ ob_end_flush();
     </div>
   </div>
 
-  <script src="<?php echo SITE_URL; ?>js/profile.js"></script>
+  <script src="<?php echo SITE_URL; ?>js/dashboard.js"></script>
   <script>
     // Order details functionality
     function viewOrderDetails(orderId) {
@@ -857,6 +652,7 @@ ob_end_flush();
                         </div>
                     </div>
                     <div class="address-info">
+                        <p><strong>${escapeHtml(address.fullname || 'User')}</strong></p>
                         <p>${escapeHtml(address.street)}</p>
                         <p>${escapeHtml(address.city + ', ' + address.state + ' ' + address.zip_code)}</p>
                         <p>Philippines</p>
@@ -886,7 +682,7 @@ ob_end_flush();
         if (defaultShipping) {
             shippingDisplay.innerHTML = `
                 <div class="address-display">
-                    <strong><?php echo $_SESSION['user_name']; ?></strong><br>
+                    <strong>${escapeHtml(defaultShipping.fullname || '<?php echo $_SESSION['user_name']; ?>')}</strong><br>
                     ${escapeHtml(defaultShipping.street)}<br>
                     ${escapeHtml(defaultShipping.city + ', ' + defaultShipping.state + ' ' + defaultShipping.zip_code)}<br>
                     Philippines
@@ -904,7 +700,7 @@ ob_end_flush();
         if (defaultBilling) {
             billingDisplay.innerHTML = `
                 <div class="address-display">
-                    <strong><?php echo $_SESSION['user_name']; ?></strong><br>
+                    <strong>${escapeHtml(defaultBilling.fullname || '<?php echo $_SESSION['user_name']; ?>')}</strong><br>
                     ${escapeHtml(defaultBilling.street)}<br>
                     ${escapeHtml(defaultBilling.city + ', ' + defaultBilling.state + ' ' + defaultBilling.zip_code)}<br>
                     Philippines
@@ -951,6 +747,11 @@ ob_end_flush();
             }
         }, 5000);
     }
+
+    // Initialize address modal when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initAddressModal();
+    });
 
     initSecurity(<?php echo $security_verified ? 'true' : 'false'; ?>);
   </script>
