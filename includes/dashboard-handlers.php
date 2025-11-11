@@ -349,4 +349,118 @@ if (isset($_SESSION['security_verified']) && isset($_SESSION['security_verified_
         unset($_SESSION['security_verified_time']);
     }
 }
+
+// Handle address refresh request
+if (isset($_GET['refresh_addresses'])) {
+    // Get updated addresses
+    $stmt = $conn->prepare("SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $address_result = $stmt->get_result();
+    $addresses = [];
+    while ($row = $address_result->fetch_assoc()) {
+        $addresses[] = $row;
+    }
+    
+    // Find default addresses
+    $default_shipping = null;
+    $default_billing = null;
+    foreach ($addresses as $address) {
+        if ($address['is_default'] && $address['type'] == 'shipping') {
+            $default_shipping = $address;
+        }
+        if ($address['is_default'] && $address['type'] == 'billing') {
+            $default_billing = $address;
+        }
+    }
+    
+    // Output only the addresses section HTML
+    ?>
+    <div class="address-grid" id="addressesContainer">
+        <?php if (count($addresses) > 0): ?>
+            <?php foreach ($addresses as $address): ?>
+                <div class="address-panel <?php echo $address['is_default'] ? 'default-address' : ''; ?>" 
+                     data-address-id="<?php echo $address['id']; ?>"
+                     data-address-type="<?php echo $address['type']; ?>"
+                     onclick="editAddress(<?php echo $address['id']; ?>)">
+                    <div class="address-header">
+                        <h4>
+                            <?php echo ucfirst($address['type']); ?> Address 
+                            <?php if ($address['is_default']): ?>
+                                <span class="default-tag"><i class="fas fa-star"></i> Default</span>
+                            <?php endif; ?>
+                        </h4>
+                        <div class="address-actions">
+                            <button class="action-icon" onclick="event.stopPropagation(); editAddress(<?php echo $address['id']; ?>)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-icon delete-icon" onclick="event.stopPropagation(); removeAddress(<?php echo $address['id']; ?>)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="address-info">
+                        <p><strong><?php echo htmlspecialchars($address['fullname'] ?? $_SESSION['user_name']); ?></strong></p>
+                        <p><?php echo htmlspecialchars($address['street']); ?></p>
+                        <p><?php echo htmlspecialchars($address['city'] . ', ' . $address['state'] . ' ' . $address['zip_code']); ?></p>
+                        <p>Philippines</p>
+                    </div>
+                    <?php if (!$address['is_default']): ?>
+                        <button class="secondary-button set-default-btn" 
+                                onclick="event.stopPropagation(); setDefaultAddress(<?php echo $address['id']; ?>, '<?php echo $address['type']; ?>')">
+                            <i class="fas fa-star"></i> Set as Default
+                        </button>
+                    <?php else: ?>
+                        <div class="default-indicator">
+                            <i class="fas fa-check-circle"></i> Default Address
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="empty-state">
+                <i class="fas fa-map-marker-alt"></i>
+                <h3>No addresses saved</h3>
+                <p>Add your first address to make checkout easier.</p>
+                <button class="primary-button" onclick="openAddressModal()">
+                    <i class="fas fa-plus"></i> Add Address
+                </button>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <!-- Also output the overview displays -->
+    <div id="defaultShippingDisplay">
+        <?php if ($default_shipping): ?>
+            <div class="address-display">
+                <strong><?php echo htmlspecialchars($default_shipping['fullname'] ?? $_SESSION['user_name']); ?></strong><br>
+                <?php echo htmlspecialchars($default_shipping['street']); ?><br>
+                <?php echo htmlspecialchars($default_shipping['city'] . ', ' . $default_shipping['state'] . ' ' . $default_shipping['zip_code']); ?><br>
+                Philippines
+                <a href="#" onclick="showSection('addresses'); return false;" class="change-address-link">Change</a>
+            </div>
+        <?php else: ?>
+            <span class="not-set">Not set</span>
+            <a href="#" onclick="showSection('addresses'); return false;" class="set-address-link">Set shipping address</a>
+        <?php endif; ?>
+    </div>
+    
+    <div id="defaultBillingDisplay">
+        <?php if ($default_billing): ?>
+            <div class="address-display">
+                <strong><?php echo htmlspecialchars($default_billing['fullname'] ?? $_SESSION['user_name']); ?></strong><br>
+                <?php echo htmlspecialchars($default_billing['street']); ?><br>
+                <?php echo htmlspecialchars($default_billing['city'] . ', ' . $default_billing['state'] . ' ' . $default_billing['zip_code']); ?><br>
+                Philippines
+                <a href="#" onclick="showSection('addresses'); return false;" class="change-address-link">Change</a>
+            </div>
+        <?php else: ?>
+            <span class="not-set">Not set</span>
+            <a href="#" onclick="showSection('addresses'); return false;" class="set-address-link">Set billing address</a>
+        <?php endif; ?>
+    </div>
+    <?php
+    exit();
+}
+
 ?>

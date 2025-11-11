@@ -73,7 +73,7 @@ function resetAddressForm() {
     document.querySelector('#addressModal h4').textContent = 'Add New Shipping Address';
 }
 
-// Edit address function - UPDATED TO HANDLE BOTH RESPONSE FORMATS
+// Edit address function - UPDATED TO STAY ON PAGE
 function editAddress(addressId) {
     console.log('Editing address ID:', addressId);
     
@@ -119,8 +119,7 @@ function editAddress(addressId) {
             openAddressModal();
             
         } else {
-            const errorMessage = data.message || 'Failed to load address';
-            showMessage('Error: ' + errorMessage, 'error');
+            showMessage('Error: ' + (data.message || 'Failed to load address'), 'error');
         }
     })
     .catch(error => {
@@ -133,7 +132,7 @@ function editAddress(addressId) {
     });
 }
 
-// Save or update address - WITH BETTER DEBUG
+// Save or update address - UPDATED TO STAY ON PAGE
 function saveOrUpdateAddress() {
     const fullname = document.getElementById('newFullname').value.trim();
     const type = document.getElementById('newType').value;
@@ -145,13 +144,6 @@ function saveOrUpdateAddress() {
     const setAsDefault = document.getElementById('setAsDefault').checked;
     const editId = document.getElementById('saveAddressBtn').getAttribute('data-edit-id');
 
-    // Debug: Check what values are being sent
-    console.log('=== DEBUG ADDRESS SAVE ===');
-    console.log('Set as Default checkbox checked:', setAsDefault);
-    console.log('is_default value being sent:', setAsDefault ? '1' : '0');
-    console.log('Address Type:', type);
-    console.log('Edit Mode:', editId ? 'UPDATE' : 'ADD NEW');
-
     // Validation
     if (!fullname || !street || !city || !state || !zip) {
         showMessage('Please fill in all required fields', 'error');
@@ -162,6 +154,7 @@ function saveOrUpdateAddress() {
     const formData = new FormData();
     
     if (editId) {
+        // UPDATE existing address
         formData.append('update_address', '1');
         formData.append('address_id', editId);
         formData.append('fullname', fullname);
@@ -173,6 +166,7 @@ function saveOrUpdateAddress() {
         formData.append('country', country);
         formData.append('is_default', setAsDefault ? '1' : '0');
     } else {
+        // ADD new address
         formData.append('add_address', '1');
         formData.append('fullname', fullname);
         formData.append('type', type);
@@ -182,12 +176,6 @@ function saveOrUpdateAddress() {
         formData.append('zip_code', zip);
         formData.append('country', country);
         formData.append('is_default', setAsDefault ? '1' : '0');
-    }
-
-    // Debug: Log all form data
-    console.log('Form Data being sent:');
-    for (let [key, value] of formData.entries()) {
-        console.log('  ' + key + ': ' + value);
     }
 
     // Show loading state
@@ -202,24 +190,23 @@ function saveOrUpdateAddress() {
     })
     .then(response => response.text())
     .then(text => {
-        console.log('Server response:', text);
         try {
             const data = JSON.parse(text);
             if (data.success) {
                 showMessage(data.message || 'Address saved successfully!', 'success');
                 closeAddressModal();
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
+                
+                // Refresh addresses without page reload
+                refreshAddresses();
+                
             } else {
                 showMessage('Error: ' + (data.message || 'Failed to save address'), 'error');
             }
         } catch (e) {
+            // If it's not JSON, assume success and refresh
             showMessage('Address saved successfully!', 'success');
             closeAddressModal();
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            refreshAddresses();
         }
     })
     .catch(error => {
@@ -232,7 +219,7 @@ function saveOrUpdateAddress() {
     });
 }
 
-// Remove address function - HANDLES HTML RESPONSES GRACEFULLY
+// Remove address function - UPDATED TO STAY ON PAGE
 function removeAddress(addressId) {
     if (confirm('Are you sure you want to remove this address?')) {
         const formData = new FormData();
@@ -249,18 +236,30 @@ function removeAddress(addressId) {
                 const data = JSON.parse(text);
                 if (data.success) {
                     showMessage('Address removed successfully', 'success');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
+                    
+                    // Remove address from DOM immediately
+                    const addressElement = document.querySelector(`[data-address-id="${addressId}"]`);
+                    if (addressElement) {
+                        addressElement.remove();
+                    }
+                    
+                    // Refresh addresses display
+                    refreshAddresses();
+                    
                 } else {
                     showMessage('Error removing address: ' + data.message, 'error');
                 }
             } catch (e) {
-                // If it's not JSON, assume success and reload
+                // If it's not JSON, assume success and refresh
                 showMessage('Address removed successfully', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
+                
+                // Remove address from DOM immediately
+                const addressElement = document.querySelector(`[data-address-id="${addressId}"]`);
+                if (addressElement) {
+                    addressElement.remove();
+                }
+                
+                refreshAddresses();
             }
         })
         .catch(error => {
@@ -270,7 +269,7 @@ function removeAddress(addressId) {
     }
 }
 
-// Set default address with AJAX - HANDLES HTML RESPONSES GRACEFULLY
+// Set default address with AJAX - UPDATED TO STAY ON PAGE
 function setDefaultAddress(addressId, addressType) {
     if (!confirm(`Set this as your default ${addressType} address?`)) {
         return;
@@ -304,11 +303,9 @@ function setDefaultAddress(addressId, addressType) {
                 showMessage(data.message, 'error');
             }
         } catch (e) {
-            // If it's not JSON, just show success and reload
+            // If it's not JSON, just refresh everything
             showMessage('Default address updated successfully!', 'success');
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            refreshAddresses();
         }
     })
     .catch(error => {
@@ -320,6 +317,42 @@ function setDefaultAddress(addressId, addressType) {
         buttons.forEach(btn => btn.disabled = false);
     });
 }
+
+// NEW FUNCTION: Refresh addresses without page reload
+function refreshAddresses() {
+    fetch(window.location.href + '?refresh_addresses=1')
+        .then(response => response.text())
+        .then(html => {
+            // Extract the addresses section from the response
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            const newAddressesContainer = tempDiv.querySelector('#addressesContainer');
+            const currentAddressesContainer = document.getElementById('addressesContainer');
+            
+            if (newAddressesContainer && currentAddressesContainer) {
+                currentAddressesContainer.innerHTML = newAddressesContainer.innerHTML;
+            }
+            
+            // Also update the overview section if needed
+            const newShippingDisplay = tempDiv.querySelector('#defaultShippingDisplay');
+            const newBillingDisplay = tempDiv.querySelector('#defaultBillingDisplay');
+            const currentShippingDisplay = document.getElementById('defaultShippingDisplay');
+            const currentBillingDisplay = document.getElementById('defaultBillingDisplay');
+            
+            if (newShippingDisplay && currentShippingDisplay) {
+                currentShippingDisplay.innerHTML = newShippingDisplay.innerHTML;
+            }
+            if (newBillingDisplay && currentBillingDisplay) {
+                currentBillingDisplay.innerHTML = newBillingDisplay.innerHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing addresses:', error);
+        });
+}
+
+// Update your dashboard-handlers.php to handle the refresh request
 
 // Update addresses display
 function updateAddressesDisplay(addresses) {
