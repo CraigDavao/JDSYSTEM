@@ -38,13 +38,43 @@ document.addEventListener("DOMContentLoaded", () => {
                 let html = "";
                 data.cart.forEach(item => {
                     const isChecked = checkboxStates[item.cart_id] ?? true;
+                    
+                    // ✅ FIXED Image handling
+                    let imageSrc = SITE_URL + 'uploads/sample1.jpg'; // Default fallback
+                    
+                    if (item.image) {
+                        // If it's already a data URL
+                        if (item.image.startsWith('data:')) {
+                            imageSrc = item.image;
+                        } 
+                        // If it's a blob stored as base64 in the database
+                        else if (item.image_format && item.image.length > 100) {
+                            // The image is already base64 encoded in the database
+                            imageSrc = 'data:' + item.image_format + ';base64,' + item.image;
+                        }
+                        // If it's just a filename
+                        else {
+                            imageSrc = SITE_URL + 'uploads/' + item.image;
+                        }
+                    }
+
+                    // Calculate subtotal
+                    const subtotal = (item.price * item.quantity).toFixed(2);
+                    
+                    // 🟣 Color display
+                    const colorDisplay = item.color_name 
+                        ? `<p class="item-color">Color: <span style="text-transform: capitalize;">${item.color_name}</span></p>` 
+                        : `<p class="item-color">Color: <span style="opacity:0.6;">N/A</span></p>`;
+
                     html += `
                     <div class="cart-item" data-cart-id="${item.cart_id}">
                         <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
-                        <img src="${SITE_URL}uploads/${item.image}" alt="${item.name}">
+                        <img src="${imageSrc}" alt="${item.name}" width="80" 
+                             onerror="this.onerror=null; this.src='${SITE_URL}uploads/sample1.jpg'">
                         <div class="item-details">
                             <h3>${item.name}</h3>
-                            <p class="item-price">₱${item.price}</p>
+                            ${colorDisplay}
+                            <p class="item-price">Price: ₱${parseFloat(item.price).toFixed(2)}</p>
                             <div class="item-controls">
                                 <div class="control-group">
                                     <label>Size:</label>
@@ -60,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
                                 </div>
                             </div>
-                            <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${item.subtotal}</span></p>
+                            <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${subtotal}</span></p>
                         </div>
                         <button class="remove-item">× Remove</button>
                     </div>`;
@@ -97,12 +127,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="cart-empty">
                         <h3>🛒 Your cart is empty</h3>
                         <p>Browse our products and add some items to your cart!</p>
-                        <a href="<?php echo SITE_URL; ?>pages/new.php" class="btn-continue-shopping">Continue Shopping</a>
+                        <a href="${SITE_URL}pages/new.php" class="btn-continue-shopping">Continue Shopping</a>
                     </div>
                 `;
                 cartTotal.innerHTML = '';
             }
         } catch (error) {
+            console.error('Error loading cart:', error);
             cartItems.innerHTML = '<div class="cart-loading">Error loading cart.</div>';
         }
     }
@@ -209,33 +240,42 @@ document.addEventListener("DOMContentLoaded", () => {
             .filter(id => id && !isNaN(id));
     }
 
-
     // Update cart item
     async function updateCart(cartId, quantity, size) {
-        await fetch(SITE_URL + "actions/cart-update.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `cart_id=${cartId}&quantity=${quantity}&size=${size}`
-        });
-        updateCartBadge();
+        try {
+            await fetch(SITE_URL + "actions/cart-update.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_id=${cartId}&quantity=${quantity}&size=${size}`
+            });
+            updateCartBadge();
+        } catch (error) {
+            console.error('Error updating cart:', error);
+        }
     }
 
     // Remove cart item
     async function removeCartItem(cartId) {
-        await fetch(SITE_URL + "actions/cart-remove.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `cart_id=${cartId}`
-        });
-        updateCartBadge();
+        try {
+            await fetch(SITE_URL + "actions/cart-remove.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_id=${cartId}`
+            });
+            updateCartBadge();
+        } catch (error) {
+            console.error('Error removing cart item:', error);
+        }
     }
 
     // Update subtotal
     function updateSubtotal(cartId, quantity) {
         const cartItem = document.querySelector(`.cart-item[data-cart-id="${cartId}"]`);
-        const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("₱", ""));
-        cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
-        updateTotalOnSelection();
+        if (cartItem) {
+            const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("Price: ₱", ""));
+            cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
+            updateTotalOnSelection();
+        }
     }
 
     // Calculate total
@@ -243,8 +283,8 @@ document.addEventListener("DOMContentLoaded", () => {
         let total = 0;
         document.querySelectorAll(".cart-item").forEach(item => {
             const checkbox = item.querySelector(".select-item");
-            if (checkbox.checked) {
-                const price = parseFloat(item.querySelector(".item-price").innerText.replace("₱", ""));
+            if (checkbox && checkbox.checked) {
+                const price = parseFloat(item.querySelector(".item-price").innerText.replace("Price: ₱", ""));
                 const qty = parseInt(item.querySelector(".quantity-input").value) || 1;
                 total += price * qty;
             }

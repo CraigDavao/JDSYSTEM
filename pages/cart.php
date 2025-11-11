@@ -8,31 +8,46 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="cart-dashboard">
     <h2>My Cart</h2>
     
-    <!-- Cart Actions -->
-    <div class="cart-actions">
-        <label class="select-all-label">
-            <input type="checkbox" id="select-all"> Select All
-        </label>
-        <button class="btn-remove-selected" id="remove-selected">Remove Selected</button>
-    </div>
-    
-    <div id="cart-items"></div>
-    
-    <!-- Cart Summary -->
-    <div class="cart-summary">
-        <div id="cart-total"></div>
-        <div class="shipping-notice">
-            <p>🚚 Free shipping on orders over ₱500</p>
+    <div class="cart-layout">
+        <!-- Left Column - Cart Items -->
+        <div class="cart-items-column">
+            <!-- Cart Actions -->
+            <div class="cart-actions">
+                <label class="select-all-label">
+                    <input type="checkbox" id="select-all"> Select All
+                </label>
+                <button class="btn-remove-selected" id="remove-selected">Remove Selected</button>
+            </div>
+            
+            <!-- Cart Header -->
+            <div class="cart-header">
+                <div></div>
+                <div>Image</div>
+                <div>Product</div>
+                <div>Controls</div>
+                <div>Subtotal</div>
+                <div>Action</div>
+            </div>
+            
+            <!-- Cart Items -->
+            <div id="cart-items"></div>
         </div>
-        <button id="checkout-btn" class="checkout-btn">Proceed to Checkout</button>
+        
+        <!-- Right Column - Cart Summary -->
+        <div class="cart-summary-column">
+            <h3>Order Summary</h3>
+            <div id="cart-total"></div>
+            <div class="shipping-notice">
+                <p>🚚 Free shipping on orders over ₱500</p>
+            </div>
+            <button id="checkout-btn">Proceed to Checkout</button>
+        </div>
     </div>
 </div>
 
 <script>
 const SITE_URL = "<?= SITE_URL; ?>";
 </script>
-
-<script src="<?php echo SITE_URL; ?>js/cart.js?v=<?= time(); ?>"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -63,41 +78,38 @@ document.addEventListener("DOMContentLoaded", () => {
                         imageSrc = SITE_URL + 'uploads/sample1.jpg';
                     }
 
-                    // 🟣 Color display: show user-selected color or fallback
-                    const colorDisplay = item.color_name 
-                        ? `<p class="item-color">Color: <span style="text-transform: capitalize;">${item.color_name}</span></p>` 
-                        : `<p class="item-color">Color: <span style="opacity:0.6;">N/A</span></p>`;
-
                     // Calculate subtotal
                     const subtotal = (item.price * item.quantity).toFixed(2);
 
                     html += `
                     <div class="cart-item" data-cart-id="${item.cart_id}">
                         <input type="checkbox" class="select-item" data-cart-id="${item.cart_id}" ${isChecked ? "checked" : ""}>
-                        <img src="${imageSrc}" alt="${item.name}" width="80" 
+                        <img src="${imageSrc}" alt="${item.name}" 
                              onerror="this.src='${SITE_URL}uploads/sample1.jpg'">
-                        <div class="item-details">
-                            <h3>${item.name}</h3>
-                            ${colorDisplay}
-                            <p class="item-price">Price: ₱${parseFloat(item.price).toFixed(2)}</p>
-                            <div class="item-controls">
-                                <div class="control-group">
-                                    <label>Size:</label>
-                                    <select class="size-select">
-                                        <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
-                                        <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
-                                        <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
-                                        <option value="XL" ${item.size === "XL" ? "selected" : ""}>XL</option>
-                                    </select>
-                                </div>
-                                <div class="control-group">
-                                    <label>Quantity:</label>
-                                    <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
-                                </div>
+                        <div class="product-info">
+                            <h3 class="product-name">${item.name}</h3>
+                            <div class="product-details">
+                                <span class="variant-color">${item.color_name || 'N/A'}</span>
+                                <span class="product-price">₱${parseFloat(item.price).toFixed(2)}</span>
                             </div>
-                            <p class="subtotal">Subtotal: ₱<span class="item-subtotal">${subtotal}</span></p>
                         </div>
-                        <button class="remove-item">× Remove</button>
+                        <div class="item-controls">
+                            <div class="control-group">
+                                <span class="control-label">Size</span>
+                                <select class="size-select">
+                                    <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
+                                    <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
+                                    <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
+                                    <option value="XL" ${item.size === "XL" ? "selected" : ""}>XL</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <span class="control-label">Qty</span>
+                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" max="10">
+                            </div>
+                        </div>
+                        <div class="subtotal">₱<span class="item-subtotal">${subtotal}</span></div>
+                        <button class="remove-item">Remove</button>
                     </div>
                     `;
                 });
@@ -109,18 +121,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 const grandTotal = total + shipping;
                 
                 cartTotal.innerHTML = `
-                    <div class="total-breakdown">
-                        <div class="total-row">
-                            <span>Subtotal:</span>
-                            <span>₱${total.toFixed(2)}</span>
-                        </div>
-                        <div class="total-row">
-                            <span>Shipping:</span>
-                            <span>${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
-                        </div>
-                        <div class="total-row grand-total">
-                            <span>Total:</span>
-                            <span>₱${grandTotal.toFixed(2)}</span>
+                    <div class="total-section">
+                        <h4>Order Total</h4>
+                        <div class="total-breakdown">
+                            <div class="total-row">
+                                <span class="total-label">Subtotal:</span>
+                                <span class="total-value">₱${total.toFixed(2)}</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Shipping:</span>
+                                <span class="total-value">${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
+                            </div>
+                            <div class="total-row grand-total">
+                                <span class="total-label">Total:</span>
+                                <span class="total-value">₱${grandTotal.toFixed(2)}</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -130,24 +145,28 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 // Empty cart
                 cartItems.innerHTML = `
-                    <div class="empty-cart">
-                        <p>Your cart is empty</p>
-                        <a href="<?php echo SITE_URL; ?>pages/products.php" class="continue-shopping">Continue Shopping</a>
+                    <div class="cart-empty">
+                        <h3>Your cart is empty</h3>
+                        <p>Add some products to get started</p>
+                        <a href="<?php echo SITE_URL; ?>pages/products.php" class="btn-continue-shopping">Continue Shopping</a>
                     </div>
                 `;
                 cartTotal.innerHTML = `
-                    <div class="total-breakdown">
-                        <div class="total-row">
-                            <span>Subtotal:</span>
-                            <span>₱0.00</span>
-                        </div>
-                        <div class="total-row">
-                            <span>Shipping:</span>
-                            <span>₱0.00</span>
-                        </div>
-                        <div class="total-row grand-total">
-                            <span>Total:</span>
-                            <span>₱0.00</span>
+                    <div class="total-section">
+                        <h4>Order Total</h4>
+                        <div class="total-breakdown">
+                            <div class="total-row">
+                                <span class="total-label">Subtotal:</span>
+                                <span class="total-value">₱0.00</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Shipping:</span>
+                                <span class="total-value">₱0.00</span>
+                            </div>
+                            <div class="total-row grand-total">
+                                <span class="total-label">Total:</span>
+                                <span class="total-value">₱0.00</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -155,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             console.error('Error loading cart:', error);
             document.getElementById('cart-items').innerHTML = `
-                <div class="error-cart">
+                <div class="cart-loading">
                     <p>Error loading cart. Please try again.</p>
                 </div>
             `;
@@ -272,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateSubtotal(cartId, quantity) {
         const cartItem = document.querySelector(`.cart-item[data-cart-id="${cartId}"]`);
         if (cartItem) {
-            const price = parseFloat(cartItem.querySelector(".item-price").innerText.replace("Price: ₱", ""));
+            const price = parseFloat(cartItem.querySelector(".product-price").innerText.replace("₱", ""));
             cartItem.querySelector(".item-subtotal").innerText = (price * quantity).toFixed(2);
             updateTotalOnSelection();
         }
@@ -283,7 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".cart-item").forEach(item => {
             const checkbox = item.querySelector(".select-item");
             if (checkbox && checkbox.checked) {
-                const price = parseFloat(item.querySelector(".item-price").innerText.replace("Price: ₱", ""));
+                const price = parseFloat(item.querySelector(".product-price").innerText.replace("₱", ""));
                 const qty = parseInt(item.querySelector(".quantity-input").value);
                 total += price * qty;
             }
@@ -297,66 +316,73 @@ document.addEventListener("DOMContentLoaded", () => {
         const grandTotal = total + shipping;
         
         document.getElementById("cart-total").innerHTML = `
-            <div class="total-breakdown">
-                <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>₱${total.toFixed(2)}</span>
-                </div>
-                <div class="total-row">
-                    <span>Shipping:</span>
-                    <span>${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
-                </div>
-                <div class="total-row grand-total">
-                    <span>Total:</span>
-                    <span>₱${grandTotal.toFixed(2)}</span>
+            <div class="total-section">
+                <h4>Order Total</h4>
+                <div class="total-breakdown">
+                    <div class="total-row">
+                        <span class="total-label">Subtotal:</span>
+                        <span class="total-value">₱${total.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">Shipping:</span>
+                        <span class="total-value">${shipping === 0 ? 'FREE' : '₱' + shipping.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span class="total-label">Total:</span>
+                        <span class="total-value">₱${grandTotal.toFixed(2)}</span>
+                    </div>
                 </div>
             </div>
         `;
     }
 
     document.getElementById("checkout-btn").addEventListener("click", async () => {
-    const selectedItems = getSelectedCartIds();
+        const selectedItems = getSelectedCartIds();
 
-    console.log("🛒 Selected cart IDs:", selectedItems);
+        console.log("🛒 Selected cart IDs:", selectedItems);
 
-    if (selectedItems.length === 0) {
-        alert("Please select at least one item to checkout.");
-        return;
-    }
-
-    try {
-        // Clear buy-now session (if any)
-        await fetch(SITE_URL + "actions/clear-buy-now.php", {
-            method: "POST",
-            credentials: "include"
-        });
-
-        // Proceed to checkout
-        const bodyData = new URLSearchParams({
-            cart_ids: selectedItems.join(",")
-        });
-
-        const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: bodyData.toString(),
-            credentials: "include"
-        });
-
-        const result = await response.json();
-        console.log("🛒 Checkout response:", result);
-
-        if (result.status === "success") {
-            window.location.href = SITE_URL + "pages/checkout.php";
-        } else {
-            alert("Error: " + (result.message || "Failed to proceed to checkout"));
+        if (selectedItems.length === 0) {
+            alert("Please select at least one item to checkout.");
+            return;
         }
-    } catch (error) {
-        console.error("Checkout error:", error);
-        alert("Network error. Please try again.");
-    }
-});
+
+        try {
+            // Clear buy-now session (if any)
+            await fetch(SITE_URL + "actions/clear-buy-now.php", {
+                method: "POST",
+                credentials: "include"
+            });
+
+            // Proceed to checkout
+            const bodyData = new URLSearchParams({
+                cart_ids: selectedItems.join(",")
+            });
+
+            const response = await fetch(SITE_URL + "actions/cart-checkout.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: bodyData.toString(),
+                credentials: "include"
+            });
+
+            const result = await response.json();
+            console.log("🛒 Checkout response:", result);
+
+            if (result.status === "success") {
+                window.location.href = SITE_URL + "pages/checkout.php";
+            } else {
+                alert("Error: " + (result.message || "Failed to proceed to checkout"));
+            }
+        } catch (error) {
+            console.error("Checkout error:", error);
+            alert("Network error. Please try again.");
+        }
+    });
 
     loadCart();
 });
 </script>
+
+<?php
+require_once __DIR__ . '/../includes/footer.php';
+?>

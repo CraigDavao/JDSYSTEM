@@ -17,6 +17,7 @@ SELECT
     w.color_id,
     COALESCE(pc.color_name, '') AS color_name,
     p.name,
+    p.price,
     COALESCE(
         (SELECT pi.image
          FROM product_images pi
@@ -75,72 +76,131 @@ $total_count = $count_result->fetch_assoc()['total_count'];
 </head>
 <body>
 
-  <div class="wishlist-container">
-    <div class="wishlist-header">
-      <h1 class="wishlist-title">My Wishlist</h1>
-      <div class="wishlist-stats">
-        <span class="item-count"><?= $total_count ?> item<?= $total_count != 1 ? 's' : '' ?></span>
-        <?php if ($total_count > 0): ?>
-          <button id="clear-wishlist" class="clear-all-btn">Clear All</button>
-        <?php endif; ?>
-      </div>
-    </div>
-
-    <div id="wishlist-items" class="wishlist-grid">
-      <?php if ($result->num_rows > 0): ?>
-        <?php while ($item = $result->fetch_assoc()): ?>
-          <?php
-          // Handle blob image conversion
-          if (!empty($item['image'])) {
-              $mimeType = !empty($item['image_format']) ? $item['image_format'] : 'image/jpeg';
-              $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($item['image']);
-          } else {
-              $imageSrc = SITE_URL . 'uploads/sample1.jpg';
-          }
-          
-          // ✅ FIXED: Create product link with color ID as the main parameter
-          // Your product.php expects 'id' parameter to be the color_id
-          $product_link = SITE_URL . 'pages/product.php?id=' . $item['color_id'];
-          ?>
-          
-          <div class="wishlist-item" data-wishlist-id="<?= $item['wishlist_id'] ?>">
-            <a href="<?= $product_link ?>" class="wishlist-link">
-              <div class="item-image">
+  <div class="wishlist-dashboard">
+    <h2>My Wishlist</h2>
+    
+    <div class="wishlist-layout">
+      <!-- Left Column - Wishlist Items -->
+      <div class="wishlist-items-column">
+        <!-- Wishlist Actions -->
+        <div class="wishlist-actions">
+          <label class="wishlist-select-all-label">
+            <input type="checkbox" id="wishlist-select-all"> Select All
+          </label>
+          <button class="btn-clear-wishlist" id="clear-wishlist">Clear Wishlist</button>
+        </div>
+        
+        <!-- Wishlist Header -->
+        <div class="wishlist-header">
+          <div></div>
+          <div>Image</div>
+          <div>Product</div>
+          <div>Actions</div>
+          <div>Price</div>
+          <div>Remove</div>
+        </div>
+        
+        <!-- Wishlist Items -->
+        <div id="wishlist-items">
+          <?php if ($result->num_rows > 0): ?>
+            <?php while ($item = $result->fetch_assoc()): ?>
+              <?php
+              // Handle blob image conversion
+              if (!empty($item['image'])) {
+                  $mimeType = !empty($item['image_format']) ? $item['image_format'] : 'image/jpeg';
+                  $imageSrc = 'data:' . $mimeType . ';base64,' . base64_encode($item['image']);
+              } else {
+                  $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+              }
+              
+              // ✅ FIXED: Create product link with color ID as the main parameter
+              $product_link = SITE_URL . 'pages/product.php?id=' . $item['color_id'];
+              ?>
+              
+              <div class="wishlist-item" data-wishlist-id="<?= $item['wishlist_id'] ?>">
+                <input type="checkbox" class="wishlist-select-item" data-wishlist-id="<?= $item['wishlist_id'] ?>">
+                
                 <img src="<?= $imageSrc; ?>" alt="<?= htmlspecialchars($item['name']); ?>" 
                      onerror="this.src='<?= SITE_URL; ?>uploads/sample1.jpg'">
-              </div>
-              <div class="item-info">
-                <h3 class="item-name"><?= htmlspecialchars($item['name']); ?></h3>
-                <?php if (!empty($item['color_name'])): ?>
-                  <div class="item-color">
-                    <span class="color-badge">Color: <?= htmlspecialchars($item['color_name']); ?></span>
+                
+                <div class="wishlist-product-info">
+                  <h3 class="wishlist-product-name"><?= htmlspecialchars($item['name']); ?></h3>
+                  <div class="wishlist-product-details">
+                    <?php if (!empty($item['color_name'])): ?>
+                      <span class="wishlist-variant-color"><?= htmlspecialchars($item['color_name']); ?></span>
+                    <?php endif; ?>
+                    <span class="wishlist-product-price">₱<?= number_format($item['price'], 2); ?></span>
                   </div>
-                <?php endif; ?>
+                </div>
+                
+                <div class="wishlist-action-buttons">
+                  <button class="btn-move-to-cart" data-wishlist-id="<?= $item['wishlist_id']; ?>">
+                    Add to Cart
+                  </button>
+                </div>
+                
+                <div class="wishlist-product-price">
+                  ₱<?= number_format($item['price'], 2); ?>
+                </div>
+                
+                <button class="btn-remove-wishlist" data-id="<?= $item['wishlist_id']; ?>" title="Remove from wishlist">
+                  Remove
+                </button>
               </div>
-            </a>
-            
-            <div class="item-actions">
-              <button class="remove-wishlist" data-id="<?= $item['wishlist_id']; ?>" title="Remove from wishlist">
-                <i class="fas fa-trash"></i>
-              </button>
+            <?php endwhile; ?>
+          <?php else: ?>
+            <div class="wishlist-empty">
+              <h3>Your wishlist is empty</h3>
+              <p>Save items you love for later!</p>
+              <a href="<?= SITE_URL; ?>pages/new.php" class="btn-continue-shopping">Continue Shopping</a>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+      
+      <!-- Right Column - Wishlist Summary -->
+      <div class="wishlist-summary-column">
+        <h3>Wishlist Summary</h3>
+        
+        <!-- Move All to Cart -->
+        <div class="wishlist-move-all">
+          <h4>Quick Actions</h4>
+          <div class="wishlist-move-actions">
+            <button class="btn-move-all-cart" id="move-all-to-cart">
+              Move All to Cart
+            </button>
+          </div>
+        </div>
+        
+        <!-- Wishlist Stats -->
+        <div class="wishlist-stats-section">
+          <h4>Wishlist Stats</h4>
+          <div class="wishlist-stats-breakdown">
+            <div class="wishlist-stat-row">
+              <span class="wishlist-stat-label">Total Items:</span>
+              <span class="wishlist-stat-value"><?= $total_count ?></span>
+            </div>
+            <div class="wishlist-stat-row">
+              <span class="wishlist-stat-label">Selected Items:</span>
+              <span class="wishlist-stat-value" id="selected-count">0</span>
             </div>
           </div>
-        <?php endwhile; ?>
-      <?php else: ?>
-        <div class="wishlist-empty">
-          <div class="empty-icon">💝</div>
-          <h3>Your wishlist is empty</h3>
-          <p>Save items you love for later!</p>
-          <a href="<?= SITE_URL; ?>pages/new.php" class="continue-shopping">Continue Shopping</a>
         </div>
-      <?php endif; ?>
+        
+        <!-- Continue Shopping -->
+        <div class="wishlist-continue-shopping">
+          <p>Continue discovering more products!</p>
+          <a href="<?= SITE_URL; ?>pages/new.php" class="btn-continue-shopping">
+            Continue Shopping
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
   <script>
-// Wishlist count updater - MOVE THIS INSIDE DOMContentLoaded
 document.addEventListener("DOMContentLoaded", function() {
     console.log('Wishlist page loaded');
 
@@ -165,26 +225,103 @@ document.addEventListener("DOMContentLoaded", function() {
         setInterval(updateWishlistCount, 10000);
     }
 
-    // Make the entire wishlist item clickable (except remove button)
-    document.querySelectorAll('.wishlist-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            if (!e.target.closest('.remove-wishlist')) {
-                const link = this.querySelector('.wishlist-link');
-                if (link) {
-                    console.log('Navigating to product:', link.href);
-                    window.location.href = link.href;
-                }
-            }
+    // Select All functionality
+    document.getElementById('wishlist-select-all')?.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.wishlist-select-item');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
         });
+        updateSelectedCount();
     });
 
-    // ✅ SINGLE Remove item from wishlist handler
-    document.addEventListener("click", async (e) => {
-        if (e.target.closest(".remove-wishlist")) {
+    // Individual checkbox changes
+    document.querySelectorAll('.wishlist-select-item').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+
+    // Update selected count
+    function updateSelectedCount() {
+        const selectedCount = document.querySelectorAll('.wishlist-select-item:checked').length;
+        document.getElementById('selected-count').textContent = selectedCount;
+    }
+
+    // Move to cart functionality
+    document.querySelectorAll('.btn-move-to-cart').forEach(button => {
+        button.addEventListener('click', async function(e) {
             e.preventDefault();
             e.stopPropagation();
             
-            const removeBtn = e.target.closest(".remove-wishlist");
+            const wishlistId = this.dataset.wishlistId;
+            await moveToCart(wishlistId);
+        });
+    });
+
+    // Move all to cart
+    document.getElementById('move-all-to-cart')?.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const selectedItems = getSelectedWishlistIds();
+        if (selectedItems.length === 0) {
+            showNotification('Please select items to move to cart', 'error');
+            return;
+        }
+
+        if (confirm(`Move ${selectedItems.length} item(s) to cart?`)) {
+            for (const wishlistId of selectedItems) {
+                await moveToCart(wishlistId);
+            }
+        }
+    });
+
+    async function moveToCart(wishlistId) {
+        try {
+            const formData = new URLSearchParams();
+            formData.append("wishlist_id", wishlistId);
+            
+            const res = await fetch("<?= SITE_URL; ?>actions/wishlist-move-to-cart.php", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: formData
+            });
+            
+            const result = await res.text();
+            
+            if (result.trim() === "success") {
+                showNotification('Item moved to cart successfully', 'success');
+                // Optionally remove from wishlist after moving to cart
+                const itemElement = document.querySelector(`[data-wishlist-id="${wishlistId}"]`);
+                if (itemElement) {
+                    itemElement.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => {
+                        itemElement.remove();
+                        updateWishlistUI();
+                    }, 300);
+                }
+            } else {
+                showNotification('Failed to move item to cart', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Network error: ' + error.message, 'error');
+        }
+    }
+
+    function getSelectedWishlistIds() {
+        const selectedItems = [];
+        document.querySelectorAll('.wishlist-select-item:checked').forEach(checkbox => {
+            selectedItems.push(checkbox.dataset.wishlistId);
+        });
+        return selectedItems;
+    }
+
+    // ✅ SINGLE Remove item from wishlist handler
+    document.addEventListener("click", async (e) => {
+        if (e.target.closest(".btn-remove-wishlist")) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const removeBtn = e.target.closest(".btn-remove-wishlist");
             const wishlistId = removeBtn.dataset.id;
             const itemElement = removeBtn.closest('.wishlist-item');
             
@@ -262,10 +399,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (result.trim() === "success") {
                     document.getElementById('wishlist-items').innerHTML = `
                         <div class="wishlist-empty">
-                          <div class="empty-icon">💝</div>
                           <h3>Your wishlist is empty</h3>
                           <p>Save items you love for later!</p>
-                          <a href='<?= SITE_URL; ?>pages/new.php' class='continue-shopping'>Continue Shopping</a>
+                          <a href='<?= SITE_URL; ?>pages/new.php' class='btn-continue-shopping'>Continue Shopping</a>
                         </div>`;
                     updateWishlistUI();
                     showNotification('Wishlist cleared', 'success');
@@ -283,16 +419,6 @@ document.addEventListener("DOMContentLoaded", function() {
     function updateWishlistUI() {
         const items = document.querySelectorAll('.wishlist-item');
         const itemCount = items.length;
-        const countElement = document.querySelector('.item-count');
-        const clearBtn = document.getElementById('clear-wishlist');
-        
-        if (countElement) {
-            countElement.textContent = itemCount + ' item' + (itemCount !== 1 ? 's' : '');
-        }
-        
-        if (clearBtn) {
-            clearBtn.style.display = itemCount > 0 ? 'block' : 'none';
-        }
         
         // Update wishlist count in header
         const wishlistBadge = document.querySelector('.wishlist-count');
@@ -300,14 +426,16 @@ document.addEventListener("DOMContentLoaded", function() {
             wishlistBadge.textContent = itemCount;
         }
         
+        // Update selected count
+        updateSelectedCount();
+        
         // If no items, show empty state
         if (itemCount === 0 && !document.querySelector('.wishlist-empty')) {
             document.getElementById('wishlist-items').innerHTML = `
                 <div class="wishlist-empty">
-                  <div class="empty-icon">💝</div>
                   <h3>Your wishlist is empty</h3>
                   <p>Save items you love for later!</p>
-                  <a href='<?= SITE_URL; ?>pages/new.php' class='continue-shopping'>Continue Shopping</a>
+                  <a href='<?= SITE_URL; ?>pages/new.php' class='btn-continue-shopping'>Continue Shopping</a>
                 </div>`;
         }
     }
@@ -371,6 +499,9 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     `;
     document.head.appendChild(style);
+
+    // Initialize selected count
+    updateSelectedCount();
 });
 </script>
 </body>

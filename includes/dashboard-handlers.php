@@ -133,6 +133,28 @@ if (isset($_POST['update_address'])) {
     exit();
 }
 
+// Handle wishlist removal
+if (isset($_POST['remove_wishlist'])) {
+    $wishlist_id = $_POST['wishlist_id'];
+    
+    $stmt = $conn->prepare("DELETE FROM wishlist WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $wishlist_id, $user_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Item removed from wishlist successfully!'
+        ]);
+        exit();
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error removing item from wishlist.'
+        ]);
+        exit();
+    }
+}
+
 // For adding new address - FIXED VERSION
 if (isset($_POST['add_address'])) {
     $fullname = $_POST['fullname'];
@@ -428,6 +450,7 @@ if (isset($_GET['refresh_addresses'])) {
             </div>
         <?php endif; ?>
     </div>
+    
     
     <!-- Also output the overview displays -->
     <div id="defaultShippingDisplay">

@@ -456,7 +456,7 @@ function updateOverviewDisplay(defaultShipping, defaultBilling) {
     }
 }
 
-// Wishlist management - HANDLES HTML RESPONSES GRACEFULLY
+// Wishlist management - FIXED VERSION
 function deleteWishlistItem(wishlistId) {
     if (confirm('Remove this item from your wishlist?')) {
         const formData = new FormData();
@@ -476,6 +476,7 @@ function deleteWishlistItem(wishlistId) {
         })
         .then(response => response.text())
         .then(text => {
+            console.log('Wishlist remove response:', text);
             try {
                 const data = JSON.parse(text);
                 if (data.success) {
@@ -492,10 +493,11 @@ function deleteWishlistItem(wishlistId) {
                     if (item) {
                         item.classList.remove('removing');
                     }
-                    showMessage('Error removing item: ' + data.message, 'error');
+                    showMessage('Error removing item: ' + (data.message || 'Unknown error'), 'error');
                 }
             } catch (e) {
-                // If it's not JSON, assume success
+                console.error('JSON parse error:', e);
+                // If it's not JSON, assume success and remove from DOM
                 setTimeout(() => {
                     if (item && item.parentNode) {
                         item.remove();
