@@ -12,28 +12,29 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 try {
-    // Fetch cart items with product information - FIXED QUERY
+    // Fetch cart items with FOCUS ON COLOR_ID
     $sql = "
         SELECT 
             c.id as cart_id,
-            c.product_id,
-            c.color_id,
-            c.color_name,
+            c.color_id,  -- 🟣 FOCUS ON COLOR_ID
             c.quantity,
             c.size,
             c.price,
             c.added_at,
             p.name,
             p.description,
-            pc.color_name as actual_color_name,
+            -- 🟣 GET COLOR NAME FROM product_colors using color_id
+            pc.color_name,
+            -- 🟣 GET PRODUCT ID FROM product_colors
+            pc.product_id,
             COALESCE(
                 (SELECT CONCAT('data:image/', 
                               COALESCE(pi.image_format, 'jpeg'), 
                               ';base64,', 
                               TO_BASE64(pi.image))
                  FROM product_images pi
-                 WHERE pi.product_id = p.id
-                   AND pi.color_name = c.color_name
+                 WHERE pi.product_id = pc.product_id  -- 🟣 Use product_id from product_colors
+                   AND pi.color_name = pc.color_name  -- 🟣 Use color_name from product_colors
                  ORDER BY pi.sort_order ASC, pi.id ASC
                  LIMIT 1),
                 (SELECT CONCAT('data:image/', 
@@ -41,7 +42,7 @@ try {
                               ';base64,', 
                               TO_BASE64(pi2.image))
                  FROM product_images pi2
-                 WHERE pi2.product_id = p.id
+                 WHERE pi2.product_id = pc.product_id  -- 🟣 Use product_id from product_colors
                    AND pi2.color_name IS NULL
                  ORDER BY pi2.sort_order ASC, pi2.id ASC
                  LIMIT 1),
@@ -50,7 +51,7 @@ try {
                               ';base64,', 
                               TO_BASE64(pi3.image))
                  FROM product_images pi3
-                 WHERE pi3.product_id = p.id
+                 WHERE pi3.product_id = pc.product_id  -- 🟣 Use product_id from product_colors
                  ORDER BY pi3.sort_order ASC, pi3.id ASC
                  LIMIT 1),
                 NULL
@@ -58,27 +59,29 @@ try {
             COALESCE(
                 (SELECT pi.image_format
                  FROM product_images pi
-                 WHERE pi.product_id = p.id
-                   AND pi.color_name = c.color_name
+                 WHERE pi.product_id = pc.product_id  -- 🟣 Use product_id from product_colors
+                   AND pi.color_name = pc.color_name  -- 🟣 Use color_name from product_colors
                  ORDER BY pi.sort_order ASC, pi.id ASC
                  LIMIT 1),
                 (SELECT pi2.image_format
                  FROM product_images pi2
-                 WHERE pi2.product_id = p.id
+                 WHERE pi2.product_id = pc.product_id  -- 🟣 Use product_id from product_colors
                    AND pi2.color_name IS NULL
                  ORDER BY pi2.sort_order ASC, pi2.id ASC
                  LIMIT 1),
                 (SELECT pi3.image_format
                  FROM product_images pi3
-                 WHERE pi3.product_id = p.id
+                 WHERE pi3.product_id = pc.product_id  -- 🟣 Use product_id from product_colors
                  ORDER BY pi3.sort_order ASC, pi3.id ASC
                  LIMIT 1),
                 'jpeg'
             ) AS image_format,
             (c.price * c.quantity) as subtotal
         FROM cart c
-        LEFT JOIN products p ON c.product_id = p.id
+        -- 🟣 FOCUS ON COLOR_ID: Join with product_colors first using color_id
         LEFT JOIN product_colors pc ON c.color_id = pc.id
+        -- 🟣 Then join with products using the product_id from product_colors
+        LEFT JOIN products p ON pc.product_id = p.id
         WHERE c.user_id = ?
         ORDER BY c.added_at DESC
     ";
@@ -90,10 +93,8 @@ try {
     
     $cart = [];
     while ($row = $result->fetch_assoc()) {
-        // Use actual color name from product_colors table if available
-        if (!empty($row['actual_color_name'])) {
-            $row['color_name'] = $row['actual_color_name'];
-        }
+        // 🟣 DEBUG: Log what we're fetching
+        error_log("🛒 Cart Fetch - Cart ID: {$row['cart_id']}, Color ID: {$row['color_id']}, Product: {$row['name']}, Color Name: {$row['color_name']}");
         
         // Handle image data - NO NEED TO CONVERT, MySQL TO_BASE64 already did it
         // The image field now contains the complete data URL

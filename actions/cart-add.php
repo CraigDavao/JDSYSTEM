@@ -123,23 +123,21 @@ try {
         // Insert new item with color information
         $insert_stmt = $conn->prepare("
             INSERT INTO cart (user_id, product_id, color_id, color_name, quantity, size, price, added_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, NULL, ?, ?, ?, NOW())
         ");
         
         if (!$insert_stmt) {
             throw new Exception('Database prepare failed: ' . $conn->error);
         }
         
-        // 🟣 CRITICAL FIX: Use the correct data types in bind_param
-        // "iiisisd" means: int, int, int, string, int, string, double
-        $insert_stmt->bind_param("iiisisd", 
+        // 🟣 FOCUS ON COLOR_ID: Store color_id and product_id from the color selection
+        $insert_stmt->bind_param("iiisid", 
             $user_id, 
             $product['product_id'], 
             $color_id, 
-            $product['color_name'], 
             $quantity, 
             $size,
-            $displayPrice  // This should be a double/float
+            $displayPrice
         );
         
         if ($insert_stmt->execute()) {
@@ -158,6 +156,7 @@ try {
     $response = ['status' => 'error', 'message' => $error_msg];
     error_log("❌ Cart Add Error: " . $error_msg);
 }
+
 
 // Clear output buffer and send JSON
 ob_clean();

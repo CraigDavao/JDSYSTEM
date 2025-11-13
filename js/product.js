@@ -1,4 +1,4 @@
-// ✅ product.js - FIXED VERSION WITH PROPER SIZE UPDATES
+// ✅ product.js - FIXED VERSION WITH PROPER COLOR ID UPDATES
 document.addEventListener("DOMContentLoaded", () => {
     console.log("🔧 product.js loaded - Starting initialization");
     
@@ -350,23 +350,59 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 🛒 ADD TO CART - UPDATED TO INCLUDE COLOR, SIZE & QUANTITY
-    document.querySelectorAll(".add-to-cart").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-            const colorId = btn.dataset.id;
-            hideResetPasswordFormIfVisible();
-            
-            // ✅ GET CURRENT SELECTED SIZE AND QUANTITY
+    // 🟣 CRITICAL FIX: Get the CURRENT selected color ID
+    function getSelectedColorId() {
+        // Method 1: Check the hidden field (updated by color selector)
+        const hiddenColorField = document.getElementById('selected-color-id');
+        if (hiddenColorField && hiddenColorField.value) {
+            return hiddenColorField.value;
+        }
+        
+        // Method 2: Check active color option
+        const activeColor = document.querySelector('.color-option.active');
+        if (activeColor && activeColor.dataset.colorId) {
+            return activeColor.dataset.colorId;
+        }
+        
+        // Method 3: Fallback to Add to Cart button data (initial page load)
+        const addToCartBtn = document.querySelector('.add-to-cart');
+        if (addToCartBtn && addToCartBtn.dataset.id) {
+            return addToCartBtn.dataset.id;
+        }
+        
+        console.error('❌ No color ID found!');
+        return null;
+    }
+
+    // 🛒 ADD TO CART - FIXED TO USE CURRENT SELECTED COLOR
+    function initializeAddToCart() {
+        console.log("🛒 Initializing Add to Cart functionality...");
+        
+        const addToCartBtn = document.querySelector(".add-to-cart");
+        if (!addToCartBtn) {
+            console.error("❌ Add to Cart button not found!");
+            return;
+        }
+
+        addToCartBtn.addEventListener("click", async () => {
+            // ✅ GET CURRENT SELECTED COLOR, SIZE AND QUANTITY
+            const colorId = getSelectedColorId();
             const activeSize = document.querySelector('.size-option.active');
             const size = activeSize ? activeSize.dataset.size : 'M';
             const quantity = document.getElementById("quantity")?.value || 1;
 
-            console.log("🛒 Add to cart clicked, Color ID:", colorId, "Size:", size, "Quantity:", quantity);
+            console.log("🛒 Add to cart clicked - FINAL SELECTION:", {
+                colorId: colorId,
+                size: size,
+                quantity: quantity
+            });
             
             if (!colorId) {
-                alert("Please select a color.");
+                alert("⚠️ Please select a color.");
                 return;
             }
+
+            hideResetPasswordFormIfVisible();
 
             try {
                 const formData = new URLSearchParams();
@@ -385,10 +421,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log("🛒 Cart API response:", result);
 
                 if (result.status === "success") {
-                    alert("✅ Product added to cart successfully!");
+                    showNotification("✅ Product added to cart successfully!", 'success');
                     updateCartAfterAdd();
                 } else if (result.status === "exists") {
-                    alert("🛒 This product is already in your cart.");
+                    showNotification("🛒 This product is already in your cart.", 'info');
                 } else if (
                     result.message === "Please log in first." ||
                     result.message === "not_logged_in" ||
@@ -396,14 +432,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 ) {
                     showLoginModal();
                 } else {
-                    alert(result.message || "⚠️ Something went wrong.");
+                    showNotification(result.message || "⚠️ Something went wrong.", 'error');
                 }
             } catch (error) {
                 console.error("Cart Error:", error);
-                alert("⚠️ Network error.");
+                showNotification("⚠️ Network error.", 'error');
             }
         });
-    });
+        
+        console.log("✅ Add to Cart initialized");
+    }
 
     // 🟢 UPDATE CART BADGE
     async function updateCartAfterAdd() {
@@ -424,7 +462,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 💖 WISHLIST FEATURE - UPDATED TO INCLUDE COLOR SELECTION
+    // 💖 WISHLIST FEATURE - FIXED TO USE CURRENT SELECTED COLOR
     function initializeWishlist() {
         console.log("💖 Initializing wishlist functionality...");
 
@@ -445,8 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 hideResetPasswordFormIfVisible();
 
                 // ✅ GET CURRENT SELECTED COLOR
-                const selectedColorId = document.getElementById('selected-color-id');
-                const colorId = selectedColorId ? selectedColorId.value : null;
+                const colorId = getSelectedColorId();
                 const productId = this.dataset.id;
 
                 console.log("💖 Wishlist Data:", {
@@ -456,12 +493,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 if (!productId) {
-                    alert("⚠️ Product information missing.");
+                    showNotification("⚠️ Product information missing.", 'error');
                     return;
                 }
 
                 if (!colorId) {
-                    alert("⚠️ Please select a color before adding to wishlist.");
+                    showNotification("⚠️ Please select a color before adding to wishlist.", 'error');
                     return;
                 }
 
@@ -498,13 +535,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         this.textContent = originalText;
                         this.disabled = false;
                     } else {
-                        alert(data.message || "⚠️ Something went wrong.");
+                        showNotification(data.message || "⚠️ Something went wrong.", 'error');
                         this.textContent = originalText;
                         this.disabled = false;
                     }
                 } catch (err) {
                     console.error("💖 NETWORK ERROR:", err);
-                    alert("⚠️ Network error. Please try again.");
+                    showNotification("⚠️ Network error. Please try again.", 'error');
                     this.textContent = originalText;
                     this.disabled = false;
                 }
@@ -524,45 +561,25 @@ document.addEventListener("DOMContentLoaded", () => {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <span>${message}</span>
-            <button onclick="this.parentElement.remove()">×</button>
+            <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
         `;
         
-        // Add styles if not exists
-        if (!document.querySelector('#notification-styles')) {
-            const styles = document.createElement('style');
-            styles.id = 'notification-styles';
-            styles.textContent = `
-                .notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 12px 20px;
-                    border-radius: 6px;
-                    color: white;
-                    z-index: 10000;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    max-width: 300px;
-                    animation: slideIn 0.3s ease;
-                }
-                .notification-success { background: #27ae60; }
-                .notification-error { background: #e74c3c; }
-                .notification-info { background: #3498db; }
-                .notification button {
-                    background: none;
-                    border: none;
-                    color: white;
-                    font-size: 18px;
-                    cursor: pointer;
-                }
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(styles);
-        }
+        // Add styles
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 300px;
+            animation: slideIn 0.3s ease;
+            background-color: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : type === 'info' ? '#17a2b8' : '#6c757d'};
+        `;
         
         document.body.appendChild(notification);
         
@@ -585,7 +602,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch((err) => console.error("💌 Error updating wishlist badge:", err));
     }
 
-    // 🚀 BUY NOW FUNCTIONALITY - COMPLETELY FIXED
+    // 🚀 BUY NOW FUNCTIONALITY - FIXED TO USE CURRENT SELECTED COLOR
     function initializeBuyNow() {
         console.log("🚀 Initializing Buy Now functionality...");
 
@@ -601,10 +618,8 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             event.stopPropagation();
 
-            // ✅ CRITICAL FIX: Get the CURRENT selected color from hidden field
-            const selectedColorId = document.getElementById('selected-color-id');
-            const colorId = selectedColorId ? selectedColorId.value : null;
-            
+            // ✅ CRITICAL FIX: Get the CURRENT selected color
+            const colorId = getSelectedColorId();
             const productId = this.dataset.productId;
             const price = this.dataset.price;
             
@@ -623,12 +638,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Validation
             if (!colorId) {
-                alert("⚠️ Please select a color before buying.");
+                showNotification("⚠️ Please select a color before buying.", 'error');
                 return;
             }
 
             if (!productId) {
-                alert("⚠️ Product information missing.");
+                showNotification("⚠️ Product information missing.", 'error');
                 return;
             }
 
@@ -665,13 +680,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.textContent = originalText;
                     this.disabled = false;
                 } else {
-                    alert(result.message || "⚠️ Something went wrong.");
+                    showNotification(result.message || "⚠️ Something went wrong.", 'error');
                     this.textContent = originalText;
                     this.disabled = false;
                 }
             } catch (error) {
                 console.error("🚀 Buy Now Network Error:", error);
-                alert("⚠️ Network error. Please try again.");
+                showNotification("⚠️ Network error. Please try again.", 'error');
                 this.textContent = originalText;
                 this.disabled = false;
             }
@@ -680,41 +695,40 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("✅ Buy Now event listener attached");
     }
 
-      // ✅ SIMPLE COLOR CHANGE - FORCE PAGE RELOAD
-    document.addEventListener('colorChanged', function(e) {
-        const newUrl = `${SITE_URL}pages/product.php?id=${e.detail.colorId}`;
-        console.log('🎨 Color changed, reloading page:', newUrl);
-        
-        // Force immediate page reload to properly reset everything
-        window.location.href = newUrl;
-    });
-
-    // ✅ RESET SIZE SELECTION ON COLOR CHANGE
-    function handleColorChangeReset() {
-        if (sessionStorage.getItem('color_changed') === 'true') {
-            // Clear the flag
-            sessionStorage.removeItem('color_changed');
+    // ✅ LISTEN FOR COLOR CHANGES TO UPDATE BUTTONS
+    function setupColorChangeListener() {
+        document.addEventListener('colorChanged', function(e) {
+            console.log('🎨 Color change detected, updating buttons...');
             
-            // Force size selection reset after a short delay to ensure DOM is ready
-            setTimeout(() => {
-                initializeSizeSelection();
-                updateQuantityLimits();
-            }, 100);
-        }
+            // Update Add to Cart button data-id
+            const addToCartBtn = document.querySelector('.add-to-cart');
+            if (addToCartBtn && e.detail.colorId) {
+                addToCartBtn.dataset.id = e.detail.colorId;
+                console.log('✅ Updated Add to Cart button color ID:', e.detail.colorId);
+            }
+            
+            // Update Buy Now button data-color-id
+            const buyNowBtn = document.getElementById('buy-now-btn');
+            if (buyNowBtn && e.detail.colorId) {
+                buyNowBtn.dataset.colorId = e.detail.colorId;
+                console.log('✅ Updated Buy Now button color ID:', e.detail.colorId);
+            }
+        });
     }
 
     // 🚀 INITIALIZE EVERYTHING
     function initialize() {
         console.log("🚀 Starting full initialization...");
         addModalStyles();
-        initializeSizeSelection(); // 🆕 ADD THIS LINE
-        initializeQuantityControls(); // 🆕 ADD THIS LINE
+        initializeSizeSelection();
+        initializeQuantityControls();
+        initializeAddToCart(); // 🆕 ADD THIS - FIXED ADD TO CART
         initializeWishlist();
         initializeBuyNow();
         setupForgotPasswordReset();
+        setupColorChangeListener(); // 🆕 ADD THIS - LISTEN FOR COLOR CHANGES
         updateWishlistCount();
         updateCartAfterAdd();
-        handleColorChangeReset(); // 🆕 ADD THIS LINE
         
         // Initialize quantity limits
         updateQuantityLimits();
