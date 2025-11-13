@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             $delete_stmt->close();
+            $verify_stmt->close();
         } catch (Exception $e) {
             error_log("Exception: " . $e->getMessage());
             echo "exception";

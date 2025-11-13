@@ -22,7 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $delete_stmt->bind_param("i", $user_id);
         
         if ($delete_stmt->execute()) {
-            error_log("Successfully cleared wishlist for user ID: $user_id");
+            $affected_rows = $delete_stmt->affected_rows;
+            error_log("Successfully cleared wishlist for user ID: $user_id - Removed $affected_rows items");
             echo "success";
         } else {
             error_log("Database error: " . $delete_stmt->error);
