@@ -5,56 +5,156 @@ require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
 /* ------------------------------------------------------------
-   HELPER FUNCTION: Get product image by color_id
+   HELPER FUNCTION: Get product image by color_id - FIXED
 ------------------------------------------------------------ */
 function getProductImageByColorId($color_id, $conn) {
     if (!$color_id || $color_id <= 0) {
         return SITE_URL . 'uploads/sample1.jpg';
     }
     
-    $sql = "
-        SELECT pi.image, pi.image_format 
-        FROM product_images pi 
-        INNER JOIN product_colors pc ON pi.product_id = pc.product_id 
-        WHERE pc.id = ? 
-        AND pi.image IS NOT NULL 
+    // First, get the color_name from product_colors using color_id
+    $color_sql = "SELECT color_name FROM product_colors WHERE id = ?";
+    $color_stmt = $conn->prepare($color_sql);
+    
+    if (!$color_stmt) {
+        error_log("❌ FAILED to prepare color query for color_id: $color_id");
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $color_stmt->bind_param("i", $color_id);
+    
+    if (!$color_stmt->execute()) {
+        error_log("❌ FAILED to execute color query for color_id: $color_id");
+        $color_stmt->close();
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $color_result = $color_stmt->get_result();
+    $color_data = $color_result->fetch_assoc();
+    $color_stmt->close();
+    
+    if (!$color_data || !isset($color_data['color_name'])) {
+        error_log("❌ NO COLOR NAME: No color found for color_id: $color_id");
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $color_name = $color_data['color_name'];
+    
+    // Now get the product_id from product_colors
+    $product_sql = "SELECT product_id FROM product_colors WHERE id = ?";
+    $product_stmt = $conn->prepare($product_sql);
+    $product_stmt->bind_param("i", $color_id);
+    $product_stmt->execute();
+    $product_result = $product_stmt->get_result();
+    $product_data = $product_result->fetch_assoc();
+    $product_stmt->close();
+    
+    if (!$product_data) {
+        error_log("❌ NO PRODUCT: No product found for color_id: $color_id");
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $product_id = $product_data['product_id'];
+    
+    // Now get the image using product_id and color_name
+    $image_sql = "
+        SELECT image, image_format 
+        FROM product_images 
+        WHERE product_id = ? AND color_name = ?
         LIMIT 1
     ";
     
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        error_log("❌ FAILED to prepare image query for color_id: $color_id");
+    $image_stmt = $conn->prepare($image_sql);
+    if (!$image_stmt) {
+        error_log("❌ FAILED to prepare image query for product_id: $product_id, color_name: $color_name");
         return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $image_stmt->bind_param("is", $product_id, $color_name);
+    
+    if (!$image_stmt->execute()) {
+        error_log("❌ FAILED to execute image query for product_id: $product_id, color_name: $color_name");
+        $image_stmt->close();
+        return SITE_URL . 'uploads/sample1.jpg';
+    }
+    
+    $image_result = $image_stmt->get_result();
+    $image_data = $image_result->fetch_assoc();
+    $image_stmt->close();
+    
+    if (!empty($image_data['image'])) {
+        $mimeType = !empty($image_data['image_format']) ? $image_data['image_format'] : 'image/jpeg';
+        $imageBase64 = base64_encode($image_data['image']);
+        $imageUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
+        error_log("✅ IMAGE FOUND for color_id: $color_id, product_id: $product_id, color_name: $color_name");
+        return $imageUrl;
+    }
+    
+    // Fallback: Get any image for this product if specific color image not found
+    $fallback_sql = "
+        SELECT image, image_format 
+        FROM product_images 
+        WHERE product_id = ?
+        LIMIT 1
+    ";
+    
+    $fallback_stmt = $conn->prepare($fallback_sql);
+    if ($fallback_stmt) {
+        $fallback_stmt->bind_param("i", $product_id);
+        $fallback_stmt->execute();
+        $fallback_result = $fallback_stmt->get_result();
+        $fallback_data = $fallback_result->fetch_assoc();
+        $fallback_stmt->close();
+        
+        if (!empty($fallback_data['image'])) {
+            $mimeType = !empty($fallback_data['image_format']) ? $fallback_data['image_format'] : 'image/jpeg';
+            $imageBase64 = base64_encode($fallback_data['image']);
+            $imageUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
+            error_log("✅ FALLBACK IMAGE FOUND for product_id: $product_id");
+            return $imageUrl;
+        }
+    }
+    
+    error_log("❌ NO IMAGE: No image found for color_id: $color_id, product_id: $product_id, color_name: $color_name");
+    return SITE_URL . 'uploads/sample1.jpg';
+}
+
+/* ------------------------------------------------------------
+   HELPER FUNCTION: Get color details by color_id
+------------------------------------------------------------ */
+function getColorDetailsById($color_id, $conn) {
+    if (!$color_id || $color_id <= 0) {
+        return ['color_name' => 'Default Color'];
+    }
+    
+    $sql = "SELECT color_name FROM product_colors WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("❌ FAILED to prepare color query for color_id: $color_id");
+        return ['color_name' => 'Default Color'];
     }
     
     $stmt->bind_param("i", $color_id);
     
     if (!$stmt->execute()) {
-        error_log("❌ FAILED to execute image query for color_id: $color_id");
+        error_log("❌ FAILED to execute color query for color_id: $color_id");
         $stmt->close();
-        return SITE_URL . 'uploads/sample1.jpg';
+        return ['color_name' => 'Default Color'];
     }
     
     $result = $stmt->get_result();
-    
-    if (!$result) {
-        error_log("❌ FAILED to get result for color_id: $color_id");
-        $stmt->close();
-        return SITE_URL . 'uploads/sample1.jpg';
-    }
-    
-    $imageData = $result->fetch_assoc();
+    $colorData = $result->fetch_assoc();
     $stmt->close();
     
-    if (!empty($imageData['image'])) {
-        $mimeType = !empty($imageData['image_format']) ? $imageData['image_format'] : 'image/jpeg';
-        $imageBase64 = base64_encode($imageData['image']);
-        $imageUrl = 'data:' . $mimeType . ';base64,' . $imageBase64;
-        return $imageUrl;
+    if ($colorData) {
+        return [
+            'color_name' => $colorData['color_name'] ?? 'Default Color'
+        ];
     }
     
-    error_log("❌ NO IMAGE: No image found for color_id: $color_id, using fallback");
-    return SITE_URL . 'uploads/sample1.jpg';
+    error_log("❌ NO COLOR DATA: No color found for color_id: $color_id");
+    return ['color_name' => 'Default Color'];
 }
 
 // Check if user is logged in
@@ -129,6 +229,9 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
     $buyNowProduct = $_SESSION['buy_now_product'];
     
     if (isset($buyNowProduct['color_id']) && $buyNowProduct['color_id'] > 0) {
+        // Get color details
+        $colorDetails = getColorDetailsById($buyNowProduct['color_id'], $conn);
+        
         if (!isset($buyNowProduct['price']) || $buyNowProduct['price'] <= 0) {
             $priceStmt = $conn->prepare("
                 SELECT p.price, p.sale_price, p.actual_sale_price 
@@ -142,13 +245,13 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
             
             if ($priceResult) {
                 $regularPrice = (float)$priceResult['price'];
-                $salePrice = (float)$priceResult['sale_price'];
-                $actualSale = (float)$priceResult['actual_sale_price'];
+                $salePrice = $priceResult['sale_price'] !== null ? (float)$priceResult['sale_price'] : null;
+                $actualSale = $priceResult['actual_sale_price'] !== null ? (float)$priceResult['actual_sale_price'] : null;
                 
                 $buyNowProduct['price'] = $regularPrice;
-                if ($actualSale > 0 && $actualSale < $regularPrice) {
+                if ($actualSale !== null && $actualSale > 0 && $actualSale < $regularPrice) {
                     $buyNowProduct['price'] = $actualSale;
-                } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
+                } elseif ($salePrice !== null && $salePrice > 0 && $salePrice < $regularPrice) {
                     $buyNowProduct['price'] = $salePrice;
                 }
             } else {
@@ -165,14 +268,8 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
             $buyNowProduct['size'] = 'M';
         }
         
-        if (!isset($buyNowProduct['color_name']) || empty($buyNowProduct['color_name'])) {
-            $colorStmt = $conn->prepare("SELECT color_name FROM product_colors WHERE id = ?");
-            $colorStmt->bind_param("i", $buyNowProduct['color_id']);
-            $colorStmt->execute();
-            $colorResult = $colorStmt->get_result()->fetch_assoc();
-            $buyNowProduct['color_name'] = $colorResult['color_name'] ?? 'Default Color';
-            $colorStmt->close();
-        }
+        // Use the fetched color details
+        $buyNowProduct['color_name'] = $colorDetails['color_name'];
         
         if (!isset($buyNowProduct['name']) || empty($buyNowProduct['name'])) {
             $nameStmt = $conn->prepare("
@@ -201,6 +298,8 @@ if (isset($_SESSION['buy_now_product']) && !empty($_SESSION['buy_now_product']))
         $totals['subtotal'] = $subtotal;
         $totals['shipping'] = $shipping;
         $totals['total'] = $total;
+        
+        error_log("✅ BUY NOW - Color: {$buyNowProduct['color_name']}, Color ID: {$buyNowProduct['color_id']}");
     }
 } 
 // Check for cart checkout items (regular cart checkout)
@@ -234,22 +333,34 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
         $stmt->execute();
         $result = $stmt->get_result();
         
-        $subtotal = 0;
+       $subtotal = 0;
+$cart_items = $conn->query("SELECT c.*, p.price FROM cart c INNER JOIN products p ON c.product_id = p.id WHERE c.user_id = '$user_id'");
+if ($cart_items->num_rows > 0) {
+    while ($item = $cart_items->fetch_assoc()) {
+        $subtotal += $item['price'] * $item['quantity'];
+    }
+} else {
+    $subtotal = 0; // fallback
+}
+
 
         while ($row = $result->fetch_assoc()) {
             $image_data = getProductImageByColorId($row['color_id'], $conn);
+            
+            // Get detailed color information
+            $colorDetails = getColorDetailsById($row['color_id'], $conn);
             
             $displayPrice = (float)$row['cart_price'];
             
             if ($displayPrice <= 0) {
                 $regularPrice = (float)$row['product_price'];
-                $salePrice = (float)$row['sale_price'];
-                $actualSale = (float)$row['actual_sale_price'];
+                $salePrice = $row['sale_price'] !== null ? (float)$row['sale_price'] : null;
+                $actualSale = $row['actual_sale_price'] !== null ? (float)$row['actual_sale_price'] : null;
 
                 $displayPrice = $regularPrice;
-                if ($actualSale > 0 && $actualSale < $regularPrice) {
+                if ($actualSale !== null && $actualSale > 0 && $actualSale < $regularPrice) {
                     $displayPrice = $actualSale;
-                } elseif ($salePrice > 0 && $salePrice < $regularPrice) {
+                } elseif ($salePrice !== null && $salePrice > 0 && $salePrice < $regularPrice) {
                     $displayPrice = $salePrice;
                 }
             }
@@ -265,7 +376,7 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
                 'cart_id' => $row['cart_id'],
                 'product_id' => intval($row['product_id']),
                 'color_id' => intval($row['color_id']),
-                'color_name' => $row['color_name'] ?? 'Default Color',
+                'color_name' => $colorDetails['color_name'], // Use fetched color name
                 'name' => $row['name'],
                 'price' => floatval($displayPrice),
                 'quantity' => intval($row['quantity']),
@@ -274,6 +385,8 @@ else if (isset($_SESSION['checkout_items']) && !empty($_SESSION['checkout_items'
                 'subtotal' => $itemSubtotal,
                 'is_buy_now' => false
             ];
+            
+            error_log("✅ CART ITEM - Product: {$row['name']}, Color: {$colorDetails['color_name']}, Color ID: {$row['color_id']}");
         }
         
         $shipping = $subtotal > 500 ? 0 : 50;
@@ -292,6 +405,12 @@ if (empty($checkout_items)) {
     $_SESSION['error'] = 'No items to checkout. Please add items to your cart first.';
     header("Location: " . SITE_URL . "pages/cart.php");
     exit;
+}
+
+// Debug: Log all checkout items with color information
+error_log("🎯 CHECKOUT SUMMARY - Total items: " . count($checkout_items));
+foreach ($checkout_items as $index => $item) {
+    error_log("  Item {$index}: {$item['name']} - Color: {$item['color_name']} (ID: {$item['color_id']})");
 }
 ?>
 
@@ -345,6 +464,28 @@ if (empty($checkout_items)) {
                     <?php endif; ?>
                     <button type="button" id="change-address-btn" class="btn-change-address">Change / Add New Address</button>
                 </div>
+
+                <!-- Courier Selection -->
+                <div class="form-group">
+                    <label for="courier">Preferred Courier *</label>
+                    <select id="courier" name="courier" required>
+                        <option value="">Select Courier</option>
+                        <option value="lbc">LBC Express</option>
+                        <option value="jnt">J&T Express</option>
+                        <option value="grab">Grab Express</option>
+                        <option value="lalamove">Lalamove</option>
+                        <option value="jrs">JRS Express</option>
+                        <option value="flash">Flash Express</option>
+                        <option value="ninjavan">Ninja Van</option>
+                    </select>
+                </div>
+
+                <!-- Delivery Schedule -->
+                <div class="form-group">
+                    <label for="delivery-schedule">Preferred Delivery Schedule *</label>
+                    <input type="datetime-local" id="delivery-schedule" name="delivery_schedule" required min="<?= date('Y-m-d\TH:i', strtotime('+1 day')) ?>">
+                    <small>Select your preferred date and time for delivery</small>
+                </div>
             </div>
 
             <!-- Payment Method -->
@@ -366,6 +507,33 @@ if (empty($checkout_items)) {
                             <small>Pay using GCash mobile app</small>
                         </span>
                     </label>
+                </div>
+                
+                <!-- GCash Payment Details (Hidden by default) -->
+                <div id="gcash-payment-details" class="gcash-payment-details" style="display: none;">
+                    <div class="gcash-instructions">
+                        <h4>GCash Payment Instructions</h4>
+                        <ol>
+                            <li>Send payment to: <strong>0917 123 4567</strong> (Jolly Dolly Store)</li>
+                            <li>Use your <strong>Order Number</strong> as reference</li>
+                            <li>Amount to pay: <strong>₱<?= number_format($totals['total'], 2) ?></strong></li>
+                            <li>Take a screenshot of your payment receipt or download from GCash app</li>
+                            <li>Upload the receipt below</li>
+                        </ol>
+                        
+                        <div class="gcash-upload-section">
+                            <label for="gcash-receipt">Upload GCash Receipt *</label>
+                            <input type="file" id="gcash-receipt" name="gcash_receipt" accept="image/*,.pdf" required>
+                            <small>Accepted formats: JPG, PNG, PDF (Max: 5MB)</small>
+                            <div id="receipt-preview" class="receipt-preview"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Fee Notice -->
+                <div class="shipping-notice">
+                    <p>📦 <strong>Shipping Fee:</strong> <?= $totals['shipping'] === 0 ? 'FREE' : '₱' . number_format($totals['shipping'], 2) ?></p>
+                    <p><small>Shipping fee will be collected by the courier upon delivery for COD orders</small></p>
                 </div>
             </div>
 

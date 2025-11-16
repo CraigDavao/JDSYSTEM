@@ -816,3 +816,223 @@
         padding: 20px;
     }
 }
+
+/* Courier and Schedule Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group select,
+.form-group input[type="datetime-local"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.form-group select:focus,
+.form-group input[type="datetime-local"]:focus {
+    outline: none;
+    border-color: #8b5a2b;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+/* GCash Payment Styles */
+.gcash-payment-details {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #8b5a2b;
+}
+
+.gcash-instructions h4 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.gcash-instructions ol {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.gcash-instructions li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.gcash-upload-section {
+    margin-top: 20px;
+}
+
+.gcash-upload-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.gcash-upload-section input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    background: white;
+}
+
+.gcash-upload-section small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+}
+
+.receipt-preview {
+    margin-top: 10px;
+}
+
+.gcash-amount {
+    margin-top: 15px;
+    padding: 15px;
+    background: #fdf8f3;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #e8d5c4;
+}
+
+/* Shipping Notice */
+.shipping-notice {
+    margin-top: 15px;
+    padding: 15px;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.shipping-notice p {
+    margin: 5px 0;
+}
+
+/* Courier and Schedule Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group select,
+.form-group input[type="datetime-local"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-group select:focus,
+.form-group input[type="datetime-local"]:focus {
+    outline: none;
+    border-color: #8b5a2b;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+/* GCash Payment Styles */
+.gcash-payment-details {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #8b5a2b;
+}
+
+.gcash-instructions h4 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.gcash-instructions ol {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.gcash-instructions li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.gcash-upload-section {
+    margin-top: 20px;
+}
+
+.gcash-upload-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.gcash-upload-section input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    background: white;
+}
+
+.gcash-upload-section small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+}
+
+.receipt-preview {
+    margin-top: 10px;
+}
+
+.gcash-amount {
+    margin-top: 15px;
+    padding: 15px;
+    background: #fdf8f3;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #e8d5c4;
+}
+
+/* Shipping Notice */
+.shipping-notice {
+    margin-top: 15px;
+    padding: 15px;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.shipping-notice p {
+    margin: 5px 0;
+}

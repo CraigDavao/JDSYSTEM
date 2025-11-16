@@ -1,4 +1,4 @@
-// checkout.js - Simple and reliable version
+// checkout.js - Complete working version
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🛒 Checkout page loaded');
     
@@ -23,12 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentAddressDisplay = document.getElementById('current-address');
     const selectedAddressIdInput = document.getElementById('selected-address-id');
 
-    // Storage keys
-    const CHECKOUT_SELECTED_ADDRESS = 'checkout_selected_address';
-    const CHECKOUT_VISIT_TIMESTAMP = 'checkout_visit_timestamp';
-
-    // Initialize
-    initializeAddressSelection();
+    // Initialize all functionality
+    initializeCheckout();
 
     // Modal functionality
     if (changeAddressBtn && addressModal) {
@@ -83,76 +79,151 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Place order button
+    // Place order button - FIXED
     if (placeOrderBtn) {
-        placeOrderBtn.addEventListener('click', function() {
+        console.log('✅ Place order button found');
+        placeOrderBtn.addEventListener('click', function(e) {
+            console.log('🔄 Place order button clicked');
+            e.preventDefault();
             placeOrder();
         });
+    } else {
+        console.error('❌ Place order button not found!');
     }
 
-    // Initialize address selection with smart detection
+    // Initialize all checkout functionality
+    function initializeCheckout() {
+        console.log('🔄 Initializing checkout functionality...');
+        initializeAddressSelection();
+        initializeGCashPayment();
+        initializeCourierSelection();
+        initializeDeliverySchedule();
+        console.log('✅ Checkout initialization complete');
+    }
+
+    // GCash payment functionality
+    function initializeGCashPayment() {
+        const paymentMethods = document.querySelectorAll('input[name="payment_method"]');
+        const gcashDetails = document.getElementById('gcash-payment-details');
+        const receiptInput = document.getElementById('gcash-receipt');
+        const receiptPreview = document.getElementById('receipt-preview');
+
+        console.log('💰 Initializing GCash payment');
+
+        // Toggle GCash details
+        paymentMethods.forEach(method => {
+            method.addEventListener('change', function() {
+                console.log('💳 Payment method changed to:', this.value);
+                if (this.value === 'gcash') {
+                    if (gcashDetails) gcashDetails.style.display = 'block';
+                    if (receiptInput) receiptInput.required = true;
+                } else {
+                    if (gcashDetails) gcashDetails.style.display = 'none';
+                    if (receiptInput) {
+                        receiptInput.required = false;
+                        receiptInput.value = '';
+                        if (receiptPreview) receiptPreview.innerHTML = '';
+                    }
+                }
+            });
+        });
+
+        // Handle receipt preview
+        if (receiptInput) {
+            receiptInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && receiptPreview) {
+                    previewReceipt(file, receiptPreview);
+                }
+            });
+        }
+    }
+
+    // Courier selection functionality
+    function initializeCourierSelection() {
+        const courierSelect = document.getElementById('courier');
+        if (courierSelect) {
+            console.log('🚚 Courier select found');
+            courierSelect.addEventListener('change', function() {
+                console.log('🚚 Selected courier:', this.value);
+            });
+        } else {
+            console.error('❌ Courier select not found!');
+        }
+    }
+
+    // Delivery schedule functionality
+    function initializeDeliverySchedule() {
+        const scheduleInput = document.getElementById('delivery-schedule');
+        if (scheduleInput) {
+            console.log('📅 Delivery schedule input found');
+            // Set minimum date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            scheduleInput.min = tomorrow.toISOString().slice(0, 16);
+            
+            scheduleInput.addEventListener('change', function() {
+                console.log('📅 Selected delivery schedule:', this.value);
+            });
+        } else {
+            console.error('❌ Delivery schedule input not found!');
+        }
+    }
+
+    // Preview uploaded receipt
+    function previewReceipt(file, previewContainer) {
+        if (!file.type.match('image.*') && file.type !== 'application/pdf') {
+            showMessage('Please upload an image or PDF file', 'error');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            showMessage('File size must be less than 5MB', 'error');
+            return;
+        }
+
+        previewContainer.innerHTML = '';
+
+        if (file.type.match('image.*')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '200px';
+                img.style.maxHeight = '200px';
+                img.style.marginTop = '10px';
+                img.style.border = '1px solid #ddd';
+                img.style.borderRadius = '4px';
+                previewContainer.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+            const pdfInfo = document.createElement('div');
+            pdfInfo.innerHTML = `
+                <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                    <strong>📄 PDF Receipt:</strong> ${file.name}<br>
+                    <small>File will be uploaded with your order</small>
+                </div>
+            `;
+            previewContainer.appendChild(pdfInfo);
+        }
+    }
+
+    // Initialize address selection
     function initializeAddressSelection() {
         console.log('🔍 Initializing address selection...');
         
         const defaultAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
-        const previousTimestamp = sessionStorage.getItem(CHECKOUT_VISIT_TIMESTAMP);
-        const currentTimestamp = Date.now();
         
-        // Check if we have a saved selection
-        const savedSelection = sessionStorage.getItem(CHECKOUT_SELECTED_ADDRESS);
-        
-        console.log('💾 Saved selection:', savedSelection);
-        console.log('🏠 Default address ID:', defaultAddressId);
-        console.log('⏰ Previous visit:', previousTimestamp);
-        console.log('⏰ Current visit:', currentTimestamp);
-        
-        // Determine if this is a refresh or new visit
-        const isRefresh = previousTimestamp && (currentTimestamp - parseInt(previousTimestamp)) < 2000; // 2 second window
-        
-        let addressIdToUse;
-        
-        if (isRefresh && savedSelection) {
-            // This is a refresh - use saved selection
-            console.log('🔄 Page refresh detected - using saved selection');
-            addressIdToUse = savedSelection;
-        } else {
-            // This is a new visit - use default address
-            console.log('🚀 New checkout visit - using default address');
-            addressIdToUse = defaultAddressId;
-            // Clear any old selection
-            sessionStorage.removeItem(CHECKOUT_SELECTED_ADDRESS);
-        }
-        
-        // Save current timestamp for next visit detection
-        sessionStorage.setItem(CHECKOUT_VISIT_TIMESTAMP, currentTimestamp.toString());
-        
-        if (addressIdToUse && addressIdToUse !== '0') {
-            console.log('🎯 Using address ID:', addressIdToUse);
-            
-            if (selectedAddressIdInput) {
-                selectedAddressIdInput.value = addressIdToUse;
-            }
-            
-            fetchAddressDetails(addressIdToUse);
+        if (defaultAddressId && defaultAddressId !== '0') {
+            console.log('🎯 Using default address ID:', defaultAddressId);
+            fetchAddressDetails(defaultAddressId);
         } else {
             console.log('❌ No address available');
             if (currentAddressDisplay) {
                 currentAddressDisplay.textContent = 'No address selected. Please add a shipping address.';
             }
         }
-    }
-
-    // Save selection
-    function saveSelection(addressId) {
-        sessionStorage.setItem(CHECKOUT_SELECTED_ADDRESS, addressId);
-        console.log('💾 Saved selection:', addressId);
-    }
-
-    // Clear selection
-    function clearSelection() {
-        sessionStorage.removeItem(CHECKOUT_SELECTED_ADDRESS);
-        sessionStorage.removeItem(CHECKOUT_VISIT_TIMESTAMP);
-        console.log('🗑️ Cleared all checkout data');
     }
 
     // Fetch address details for display
@@ -178,27 +249,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSelectedAddressDisplay(data.address);
             } else {
                 console.error('❌ Failed to fetch address details');
-                clearSelection();
-                useDefaultAddress();
+                showMessage('Error loading address details', 'error');
             }
         })
         .catch(error => {
             console.error('💥 Error fetching address details:', error);
-            clearSelection();
-            useDefaultAddress();
+            showMessage('Network error loading address', 'error');
         });
-    }
-
-    // Fall back to default address
-    function useDefaultAddress() {
-        const defaultAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
-        if (defaultAddressId && defaultAddressId !== '0') {
-            console.log('🔄 Falling back to default address');
-            if (selectedAddressIdInput) {
-                selectedAddressIdInput.value = defaultAddressId;
-            }
-            fetchAddressDetails(defaultAddressId);
-        }
     }
 
     // Load addresses for modal
@@ -253,17 +310,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const savedSelection = sessionStorage.getItem(CHECKOUT_SELECTED_ADDRESS);
         const defaultAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
 
         addressList.innerHTML = addresses.map((address) => {
             const addressId = address.id;
             const displayName = address.fullname || 'No Name Specified';
-            
-            // Check if this address is currently selected
-            const isSavedSelection = savedSelection && addressId.toString() === savedSelection;
             const isDefault = address.is_default === 1;
-            const isCurrentlySelected = isSavedSelection || (!savedSelection && isDefault);
+            const isCurrentlySelected = addressId.toString() === defaultAddressId;
             
             return `
                 <div class="address-item ${isCurrentlySelected ? 'selected' : ''}" data-id="${addressId}">
@@ -277,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 '<span class="address-badge badge-default">⭐ Default Address</span>' : 
                                 '<span class="address-badge badge-other">📍 Additional Address</span>'
                             }
-                            ${isSavedSelection ? 
+                            ${isCurrentlySelected ? 
                                 '<span class="address-badge badge-selected">✅ Selected</span>' : 
                                 ''
                             }
@@ -315,9 +368,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Save selection
-        saveSelection(addressId);
-        
         // Show loading state
         const selectedButton = document.querySelector(`.select-address-btn[data-id="${addressId}"]`);
         if (selectedButton) {
@@ -345,14 +395,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSelectedAddress(data.address);
                 addressModal.style.display = 'none';
                 showMessage('✅ Shipping address selected!', 'success');
-                
-                // Reload addresses to update selection indicators
-                setTimeout(() => {
-                    loadAddresses();
-                }, 500);
             } else {
                 showMessage('Error selecting address', 'error');
-                clearSelection();
             }
         })
         .catch(error => {
@@ -362,7 +406,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedButton.disabled = false;
             }
             showMessage('Error selecting address', 'error');
-            clearSelection();
         });
     }
 
@@ -479,13 +522,26 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('set-as-default').checked = false;
     }
 
-    // Place order function
+    // Enhanced place order function with validation
     function placeOrder() {
+        console.log('🚀 Starting place order process...');
+        
         const selectedAddressId = selectedAddressIdInput ? selectedAddressIdInput.value : null;
         const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-        
+        const courierSelect = document.getElementById('courier');
+        const scheduleInput = document.getElementById('delivery-schedule');
+        const receiptInput = document.getElementById('gcash-receipt');
+
+        console.log('📋 Validation data:', {
+            selectedAddressId,
+            paymentMethod: paymentMethod ? paymentMethod.value : 'NOT FOUND',
+            courierSelect: courierSelect ? courierSelect.value : 'NOT FOUND',
+            scheduleInput: scheduleInput ? scheduleInput.value : 'NOT FOUND',
+            receiptInput: receiptInput ? receiptInput.files : 'NOT FOUND'
+        });
+
         // Validation
-        if (!selectedAddressId) {
+        if (!selectedAddressId || selectedAddressId === '0') {
             showMessage('Please select a shipping address', 'error');
             return;
         }
@@ -495,39 +551,73 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        if (!courierSelect || !courierSelect.value) {
+            showMessage('Please select your preferred courier', 'error');
+            return;
+        }
+
+        if (!scheduleInput || !scheduleInput.value) {
+            showMessage('Please select your preferred delivery schedule', 'error');
+            return;
+        }
+
+        // GCash specific validation
+        if (paymentMethod.value === 'gcash') {
+            if (!receiptInput || !receiptInput.files || !receiptInput.files[0]) {
+                showMessage('Please upload your GCash payment receipt', 'error');
+                return;
+            }
+        }
+
         // Get order data
         const items = JSON.parse(placeOrderBtn.getAttribute('data-items'));
         const totals = JSON.parse(placeOrderBtn.getAttribute('data-totals'));
         const isBuyNow = placeOrderBtn.getAttribute('data-is-buy-now') === '1';
 
-        const orderData = {
-            address_id: parseInt(selectedAddressId),
-            payment_method: paymentMethod.value,
-            items: items,
-            totals: totals,
-            is_buy_now: isBuyNow
-        };
+        console.log('📦 Order data:', {
+            itemsCount: items.length,
+            totals,
+            isBuyNow
+        });
+
+        // Prepare form data for file upload
+        const formData = new FormData();
+        formData.append('address_id', selectedAddressId);
+        formData.append('payment_method', paymentMethod.value);
+        formData.append('courier', courierSelect.value);
+        formData.append('delivery_schedule', scheduleInput.value);
+        formData.append('items', JSON.stringify(items));
+        formData.append('totals', JSON.stringify(totals));
+        formData.append('is_buy_now', isBuyNow);
+
+        // Add GCash receipt if applicable
+        if (paymentMethod.value === 'gcash' && receiptInput.files[0]) {
+            formData.append('gcash_receipt', receiptInput.files[0]);
+            console.log('📎 Added GCash receipt to form data');
+        }
 
         // Show loading
         showLoading(true);
 
+        console.log('📤 Sending order data to:', PLACE_ORDER_URL);
+
         fetch(PLACE_ORDER_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(orderData),
+            body: formData,
             credentials: 'same-origin'
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('📥 Received response, parsing JSON...');
+            return response.json();
+        })
         .then(data => {
+            console.log('✅ Server response:', data);
             showLoading(false);
             
             if (data.status === 'success') {
                 showMessage('✅ Order placed successfully! Redirecting...', 'success');
                 
-                // Clear all checkout data after successful order
-                clearSelection();
+                // Clear sessions
                 if (isBuyNow) {
                     sessionStorage.removeItem('buy_now_product');
                 } else {
@@ -539,13 +629,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.href = SITE_URL + 'pages/order-confirmation.php?order_id=' + data.order_id;
                 }, 2000);
             } else {
+                console.error('❌ Server error:', data.message);
                 showMessage('Error placing order: ' + data.message, 'error');
             }
         })
         .catch(error => {
+            console.error('💥 Fetch error:', error);
             showLoading(false);
-            console.error('Error placing order:', error);
-            showMessage('Error placing order', 'error');
+            showMessage('Network error: ' + error.message, 'error');
         });
     }
 
@@ -578,5 +669,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 
-    console.log('✅ Checkout initialized with smart refresh detection');
+    console.log('✅ Checkout fully initialized with all functionality');
 });

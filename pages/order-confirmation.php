@@ -2,57 +2,63 @@
 require_once __DIR__ . '/../connection/connection.php';
 require_once __DIR__ . '/../includes/header.php';
 
-$order_id = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
-
-if ($order_id <= 0) {
+$order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+if (!$order_id) {
     echo "<p style='text-align:center;margin-top:100px;'>Invalid order reference.</p>";
     require_once __DIR__ . '/../includes/footer.php';
     exit;
 }
 
 // Fetch order details
-$sql = "SELECT order_number, fullname, total_amount, payment_method, created_at 
-        FROM orders 
-        WHERE id = ?";
-$stmt = $conn->prepare($sql);
+$stmt = $conn->prepare("SELECT order_number, fullname, total_amount, payment_method, created_at FROM orders WHERE id=?");
 $stmt->bind_param("i", $order_id);
 $stmt->execute();
-$result = $stmt->get_result();
-$order = $result->fetch_assoc();
+$order = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
 if (!$order) {
     echo "<p style='text-align:center;margin-top:100px;'>Order not found.</p>";
     require_once __DIR__ . '/../includes/footer.php';
     exit;
 }
+
+$order_number = htmlspecialchars($order['order_number']);
+$fullname = htmlspecialchars($order['fullname']);
+$total_amount = number_format($order['total_amount'], 2);
+$payment_method = strtoupper($order['payment_method']);
+$date = date('F j, Y, g:i A', strtotime($order['created_at']));
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Success</title>
-    <link rel="stylesheet" href="<?= SITE_URL ?>css/order-success.css?v=<?= time(); ?>">
+    <title>Order Confirmation</title>
+    <!-- Automatically redirect after 3 seconds -->
+    <meta http-equiv="refresh" content="3;url=<?= SITE_URL ?>pages/order-success.php?order=<?= $order_number ?>">
+    <style>
+        .order-confirmation {
+            text-align: center;
+            padding: 50px;
+        }
+        .order-confirmation h2 {
+            color: #333;
+        }
+        .order-confirmation p {
+            font-size: 1.1em;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-    <div class="order-success-container">
-        <div class="success-card">
-            <div class="icon">✅</div>
-            <h1>Thank You, <?= htmlspecialchars($order['fullname']); ?>!</h1>
-            <p>Your order has been placed successfully.</p>
-
-            <div class="order-details">
-                <p><strong>Order Number:</strong> <?= htmlspecialchars($order['order_number']); ?></p>
-                <p><strong>Total:</strong> ₱<?= number_format($order['total_amount'], 2); ?></p>
-                <p><strong>Payment Method:</strong> <?= strtoupper($order['payment_method']); ?></p>
-                <p><strong>Date:</strong> <?= date('F j, Y, g:i A', strtotime($order['created_at'])); ?></p>
-            </div>
-
-            <a href="<?= SITE_URL; ?>" class="btn">Continue Shopping</a>
-        </div>
+    <div class="order-confirmation">
+        <h2>🎉 Order Placed Successfully!</h2>
+        <p>Thank you, <strong><?= $fullname ?></strong>!</p>
+        <p>Your order number is: <strong><?= $order_number ?></strong></p>
+        <p>Total: ₱<?= $total_amount ?> | Payment: <?= $payment_method ?></p>
+        <p>Redirecting to order success page...</p>
     </div>
-
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
 </body>
 </html>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

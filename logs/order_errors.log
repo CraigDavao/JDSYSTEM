@@ -3,3 +3,119 @@
 [10-Nov-2025 16:24:04 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
 [11-Nov-2025 13:00:26 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
 [11-Nov-2025 13:00:27 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
+[14-Nov-2025 15:16:41 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
+[14-Nov-2025 15:16:42 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
+[14-Nov-2025 18:29:58 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
+[15-Nov-2025 10:23:35 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
+[15-Nov-2025 10:52:06 Europe/Berlin] Order Error: Unknown column 'phone' in 'field list'
+[15-Nov-2025 10:52:06 Europe/Berlin] Order Error: Unknown column 'phone' in 'field list'
+[15-Nov-2025 10:52:07 Europe/Berlin] Order Error: Unknown column 'phone' in 'field list'
+[15-Nov-2025 11:15:54 Europe/Berlin] Order Error: Column 'subtotal' cannot be null
+[15-Nov-2025 11:17:51 Europe/Berlin] ❌ ORDER ERROR: Unknown column 'phone' in 'field list'
+[15-Nov-2025 11:19:24 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\JDSystem\actions\place-order.php:96
+Stack trace:
+#0 C:\xampp\htdocs\JDSystem\actions\place-order.php(96): mysqli_stmt->bind_param('isdddsssssssssi...', 20, 'ORD202511151119...', 900, 0, 900, 'cod', 'Zafra', 'davaojonathancr...', '9511430828', 'blk157e lot30 8...', 'San jose', 'rizal', '1860', 'Philippines', 43, '', 1)
+#1 {main}
+  thrown in C:\xampp\htdocs\JDSystem\actions\place-order.php on line 96
+[15-Nov-2025 11:23:51 Europe/Berlin] 🔄 ORDER PROCESS STARTED - User ID: 20
+[15-Nov-2025 11:23:51 Europe/Berlin] 📦 ORDER DATA RECEIVED:
+[15-Nov-2025 11:23:51 Europe/Berlin]   - Address ID: 43
+[15-Nov-2025 11:23:51 Europe/Berlin]   - Payment Method: cod
+[15-Nov-2025 11:23:51 Europe/Berlin]   - Items Count: 1
+[15-Nov-2025 11:23:51 Europe/Berlin]   - Totals: {"subtotal":900,"shipping":0,"total":900}
+[15-Nov-2025 11:23:51 Europe/Berlin]   - Is Buy Now: 1
+[15-Nov-2025 11:23:51 Europe/Berlin] ✅ ADDRESS FOUND: {"fullname":"Zafra","street":"blk157e lot30 8B phase 5","city":"San jose","state":"rizal","zip_code":"1860","country":"Philippines"}
+[15-Nov-2025 11:23:51 Europe/Berlin] ✅ SHIPPING INFO: {"fullname":"Zafra","email":"davaojonathancraig28@gmail.com","phone":"9511430828","address":"blk157e lot30 8B phase 5","city":"San jose","province":"rizal","zipcode":"1860","country":"Philippines"}
+[15-Nov-2025 11:23:51 Europe/Berlin] 📦 ITEM 0: {"product_id":125,"color_id":180,"name":"craig set","quantity":1,"price":900,"subtotal":900}
+[15-Nov-2025 11:23:51 Europe/Berlin] 🆕 CREATING ORDER: ORD20251115112351732, Quantity: 1
+[15-Nov-2025 11:23:51 Europe/Berlin] 💰 TOTALS - Subtotal: 900, Shipping: 0, Total: 900
+[15-Nov-2025 11:23:51 Europe/Berlin] ✅ ORDER CREATED - ID: 0
+[15-Nov-2025 11:23:51 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: craig set, Price: 900, Color: Ocean Blue
+[15-Nov-2025 11:23:51 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 180, Quantity deducted: 1
+[15-Nov-2025 11:23:51 Europe/Berlin] ✅ BUY NOW SESSION CLEARED
+[15-Nov-2025 11:23:51 Europe/Berlin] 🎉 ORDER SUCCESS - Order ID: 0, Order Number: ORD20251115112351732
+[15-Nov-2025 11:23:52 Europe/Berlin] 🔄 ORDER PROCESS STARTED - User ID: 20
+[15-Nov-2025 11:23:52 Europe/Berlin] 📦 ORDER DATA RECEIVED:
+[15-Nov-2025 11:23:52 Europe/Berlin]   - Address ID: 43
+[15-Nov-2025 11:23:52 Europe/Berlin]   - Payment Method: cod
+[15-Nov-2025 11:23:52 Europe/Berlin]   - Items Count: 1
+[15-Nov-2025 11:23:52 Europe/Berlin]   - Totals: {"subtotal":900,"shipping":0,"total":900}
+[15-Nov-2025 11:23:52 Europe/Berlin]   - Is Buy Now: 1
+[15-Nov-2025 11:23:52 Europe/Berlin] ✅ ADDRESS FOUND: {"fullname":"Zafra","street":"blk157e lot30 8B phase 5","city":"San jose","state":"rizal","zip_code":"1860","country":"Philippines"}
+[15-Nov-2025 11:23:52 Europe/Berlin] ✅ SHIPPING INFO: {"fullname":"Zafra","email":"davaojonathancraig28@gmail.com","phone":"9511430828","address":"blk157e lot30 8B phase 5","city":"San jose","province":"rizal","zipcode":"1860","country":"Philippines"}
+[15-Nov-2025 11:23:52 Europe/Berlin] 📦 ITEM 0: {"product_id":125,"color_id":180,"name":"craig set","quantity":1,"price":900,"subtotal":900}
+[15-Nov-2025 11:23:52 Europe/Berlin] 🆕 CREATING ORDER: ORD20251115112352222, Quantity: 1
+[15-Nov-2025 11:23:52 Europe/Berlin] 💰 TOTALS - Subtotal: 900, Shipping: 0, Total: 900
+[15-Nov-2025 11:23:52 Europe/Berlin] ✅ ORDER CREATED - ID: 0
+[15-Nov-2025 11:23:52 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: craig set, Price: 900, Color: Ocean Blue
+[15-Nov-2025 11:23:52 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 180, Quantity deducted: 1
+[15-Nov-2025 11:23:52 Europe/Berlin] ✅ BUY NOW SESSION CLEARED
+[15-Nov-2025 11:23:52 Europe/Berlin] 🎉 ORDER SUCCESS - Order ID: 0, Order Number: ORD20251115112352222
+[15-Nov-2025 11:23:53 Europe/Berlin] 🔄 ORDER PROCESS STARTED - User ID: 20
+[15-Nov-2025 11:23:53 Europe/Berlin] 📦 ORDER DATA RECEIVED:
+[15-Nov-2025 11:23:53 Europe/Berlin]   - Address ID: 43
+[15-Nov-2025 11:23:53 Europe/Berlin]   - Payment Method: cod
+[15-Nov-2025 11:23:53 Europe/Berlin]   - Items Count: 1
+[15-Nov-2025 11:23:53 Europe/Berlin]   - Totals: {"subtotal":900,"shipping":0,"total":900}
+[15-Nov-2025 11:23:53 Europe/Berlin]   - Is Buy Now: 1
+[15-Nov-2025 11:23:53 Europe/Berlin] ✅ ADDRESS FOUND: {"fullname":"Zafra","street":"blk157e lot30 8B phase 5","city":"San jose","state":"rizal","zip_code":"1860","country":"Philippines"}
+[15-Nov-2025 11:23:53 Europe/Berlin] ✅ SHIPPING INFO: {"fullname":"Zafra","email":"davaojonathancraig28@gmail.com","phone":"9511430828","address":"blk157e lot30 8B phase 5","city":"San jose","province":"rizal","zipcode":"1860","country":"Philippines"}
+[15-Nov-2025 11:23:53 Europe/Berlin] 📦 ITEM 0: {"product_id":125,"color_id":180,"name":"craig set","quantity":1,"price":900,"subtotal":900}
+[15-Nov-2025 11:23:53 Europe/Berlin] 🆕 CREATING ORDER: ORD20251115112353916, Quantity: 1
+[15-Nov-2025 11:23:53 Europe/Berlin] 💰 TOTALS - Subtotal: 900, Shipping: 0, Total: 900
+[15-Nov-2025 11:23:53 Europe/Berlin] ✅ ORDER CREATED - ID: 0
+[15-Nov-2025 11:23:53 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: craig set, Price: 900, Color: Ocean Blue
+[15-Nov-2025 11:23:53 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 180, Quantity deducted: 1
+[15-Nov-2025 11:23:53 Europe/Berlin] ✅ BUY NOW SESSION CLEARED
+[15-Nov-2025 11:23:53 Europe/Berlin] 🎉 ORDER SUCCESS - Order ID: 0, Order Number: ORD20251115112353916
+[15-Nov-2025 11:27:58 Europe/Berlin] 🔄 ORDER PROCESS STARTED - User ID: 20
+[15-Nov-2025 11:27:58 Europe/Berlin] 📦 ORDER DATA RECEIVED:
+[15-Nov-2025 11:27:58 Europe/Berlin]   - Address ID: 43
+[15-Nov-2025 11:27:58 Europe/Berlin]   - Payment Method: cod
+[15-Nov-2025 11:27:58 Europe/Berlin]   - Items Count: 4
+[15-Nov-2025 11:27:58 Europe/Berlin]   - Totals: {"subtotal":10900,"shipping":0,"total":10900}
+[15-Nov-2025 11:27:58 Europe/Berlin]   - Is Buy Now: 
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ ADDRESS FOUND: {"fullname":"Zafra","street":"blk157e lot30 8B phase 5","city":"San jose","state":"rizal","zip_code":"1860","country":"Philippines"}
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ SHIPPING INFO: {"fullname":"Zafra","email":"davaojonathancraig28@gmail.com","phone":"9511430828","address":"blk157e lot30 8B phase 5","city":"San jose","province":"rizal","zipcode":"1860","country":"Philippines"}
+[15-Nov-2025 11:27:58 Europe/Berlin] 📦 ITEM 0: {"product_id":125,"color_id":179,"name":"craig set","quantity":1,"price":900,"subtotal":900}
+[15-Nov-2025 11:27:58 Europe/Berlin] 📦 ITEM 1: {"product_id":125,"color_id":180,"name":"craig set","quantity":10,"price":900,"subtotal":9000}
+[15-Nov-2025 11:27:58 Europe/Berlin] 📦 ITEM 2: {"product_id":125,"color_id":178,"name":"craig set","quantity":1,"price":900,"subtotal":900}
+[15-Nov-2025 11:27:58 Europe/Berlin] 📦 ITEM 3: {"product_id":126,"color_id":182,"name":"Eldrin Set","quantity":1,"price":100,"subtotal":100}
+[15-Nov-2025 11:27:58 Europe/Berlin] 🆕 CREATING ORDER: ORD20251115112758964, Quantity: 13
+[15-Nov-2025 11:27:58 Europe/Berlin] 💰 TOTALS - Subtotal: 10900, Shipping: 0, Total: 10900
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ ORDER CREATED - ID: 0
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: craig set, Price: 900, Color: Fluffy White
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 179, Quantity deducted: 1
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: craig set, Price: 900, Color: Ocean Blue
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 180, Quantity deducted: 10
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: craig set, Price: 900, Color: Strawberry Pink
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 178, Quantity deducted: 1
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ ORDER ITEM ADDED - Product: Eldrin Set, Price: 100, Color: Formal Black
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ STOCK UPDATED - Color ID: 182, Quantity deducted: 1
+[15-Nov-2025 11:27:58 Europe/Berlin] ✅ CART ITEMS DELETED: 4 items removed
+[15-Nov-2025 11:27:58 Europe/Berlin] 🎉 ORDER SUCCESS - Order ID: 0, Order Number: ORD20251115112758964
+[16-Nov-2025 15:18:48 Europe/Berlin] Order Error: Unknown column 'gcash_receipt_path' in 'field list'
+[16-Nov-2025 15:23:00 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #12 cannot be passed by reference in C:\xampp\htdocs\JDSystem\actions\place-order.php:119
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\JDSystem\actions\place-order.php on line 119
+[16-Nov-2025 15:28:15 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #12 cannot be passed by reference in C:\xampp\htdocs\JDSystem\actions\place-order.php:119
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\JDSystem\actions\place-order.php on line 119
+[16-Nov-2025 15:28:16 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #12 cannot be passed by reference in C:\xampp\htdocs\JDSystem\actions\place-order.php:119
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\JDSystem\actions\place-order.php on line 119
+[16-Nov-2025 15:29:15 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #12 cannot be passed by reference in C:\xampp\htdocs\JDSystem\actions\place-order.php:119
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\JDSystem\actions\place-order.php on line 119
+[16-Nov-2025 15:29:45 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #12 cannot be passed by reference in C:\xampp\htdocs\JDSystem\actions\place-order.php:119
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\JDSystem\actions\place-order.php on line 119
+[16-Nov-2025 15:45:09 Europe/Berlin] Order Error: Column count doesn't match value count at row 1
+[16-Nov-2025 15:47:15 Europe/Berlin] Order Error: Column count doesn't match value count at row 1
+[16-Nov-2025 15:50:32 Europe/Berlin] Order Error: Column count doesn't match value count at row 1
+[16-Nov-2025 15:52:58 Europe/Berlin] Order Error: Column count doesn't match value count at row 1
