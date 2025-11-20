@@ -286,6 +286,8 @@ require_once __DIR__ . '/../connection/connection.php';
       </form>
     </div>
 
+    
+
     <!-- Register Form -->
     <div class="form-container hidden" id="register-form">
       <h2>Create account</h2>
@@ -344,6 +346,166 @@ require_once __DIR__ . '/../connection/connection.php';
 </div>
 
 <script src="<?= SITE_URL; ?>js/wishlist.js?v=<?= time(); ?>" defer></script>
+
+<!-- 🟢 NUCLEAR CART BADGE FIX - WORKS ON ALL PAGES -->
+<script>
+// 🟢 NUCLEAR OPTION - Override everything to work on ALL pages
+(function() {
+    'use strict';
+    
+    console.log('💥 NUCLEAR CART BADGE ACTIVATED ON:', window.location.href);
+    
+    // 1. Override ALL possible cart-related functions globally
+    const nuclearFunctions = ['updateCartBadge', 'updateCartCount', 'updateCart', 'cartUpdate', 'refreshCart'];
+    nuclearFunctions.forEach(funcName => {
+        window[funcName] = function() {
+            console.log('💥 Nuclear: Overridden', funcName, 'called');
+            nuclearForceUpdateCartBadge();
+        };
+    });
+    
+    // 2. Nuclear badge protection
+    function nuclearBadgeProtection() {
+        const badge = document.getElementById('cart-count');
+        if (!badge) {
+            // Badge doesn't exist yet, keep checking
+            setTimeout(nuclearBadgeProtection, 500);
+            return;
+        }
+        
+        console.log('💥 Nuclear: Protecting badge element on', window.location.href);
+        
+        // Completely lock down the badge - make it read-only
+        try {
+            Object.defineProperty(badge, 'textContent', {
+                get: function() { 
+                    const correctCount = getNuclearCorrectCountSync();
+                    return correctCount; 
+                },
+                set: function(value) { 
+                    console.log('💥 Nuclear: Blocked textContent update to:', value, 'on', window.location.href);
+                    nuclearForceUpdateCartBadge();
+                },
+                configurable: false,
+                enumerable: true
+            });
+            
+            Object.defineProperty(badge, 'innerText', {
+                get: function() { 
+                    const correctCount = getNuclearCorrectCountSync();
+                    return correctCount; 
+                },
+                set: function(value) { 
+                    console.log('💥 Nuclear: Blocked innerText update to:', value, 'on', window.location.href);
+                    nuclearForceUpdateCartBadge();
+                },
+                configurable: false,
+                enumerable: true
+            });
+            
+            Object.defineProperty(badge, 'innerHTML', {
+                get: function() { 
+                    const correctCount = getNuclearCorrectCountSync();
+                    return correctCount; 
+                },
+                set: function(value) { 
+                    console.log('💥 Nuclear: Blocked innerHTML update to:', value, 'on', window.location.href);
+                    nuclearForceUpdateCartBadge();
+                },
+                configurable: false,
+                enumerable: true
+            });
+            
+            // Set initial value
+            nuclearForceUpdateCartBadge();
+            
+        } catch (e) {
+            console.log('💥 Nuclear: Protection setup error:', e);
+        }
+    }
+    
+    // 3. Get correct count with fallback
+    let nuclearCurrentCount = '0';
+    
+    function getNuclearCorrectCountSync() {
+        return nuclearCurrentCount;
+    }
+    
+    async function nuclearForceUpdateCartBadge() {
+        try {
+            const response = await fetch('<?php echo SITE_URL; ?>actions/cart-count.php?t=' + Date.now());
+            const data = await response.json();
+            
+            nuclearCurrentCount = data.count.toString();
+            const badge = document.getElementById('cart-count');
+            
+            if (badge) {
+                // Use direct DOM manipulation to bypass our own protections
+                badge.firstChild?.remove();
+                badge.appendChild(document.createTextNode(nuclearCurrentCount));
+                
+                console.log('💥 Nuclear: Badge set to', nuclearCurrentCount, 'on', window.location.href);
+            }
+        } catch (error) {
+            console.log('💥 Nuclear: Update error on', window.location.href, ':', error);
+        }
+    }
+    
+    // 4. Monitor ALL fetch requests for cart-related activity
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        const url = args[0];
+        
+        if (typeof url === 'string' && (url.includes('cart') || url.includes('Cart'))) {
+            console.log('💥 Nuclear: Detected cart-related fetch:', url);
+            return originalFetch.apply(this, args).then(response => {
+                // After any cart request, force update
+                setTimeout(nuclearForceUpdateCartBadge, 100);
+                return response;
+            });
+        }
+        
+        return originalFetch.apply(this, args);
+    };
+    
+    // 5. Start nuclear protection immediately
+    nuclearBadgeProtection();
+    
+    // 6. Frequent updates to override any bad changes
+    setInterval(nuclearForceUpdateCartBadge, 1500);
+    
+    // 7. Override on ALL possible events
+    const nuclearEvents = ['DOMContentLoaded', 'load', 'pageshow', 'visibilitychange', 'mouseenter', 'click', 'keydown'];
+    nuclearEvents.forEach(event => {
+        window.addEventListener(event, nuclearForceUpdateCartBadge);
+    });
+    
+    // 8. Monitor for badge element creation
+    const nuclearObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && (node.id === 'cart-count' || node.querySelector('#cart-count'))) {
+                    console.log('💥 Nuclear: New badge element detected on', window.location.href);
+                    setTimeout(nuclearBadgeProtection, 100);
+                }
+            });
+        });
+    });
+    
+    nuclearObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    console.log('💥 Nuclear protection active on:', window.location.href);
+    
+    // Initial update
+    setTimeout(nuclearForceUpdateCartBadge, 100);
+    setTimeout(nuclearForceUpdateCartBadge, 1000);
+    setTimeout(nuclearForceUpdateCartBadge, 3000);
+    
+})();
+</script>
 
 <!-- Improved Modal JavaScript -->
 <script>
