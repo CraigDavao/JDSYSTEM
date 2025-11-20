@@ -1,15 +1,16 @@
-// ✅ product.js - FIXED VERSION WITH PROPER COLOR ID UPDATES
+// ✅ product.js - CONSISTENT VERSION WITH RELIABLE QUANTITY CONTROLS
 document.addEventListener("DOMContentLoaded", () => {
     console.log("🔧 product.js loaded - Starting initialization");
     
-    // Automatically detect your local base URL
-    const SITE_URL = window.location.origin + "/JDSystem/"; // e.g., "http://localhost/JDSystem/"
+    const SITE_URL = window.location.origin + "/JDSystem/";
     console.log("🌐 SITE_URL detected:", SITE_URL);
     
     const loginModal = document.getElementById("profile-modal");
-    console.log("🔍 Login modal found:", !!loginModal);
 
-    // 🆕 ADD CSS TO ENSURE ONLY ONE FORM IS VISIBLE
+    // 🆕 GLOBAL STATE to track current max quantity
+    let currentMaxQuantity = 0;
+
+    // �ADD CSS TO ENSURE ONLY ONE FORM IS VISIBLE
     function addModalStyles() {
         const style = document.createElement('style');
         style.textContent = `
@@ -37,13 +38,11 @@ document.addEventListener("DOMContentLoaded", () => {
     function resetModalToLogin() {
         console.log("🔄 Resetting modal to login form");
         
-        // Get all form elements
         const loginForm = document.getElementById("login-form");
         const registerForm = document.getElementById("register-form");
         const verifyForm = document.getElementById("verify-form");
         const resetForm = document.getElementById("reset-form");
         
-        // 🆕 HIDE ALL FORMS USING BOTH CLASSES AND STYLES
         if (loginForm) {
             loginForm.classList.remove("hidden");
             loginForm.style.display = 'block';
@@ -64,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("✅ Modal reset to login form only");
     }
 
-    // 🧹 Hide reset form whenever any other UI action happens (Add to Cart, Wishlist, Buy Now, etc.)
+    // 🧹 Hide reset form whenever any other UI action happens
     function hideResetPasswordFormIfVisible() {
         const resetForm = document.getElementById("reset-form");
         const loginForm = document.getElementById("login-form");
@@ -74,7 +73,6 @@ document.addEventListener("DOMContentLoaded", () => {
             resetForm.classList.add("hidden");
             resetForm.style.display = "none";
 
-            // Show the login form back
             if (loginForm) {
                 loginForm.classList.remove("hidden");
                 loginForm.style.display = "block";
@@ -90,14 +88,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const resetForm = document.getElementById("reset-form");
         
         if (loginForm && resetForm) {
-            // Hide login form
             loginForm.classList.add("hidden");
             loginForm.style.display = 'none';
-            
-            // Show reset form
             resetForm.classList.remove("hidden");
             resetForm.style.display = 'block';
-            
             console.log("✅ Reset password form shown, login form hidden");
         }
     }
@@ -106,7 +100,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function setupForgotPasswordReset() {
         console.log("🔄 Setting up forgot password reset behavior");
         
-        // Find forgot password link by text content
         const allLinks = document.querySelectorAll('a');
         let forgotPasswordLink = null;
         
@@ -119,17 +112,13 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (forgotPasswordLink) {
             console.log("✅ Found forgot password link");
-            
             forgotPasswordLink.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log("🔗 Forgot password clicked - showing reset form");
                 showResetPasswordForm();
             });
-        } else {
-            console.warn("⚠️ Forgot password link not found");
         }
         
-        // 🆕 SETUP "BACK TO LOGIN" BUTTON
         const allButtons = document.querySelectorAll('button, a');
         let backToLoginBtn = null;
         
@@ -142,27 +131,21 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (backToLoginBtn) {
             console.log("✅ Found back to login button");
-            
             backToLoginBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log("🔙 Back to login clicked - resetting to login form");
                 resetModalToLogin();
             });
-        } else {
-            console.warn("⚠️ Back to login button not found");
         }
     }
 
-    // 🟣 Show login modal - UPDATED WITH COMPLETE RESET
+    // 🟣 Show login modal
     function showLoginModal() {
         console.log("🔄 Showing login modal - Resetting to login form");
         if (loginModal) {
             loginModal.style.display = "flex";
             document.body.style.overflow = "hidden";
-            
-            // 🆕 COMPLETE RESET TO LOGIN FORM
             resetModalToLogin();
-            
         } else {
             console.warn("⚠️ Login modal not found in DOM.");
             window.location.href = SITE_URL + "auth/login.php";
@@ -173,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (loginModal) {
             loginModal.style.display = "none";
             document.body.style.overflow = "auto";
-            hideResetPasswordFormIfVisible(); // 🆕 Add this line
+            hideResetPasswordFormIfVisible();
             setTimeout(resetModalToLogin, 100);
         }
     }
@@ -198,173 +181,243 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Initialize modal close functionality
-    setupModalClose();
-
-    // ✅ SIZE SELECTION - NEW FUNCTION
+    // ✅ SIZE SELECTION - RELIABLE VERSION
     function initializeSizeSelection() {
         console.log("📏 Initializing size selection...");
         
-        const sizeOptions = document.querySelectorAll('.size-option:not(.disabled)');
+        const sizeOptions = document.querySelectorAll('.size-option');
         
+        // Clear active states
+        sizeOptions.forEach(btn => btn.classList.remove('active'));
+        
+        // Add fresh event listeners
         sizeOptions.forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Remove active class from all size options
-                document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
                 
-                // Add active class to clicked button
+                if (this.classList.contains('disabled')) {
+                    console.log("❌ Size option disabled, ignoring click");
+                    return;
+                }
+                
+                console.log("✅ Size option clicked:", this.dataset.size);
+                
+                // Remove active class from all
+                document.querySelectorAll('.size-option').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                // Add active to clicked
                 this.classList.add('active');
-                document.getElementById('selected-size').value = this.dataset.size;
                 
-                // Update quantity limits based on selected size
+                // Update hidden field
+                const sizeField = document.getElementById('selected-size');
+                if (sizeField) {
+                    sizeField.value = this.dataset.size;
+                }
+                
+                // Update quantity limits
                 updateQuantityLimits();
-            });
+            }, { once: false }); // Ensure event listener persists
         });
         
-        // Auto-select first available size if none selected
+        // Auto-select first available size
+        const availableSizes = document.querySelectorAll('.size-option:not(.disabled)');
         const activeSize = document.querySelector('.size-option.active');
-        if (!activeSize && sizeOptions.length > 0) {
-            sizeOptions[0].click();
+        
+        if (!activeSize && availableSizes.length > 0) {
+            console.log("🔄 Auto-selecting first available size");
+            availableSizes[0].classList.add('active');
+            const sizeField = document.getElementById('selected-size');
+            if (sizeField) {
+                sizeField.value = availableSizes[0].dataset.size;
+            }
         }
+        
+        // Always update quantity limits after size selection
+        updateQuantityLimits();
         
         console.log("✅ Size selection initialized");
     }
 
-    // ✅ UPDATE QUANTITY LIMITS - IMPROVED FUNCTION
+    // ✅ UPDATE QUANTITY LIMITS - RELIABLE VERSION
     function updateQuantityLimits() {
+        console.log("📦 Updating quantity limits...");
+        
         const selectedSize = document.querySelector('.size-option.active')?.dataset.size;
         const sizeStockElements = document.querySelectorAll('.size-stock-item');
         let maxQuantity = 0;
         
-        // Find the stock for selected size
+        // Method 1: Get stock from size-specific elements
         if (selectedSize) {
             sizeStockElements.forEach(item => {
                 const sizeLabel = item.querySelector('.size-label');
-                if (sizeLabel && sizeLabel.textContent.includes(selectedSize)) {
+                if (sizeLabel && sizeLabel.textContent.trim().includes(selectedSize)) {
                     const quantityElement = item.querySelector('.size-quantity');
-                    if (quantityElement && quantityElement.classList.contains('in-stock')) {
+                    if (quantityElement) {
                         const stockText = quantityElement.textContent;
                         const match = stockText.match(/(\d+)/);
                         if (match) {
                             maxQuantity = parseInt(match[1]);
+                            console.log("✅ Found size-specific stock:", maxQuantity, "for size", selectedSize);
                         }
-                    } else {
-                        maxQuantity = 0; // Out of stock for this size
                     }
                 }
             });
         }
         
-        // If no size-specific stock found, use total stock
+        // Method 2: Get total stock
         if (maxQuantity === 0) {
             const stockTextElement = document.querySelector('.stock-available .stock-text, .stock-low .stock-text');
             if (stockTextElement) {
                 const match = stockTextElement.textContent.match(/(\d+)/);
                 if (match) {
                     maxQuantity = parseInt(match[1]);
+                    console.log("📊 Using total stock:", maxQuantity);
                 }
             }
         }
         
-        // Update quantity input limits
+        // Method 3: Check out of stock
+        if (maxQuantity === 0) {
+            const outOfStockElement = document.querySelector('.out-of-stock, .stock-out');
+            if (outOfStockElement) {
+                maxQuantity = 0;
+                console.log("❌ Product is out of stock");
+            }
+        }
+        
+        // 🆕 UPDATE GLOBAL STATE
+        currentMaxQuantity = maxQuantity;
+        console.log("🎯 Current max quantity set to:", currentMaxQuantity);
+        
+        // Update quantity input
+        const quantityInput = document.getElementById('quantity');
+        if (quantityInput) {
+            quantityInput.max = maxQuantity;
+            console.log("✅ Quantity input max set to:", maxQuantity);
+            
+            // Ensure current value doesn't exceed max
+            const currentVal = parseInt(quantityInput.value);
+            if (currentVal > maxQuantity && maxQuantity > 0) {
+                quantityInput.value = maxQuantity;
+                console.log("🔄 Adjusted quantity to max:", maxQuantity);
+            }
+        }
+        
+        // Update button states
+        updateButtonStates(maxQuantity === 0);
+    }
+
+    // ✅ UPDATE BUTTON STATES - SEPARATE FUNCTION FOR RELIABILITY
+    function updateButtonStates(isOutOfStock) {
+        console.log("🔄 Updating button states - Out of Stock:", isOutOfStock);
+        
         const quantityInput = document.getElementById('quantity');
         const minusBtn = document.getElementById('minus-btn');
         const plusBtn = document.getElementById('plus-btn');
-        
-        quantityInput.max = Math.max(0, maxQuantity);
-        
-        // Adjust current quantity if it exceeds new limit
-        const currentQuantity = parseInt(quantityInput.value);
-        if (currentQuantity > maxQuantity) {
-            quantityInput.value = Math.max(1, maxQuantity);
-        }
-        
-        // Enable/disable quantity controls
-        const isOutOfStock = maxQuantity === 0;
-        quantityInput.disabled = isOutOfStock;
-        minusBtn.disabled = isOutOfStock;
-        plusBtn.disabled = isOutOfStock;
-        
-        // Update Add to Cart button state
         const addToCartBtn = document.querySelector('.add-to-cart');
         const buyNowBtn = document.getElementById('buy-now-btn');
         const wishlistBtn = document.querySelector('.wishlist-btn');
         
-        if (isOutOfStock) {
-            if (addToCartBtn) {
-                addToCartBtn.disabled = true;
-                addToCartBtn.textContent = 'Out of Stock';
-            }
-            if (buyNowBtn) {
-                buyNowBtn.disabled = true;
-                buyNowBtn.textContent = 'Out of Stock';
-            }
-            if (wishlistBtn) {
-                wishlistBtn.disabled = true;
-            }
-        } else {
-            if (addToCartBtn) {
-                addToCartBtn.disabled = false;
-                addToCartBtn.textContent = 'Add to Cart';
-            }
-            if (buyNowBtn) {
-                buyNowBtn.disabled = false;
-                buyNowBtn.textContent = 'Buy Now';
-            }
-            if (wishlistBtn) {
-                wishlistBtn.disabled = false;
-            }
+        // Update quantity controls
+        if (quantityInput) quantityInput.disabled = isOutOfStock;
+        if (minusBtn) minusBtn.disabled = isOutOfStock;
+        if (plusBtn) plusBtn.disabled = isOutOfStock;
+        
+        // Update action buttons
+        if (addToCartBtn) {
+            addToCartBtn.disabled = isOutOfStock;
+            addToCartBtn.textContent = isOutOfStock ? 'Out of Stock' : 'Add to Cart';
         }
+        if (buyNowBtn) {
+            buyNowBtn.disabled = isOutOfStock;
+            buyNowBtn.textContent = isOutOfStock ? 'Out of Stock' : 'Buy Now';
+        }
+        if (wishlistBtn) {
+            wishlistBtn.disabled = isOutOfStock;
+        }
+        
+        console.log("✅ Button states updated");
     }
 
-    // ✅ QUANTITY LOGIC
+    // ✅ QUANTITY CONTROLS - ULTRA RELIABLE VERSION
     function initializeQuantityControls() {
+        console.log("🔢 Initializing RELIABLE quantity controls...");
+        
         const minusBtn = document.getElementById('minus-btn');
         const plusBtn = document.getElementById('plus-btn');
         const quantityInput = document.getElementById('quantity');
-
-        if (minusBtn && plusBtn && quantityInput) {
-            minusBtn.addEventListener('click', () => {
-                let val = parseInt(quantityInput.value);
-                if (val > 1) {
-                    quantityInput.value = val - 1;
-                }
-            });
-
-            plusBtn.addEventListener('click', () => {
-                let val = parseInt(quantityInput.value);
-                const max = parseInt(quantityInput.max);
-                if (val < max) {
-                    quantityInput.value = val + 1;
-                }
-            });
-
-            quantityInput.addEventListener('change', () => {
-                let val = parseInt(quantityInput.value);
-                const max = parseInt(quantityInput.max);
-                const min = parseInt(quantityInput.min);
-                
-                if (val < min) quantityInput.value = min;
-                if (val > max) quantityInput.value = max;
-            });
+        
+        if (!minusBtn || !plusBtn || !quantityInput) {
+            console.error("❌ Quantity controls not found");
+            return;
         }
+        
+        // 🆕 REMOVE ANY EXISTING EVENT LISTENERS FIRST
+        const newMinusBtn = minusBtn.cloneNode(true);
+        const newPlusBtn = plusBtn.cloneNode(true);
+        minusBtn.parentNode.replaceChild(newMinusBtn, minusBtn);
+        plusBtn.parentNode.replaceChild(newPlusBtn, plusBtn);
+        
+        // 🆕 GET FRESH REFERENCES
+        const freshMinusBtn = document.getElementById('minus-btn');
+        const freshPlusBtn = document.getElementById('plus-btn');
+        
+        // 🆕 MINUS BUTTON - SIMPLE AND RELIABLE
+        freshMinusBtn.addEventListener('click', function() {
+            const quantityInput = document.getElementById('quantity');
+            let val = parseInt(quantityInput.value);
+            if (val > 1) {
+                quantityInput.value = val - 1;
+                console.log("➖ Quantity decreased to:", quantityInput.value);
+            }
+        });
+        
+        // 🆕 PLUS BUTTON - SIMPLE AND RELIABLE
+        freshPlusBtn.addEventListener('click', function() {
+            const quantityInput = document.getElementById('quantity');
+            let val = parseInt(quantityInput.value);
+            const max = currentMaxQuantity > 0 ? currentMaxQuantity : parseInt(quantityInput.max) || 1000;
+            
+            if (val < max) {
+                quantityInput.value = val + 1;
+                console.log("➕ Quantity increased to:", quantityInput.value);
+            } else {
+                console.log("⚠️ Cannot exceed max quantity:", max);
+            }
+        });
+        
+        // 🆕 INPUT VALIDATION - SIMPLE AND RELIABLE
+        quantityInput.addEventListener('change', function() {
+            let val = parseInt(this.value);
+            const max = currentMaxQuantity > 0 ? currentMaxQuantity : parseInt(this.max) || 1000;
+            const min = 1;
+            
+            if (isNaN(val) || val < min) {
+                this.value = min;
+            } else if (val > max) {
+                this.value = max;
+            }
+            console.log("📝 Quantity changed to:", this.value);
+        });
+        
+        console.log("✅ Quantity controls initialized reliably");
     }
 
     // 🟣 CRITICAL FIX: Get the CURRENT selected color ID
     function getSelectedColorId() {
-        // Method 1: Check the hidden field (updated by color selector)
         const hiddenColorField = document.getElementById('selected-color-id');
         if (hiddenColorField && hiddenColorField.value) {
             return hiddenColorField.value;
         }
         
-        // Method 2: Check active color option
         const activeColor = document.querySelector('.color-option.active');
         if (activeColor && activeColor.dataset.colorId) {
             return activeColor.dataset.colorId;
         }
         
-        // Method 3: Fallback to Add to Cart button data (initial page load)
         const addToCartBtn = document.querySelector('.add-to-cart');
         if (addToCartBtn && addToCartBtn.dataset.id) {
             return addToCartBtn.dataset.id;
@@ -374,7 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return null;
     }
 
-    // 🛒 ADD TO CART - FIXED TO USE CURRENT SELECTED COLOR
+    // 🛒 ADD TO CART - RELIABLE VERSION
     function initializeAddToCart() {
         console.log("🛒 Initializing Add to Cart functionality...");
         
@@ -384,8 +437,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        addToCartBtn.addEventListener("click", async () => {
-            // ✅ GET CURRENT SELECTED COLOR, SIZE AND QUANTITY
+        addToCartBtn.addEventListener("click", async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const colorId = getSelectedColorId();
             const activeSize = document.querySelector('.size-option.active');
             const size = activeSize ? activeSize.dataset.size : 'M';
@@ -425,11 +480,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     updateCartAfterAdd();
                 } else if (result.status === "exists") {
                     showNotification("🛒 This product is already in your cart.", 'info');
-                } else if (
-                    result.message === "Please log in first." ||
-                    result.message === "not_logged_in" ||
-                    result.status === "not_logged_in"
-                ) {
+                } else if (result.status === "not_logged_in") {
                     showLoginModal();
                 } else {
                     showNotification(result.message || "⚠️ Something went wrong.", 'error');
@@ -462,35 +513,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 💖 WISHLIST FEATURE - FIXED TO USE CURRENT SELECTED COLOR
+    // 💖 WISHLIST FEATURE
     function initializeWishlist() {
         console.log("💖 Initializing wishlist functionality...");
 
         const wishlistButtons = document.querySelectorAll(".wishlist-btn");
-        console.log("🔍 Found wishlist buttons:", wishlistButtons.length);
-
         if (wishlistButtons.length === 0) {
-            console.error("❌ NO WISHLIST BUTTONS FOUND! Check your HTML class names.");
+            console.error("❌ NO WISHLIST BUTTONS FOUND!");
             return;
         }
 
         wishlistButtons.forEach((btn) => {
             btn.addEventListener("click", async function (event) {
-                console.log("💖 Wishlist button CLICKED!");
-
                 event.preventDefault();
                 event.stopPropagation();
                 hideResetPasswordFormIfVisible();
 
-                // ✅ GET CURRENT SELECTED COLOR
                 const colorId = getSelectedColorId();
                 const productId = this.dataset.id;
-
-                console.log("💖 Wishlist Data:", {
-                    productId: productId,
-                    colorId: colorId,
-                    activeColor: document.querySelector('.color-option.active')?.dataset.colorName
-                });
 
                 if (!productId) {
                     showNotification("⚠️ Product information missing.", 'error');
@@ -509,7 +549,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     const formData = new URLSearchParams();
                     formData.append("product_id", productId);
-                    formData.append("color_id", colorId); // ✅ Send color_id
+                    formData.append("color_id", colorId);
 
                     const res = await fetch(SITE_URL + "actions/wishlist-add.php", {
                         method: "POST",
@@ -519,18 +559,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
 
                     const data = await res.json();
-                    console.log("💖 Wishlist API response:", data);
 
                     if (data.status === "success") {
                         this.textContent = "✓ Added";
                         updateWishlistCount();
-                        // Show success message with color info
                         const colorName = document.querySelector('.color-option.active')?.dataset.colorName || 'selected color';
                         showNotification(`Added ${colorName} variant to wishlist!`, 'success');
                     } else if (data.status === "exists") {
                         this.textContent = "✓ Already in wishlist";
-                        showNotification(data.message || 'Already in wishlist', 'info');
-                    } else if (data.status === "not_logged_in" || data.message === "not_logged_in") {
+                        showNotification('Already in wishlist', 'info');
+                    } else if (data.status === "not_logged_in") {
                         showLoginModal();
                         this.textContent = originalText;
                         this.disabled = false;
@@ -553,7 +591,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 🆕 ADD NOTIFICATION FUNCTION
     function showNotification(message, type = 'info') {
-        // Remove existing notifications
         const existingNotifications = document.querySelectorAll('.notification');
         existingNotifications.forEach(notif => notif.remove());
         
@@ -564,7 +601,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
         `;
         
-        // Add styles
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -583,7 +619,6 @@ document.addEventListener("DOMContentLoaded", () => {
         
         document.body.appendChild(notification);
         
-        // Auto remove after 3 seconds
         setTimeout(() => {
             if (notification.parentElement) {
                 notification.remove();
@@ -602,7 +637,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch((err) => console.error("💌 Error updating wishlist badge:", err));
     }
 
-    // 🚀 BUY NOW FUNCTIONALITY - FIXED TO USE CURRENT SELECTED COLOR
+    // 🚀 BUY NOW FUNCTIONALITY
     function initializeBuyNow() {
         console.log("🚀 Initializing Buy Now functionality...");
 
@@ -613,30 +648,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         buyNowBtn.addEventListener("click", async function (event) {
-            console.log("🚀 Buy Now button CLICKED!");
-            
             event.preventDefault();
             event.stopPropagation();
 
-            // ✅ CRITICAL FIX: Get the CURRENT selected color
             const colorId = getSelectedColorId();
             const productId = this.dataset.productId;
             const price = this.dataset.price;
-            
-            // Get current size and quantity
             const activeSize = document.querySelector('.size-option.active');
             const size = activeSize ? activeSize.dataset.size : 'M';
             const quantity = document.getElementById("quantity")?.value || 1;
 
-            console.log("📦 Buy Now - FINAL SELECTION:", {
-                colorId: colorId,
-                productId: productId,
-                quantity: quantity,
-                size: size,
-                price: price
-            });
-
-            // Validation
             if (!colorId) {
                 showNotification("⚠️ Please select a color before buying.", 'error');
                 return;
@@ -659,9 +680,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 formData.append("size", size);
                 formData.append("price", price);
 
-                console.log("📤 Sending Buy Now request...");
-                console.log("🎯 Color ID being sent:", colorId);
-
                 const response = await fetch(SITE_URL + "actions/buy_now.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -670,12 +688,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const result = await response.json();
-                console.log("🚀 Buy Now API response:", result);
 
                 if (result.success) {
-                    console.log("✅ Buy Now successful!");
                     window.location.href = result.redirect_url || SITE_URL + "pages/checkout.php";
-                } else if (result.message === 'not_logged_in' || result.requires_login) {
+                } else if (result.message === 'not_logged_in') {
                     showLoginModal();
                     this.textContent = originalText;
                     this.disabled = false;
@@ -691,52 +707,63 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.disabled = false;
             }
         });
-
-        console.log("✅ Buy Now event listener attached");
     }
 
-    // ✅ LISTEN FOR COLOR CHANGES TO UPDATE BUTTONS
+    // ✅ SETUP COLOR CHANGE LISTENER
     function setupColorChangeListener() {
+        console.log("🎨 Setting up color change listeners...");
+        
         document.addEventListener('colorChanged', function(e) {
-            console.log('🎨 Color change detected, updating buttons...');
+            console.log('🎨 Color change event detected');
             
-            // Update Add to Cart button data-id
             const addToCartBtn = document.querySelector('.add-to-cart');
             if (addToCartBtn && e.detail.colorId) {
                 addToCartBtn.dataset.id = e.detail.colorId;
-                console.log('✅ Updated Add to Cart button color ID:', e.detail.colorId);
             }
             
-            // Update Buy Now button data-color-id
             const buyNowBtn = document.getElementById('buy-now-btn');
             if (buyNowBtn && e.detail.colorId) {
                 buyNowBtn.dataset.colorId = e.detail.colorId;
-                console.log('✅ Updated Buy Now button color ID:', e.detail.colorId);
             }
+            
+            // Re-initialize everything for reliability
+            setTimeout(() => {
+                initializeSizeSelection();
+                initializeQuantityControls();
+            }, 100);
         });
     }
 
-    // 🚀 INITIALIZE EVERYTHING
+    // 🚀 INITIALIZE EVERYTHING - RELIABLE SEQUENCE
     function initialize() {
-        console.log("🚀 Starting full initialization...");
+        console.log("🚀 Starting RELIABLE initialization...");
+        
+        // Step 1: Setup basics
         addModalStyles();
-        initializeSizeSelection();
-        initializeQuantityControls();
-        initializeAddToCart(); // 🆕 ADD THIS - FIXED ADD TO CART
-        initializeWishlist();
-        initializeBuyNow();
+        setupModalClose();
         setupForgotPasswordReset();
-        setupColorChangeListener(); // 🆕 ADD THIS - LISTEN FOR COLOR CHANGES
-        updateWishlistCount();
-        updateCartAfterAdd();
         
-        // Initialize quantity limits
-        updateQuantityLimits();
+        // Step 2: Initialize core functionality in sequence
+        setTimeout(() => {
+            initializeSizeSelection();
+        }, 50);
         
-        console.log("✅ Full initialization complete");
+        setTimeout(() => {
+            initializeQuantityControls();
+        }, 100);
+        
+        setTimeout(() => {
+            initializeAddToCart();
+            initializeWishlist();
+            initializeBuyNow();
+            setupColorChangeListener();
+            updateWishlistCount();
+            updateCartAfterAdd();
+        }, 150);
+        
+        console.log("✅ Reliable initialization sequence started");
     }
 
     // Start the application
     initialize();
 });
-

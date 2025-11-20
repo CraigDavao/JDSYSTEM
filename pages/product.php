@@ -314,13 +314,14 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && !empty($prod
     </div>
 
       <!-- ✅ Quantity Selector -->
-      <div class="quantity-selector <?= $current_stock == 0 ? 'out-of-stock' : '' ?>">
-        <label>Quantity:</label>
-        <button type="button" class="quantity-btn" id="minus-btn" <?= $current_stock == 0 ? 'disabled' : '' ?>>−</button>
-        <input type="number" id="quantity" name="quantity" value="1" min="1" max="<?= min(10, $current_stock) ?>" 
-               class="quantity-input" <?= $current_stock == 0 ? 'disabled' : '' ?>>
-        <button type="button" class="quantity-btn" id="plus-btn" <?= $current_stock == 0 ? 'disabled' : '' ?>>+</button>
-      </div>
+      <!-- ✅ Quantity Selector - FIXED TO USE ACTUAL STOCK -->
+<div class="quantity-selector <?= $current_stock == 0 ? 'out-of-stock' : '' ?>">
+  <label>Quantity:</label>
+  <button type="button" class="quantity-btn" id="minus-btn" <?= $current_stock == 0 ? 'disabled' : '' ?>>−</button>
+  <input type="number" id="quantity" name="quantity" value="1" min="1" max="<?= $current_stock ?>" 
+         class="quantity-input" <?= $current_stock == 0 ? 'disabled' : '' ?>>
+  <button type="button" class="quantity-btn" id="plus-btn" <?= $current_stock == 0 ? 'disabled' : '' ?>>+</button>
+</div>
 
       <div class="action-buttons">
         <!-- ✅ Add to Cart button with ONLY COLOR ID -->
