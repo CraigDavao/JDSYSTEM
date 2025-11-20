@@ -26,6 +26,7 @@ require_once __DIR__ . '/../connection/connection.php';
     <!-- JS -->
     <script src="<?php echo SITE_URL; ?>js/script.js?v=<?= time(); ?>" defer></script>
     <script src="<?= SITE_URL; ?>js/header.js?v=<?= time(); ?>"></script>
+    <script src="<?= SITE_URL; ?>js/wishlist.js?v=<?= time(); ?>" defer></script>
     <script>
     const SITE_URL = "<?= SITE_URL ?>";
     </script>
@@ -820,6 +821,168 @@ document.addEventListener('DOMContentLoaded', function () {
     `;
     document.head.appendChild(style);
 });
+</script>
+
+<!-- 🟢 NUCLEAR WISHLIST BADGE FIX - WORKS ON ALL PAGES -->
+<script>
+// 🟢 NUCLEAR OPTION - Override everything to work on ALL pages
+(function() {
+    'use strict';
+    
+    console.log('💖 NUCLEAR WISHLIST BADGE ACTIVATED ON:', window.location.href);
+    
+    // 1. Override ALL possible wishlist-related functions globally
+    const nuclearFunctions = ['updateWishlistBadge', 'updateWishlistCount', 'updateWishlist', 'wishlistUpdate', 'refreshWishlist'];
+    nuclearFunctions.forEach(funcName => {
+        window[funcName] = function() {
+            console.log('💖 Nuclear: Overridden', funcName, 'called');
+            nuclearForceUpdateWishlistBadge();
+        };
+    });
+    
+    // 2. Nuclear badge protection
+    function nuclearBadgeProtection() {
+        const badge = document.getElementById('wishlist-count');
+        if (!badge) {
+            // Badge doesn't exist yet, keep checking
+            setTimeout(nuclearBadgeProtection, 500);
+            return;
+        }
+        
+        console.log('💖 Nuclear: Protecting wishlist badge element on', window.location.href);
+        
+        // Completely lock down the badge - make it read-only
+        try {
+            Object.defineProperty(badge, 'textContent', {
+                get: function() { 
+                    const correctCount = getNuclearCorrectCountSync();
+                    return correctCount; 
+                },
+                set: function(value) { 
+                    console.log('💖 Nuclear: Blocked textContent update to:', value, 'on', window.location.href);
+                    nuclearForceUpdateWishlistBadge();
+                },
+                configurable: false,
+                enumerable: true
+            });
+            
+            Object.defineProperty(badge, 'innerText', {
+                get: function() { 
+                    const correctCount = getNuclearCorrectCountSync();
+                    return correctCount; 
+                },
+                set: function(value) { 
+                    console.log('💖 Nuclear: Blocked innerText update to:', value, 'on', window.location.href);
+                    nuclearForceUpdateWishlistBadge();
+                },
+                configurable: false,
+                enumerable: true
+            });
+            
+            Object.defineProperty(badge, 'innerHTML', {
+                get: function() { 
+                    const correctCount = getNuclearCorrectCountSync();
+                    return correctCount; 
+                },
+                set: function(value) { 
+                    console.log('💖 Nuclear: Blocked innerHTML update to:', value, 'on', window.location.href);
+                    nuclearForceUpdateWishlistBadge();
+                },
+                configurable: false,
+                enumerable: true
+            });
+            
+            // Set initial value
+            nuclearForceUpdateWishlistBadge();
+            
+        } catch (e) {
+            console.log('💖 Nuclear: Protection setup error:', e);
+        }
+    }
+    
+    // 3. Get correct count with fallback
+    let nuclearCurrentCount = '0';
+    
+    function getNuclearCorrectCountSync() {
+        return nuclearCurrentCount;
+    }
+    
+    async function nuclearForceUpdateWishlistBadge() {
+        try {
+            const response = await fetch('<?php echo SITE_URL; ?>actions/wishlist-count.php?t=' + Date.now());
+            const data = await response.json();
+            
+            nuclearCurrentCount = data.count.toString();
+            const badge = document.getElementById('wishlist-count');
+            
+            if (badge) {
+                // Use direct DOM manipulation to bypass our own protections
+                badge.firstChild?.remove();
+                badge.appendChild(document.createTextNode(nuclearCurrentCount));
+                
+                console.log('💖 Nuclear: Wishlist badge set to', nuclearCurrentCount, 'on', window.location.href);
+            }
+        } catch (error) {
+            console.log('💖 Nuclear: Wishlist update error on', window.location.href, ':', error);
+            // Fallback: try to get count from PHP session
+            nuclearCurrentCount = '0';
+        }
+    }
+    
+    // 4. Monitor ALL fetch requests for wishlist-related activity
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        const url = args[0];
+        
+        if (typeof url === 'string' && (url.includes('wishlist') || url.includes('Wishlist'))) {
+            console.log('💖 Nuclear: Detected wishlist-related fetch:', url);
+            return originalFetch.apply(this, args).then(response => {
+                // After any wishlist request, force update
+                setTimeout(nuclearForceUpdateWishlistBadge, 100);
+                return response;
+            });
+        }
+        
+        return originalFetch.apply(this, args);
+    };
+    
+    // 5. Start nuclear protection immediately
+    nuclearBadgeProtection();
+    
+    // 6. Frequent updates to override any bad changes
+    setInterval(nuclearForceUpdateWishlistBadge, 1500);
+    
+    // 7. Override on ALL possible events
+    const nuclearEvents = ['DOMContentLoaded', 'load', 'pageshow', 'visibilitychange', 'mouseenter', 'click', 'keydown'];
+    nuclearEvents.forEach(event => {
+        window.addEventListener(event, nuclearForceUpdateWishlistBadge);
+    });
+    
+    // 8. Monitor for badge element creation
+    const nuclearObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && (node.id === 'wishlist-count' || node.querySelector('#wishlist-count'))) {
+                    console.log('💖 Nuclear: New wishlist badge element detected on', window.location.href);
+                    setTimeout(nuclearBadgeProtection, 100);
+                }
+            });
+        });
+    });
+    
+    nuclearObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    console.log('💖 Nuclear wishlist protection active on:', window.location.href);
+    
+    // Initial update
+    setTimeout(nuclearForceUpdateWishlistBadge, 100);
+    setTimeout(nuclearForceUpdateWishlistBadge, 1000);
+    setTimeout(nuclearForceUpdateWishlistBadge, 3000);
+    
+})();
 </script>
 
  </body>

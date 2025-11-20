@@ -477,3 +477,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // Start the application
     initialize();
 });
+
+// 🟢 UPDATE WISHLIST BADGE GLOBALLY
+async function updateWishlistBadge() {
+    try {
+        // Use the nuclear function if it exists, otherwise fallback
+        if (window.nuclearForceUpdateWishlistBadge) {
+            window.nuclearForceUpdateWishlistBadge();
+        } else {
+            // Fallback: direct update
+            const response = await fetch(SITE_URL + "actions/wishlist-count.php?t=" + Date.now());
+            const data = await response.json();
+            const badge = document.getElementById('wishlist-count');
+            if (badge) {
+                badge.textContent = data.count;
+            }
+        }
+    } catch (error) {
+        console.error("Error updating wishlist badge:", error);
+    }
+}
