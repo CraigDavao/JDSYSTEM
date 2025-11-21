@@ -12,31 +12,24 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-error_log("Wishlist clear request received - User ID: $user_id");
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Delete all wishlist items for this user
+        // Delete all wishlist items for the current user
         $delete_sql = "DELETE FROM wishlist WHERE user_id = ?";
         $delete_stmt = $conn->prepare($delete_sql);
         $delete_stmt->bind_param("i", $user_id);
         
         if ($delete_stmt->execute()) {
-            $affected_rows = $delete_stmt->affected_rows;
-            error_log("Successfully cleared wishlist for user ID: $user_id - Removed $affected_rows items");
             echo "success";
         } else {
-            error_log("Database error: " . $delete_stmt->error);
             echo "database_error";
         }
         
         $delete_stmt->close();
     } catch (Exception $e) {
-        error_log("Exception: " . $e->getMessage());
         echo "exception";
     }
 } else {
-    error_log("Invalid request method");
     echo "invalid_method";
 }
 ?>

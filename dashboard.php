@@ -39,6 +39,65 @@ $wishlist_items = [];
 // Include the handlers file
 require_once __DIR__ . '/includes/dashboard-handlers.php';
 
+// Handle cancellation and return requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['cancel_order'])) {
+        $order_id = intval($_POST['order_id']);
+        $reason = trim($_POST['cancel_reason']);
+        
+        // Check if order belongs to user and can be cancelled
+        $stmt = $conn->prepare("SELECT id, status, can_cancel FROM orders WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $order_id, $user_id);
+        $stmt->execute();
+        $order = $stmt->get_result()->fetch_assoc();
+        
+        if ($order && $order['can_cancel'] && in_array($order['status'], ['pending', 'processing'])) {
+            $stmt = $conn->prepare("INSERT INTO order_cancellations (order_id, user_id, reason) VALUES (?, ?, ?)");
+            $stmt->bind_param("iis", $order_id, $user_id, $reason);
+            
+            if ($stmt->execute()) {
+                $_SESSION['success_message'] = "Cancellation request submitted successfully!";
+            } else {
+                $_SESSION['error_message'] = "Failed to submit cancellation request.";
+            }
+        } else {
+            $_SESSION['error_message'] = "This order cannot be cancelled.";
+        }
+        
+        header("Location: " . SITE_URL . "dashboard.php");
+        exit();
+    }
+    
+    if (isset($_POST['return_request'])) {
+        $order_id = intval($_POST['order_id']);
+        $reason = trim($_POST['return_reason']);
+        $return_type = $_POST['return_type'];
+        $item_condition = trim($_POST['item_condition']);
+        
+        // Check if order belongs to user and can be returned
+        $stmt = $conn->prepare("SELECT id, total_amount, status, can_return FROM orders WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $order_id, $user_id);
+        $stmt->execute();
+        $order = $stmt->get_result()->fetch_assoc();
+        
+        if ($order && $order['can_return'] && $order['status'] === 'delivered') {
+            $stmt = $conn->prepare("INSERT INTO return_requests (order_id, user_id, reason, return_type, item_condition, refund_amount) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iisssd", $order_id, $user_id, $reason, $return_type, $item_condition, $order['total_amount']);
+            
+            if ($stmt->execute()) {
+                $_SESSION['success_message'] = "Return request submitted successfully!";
+            } else {
+                $_SESSION['error_message'] = "Failed to submit return request.";
+            }
+        } else {
+            $_SESSION['error_message'] = "This order cannot be returned.";
+        }
+        
+        header("Location: " . SITE_URL . "dashboard.php");
+        exit();
+    }
+}
+
 ob_end_flush();
 ?>
 <!DOCTYPE html>
@@ -49,6 +108,7 @@ ob_end_flush();
   <title>My Account | Jolly Dolly</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/profile.css?v=<?= time(); ?>">
+  <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/details.css?v=<?= time(); ?>">
 </head>
 <body>
   <div class="account-wrapper">
@@ -273,7 +333,7 @@ ob_end_flush();
     </div>
 </div>
 
-      <!-- Wishlist Section -->
+ <!-- Wishlist Section -->
 <div class="section" id="wishlist">
     <div class="section-title">
         <h2>My Wishlist</h2>
@@ -284,15 +344,19 @@ ob_end_flush();
         <div class="wishlist-grid">
             <?php foreach ($wishlist_items as $item): ?>
                 <?php
-                // Debug: Check what's in product_image
-                // error_log("Product Image for {$item['name']}: " . substr($item['product_image'] ?? 'NULL', 0, 50));
-                
-                // Handle image display - FIXED VERSION
+                // Handle image display
                 if (!empty($item['product_image']) && strpos($item['product_image'], 'base64') !== false) {
                     $imageSrc = $item['product_image'];
                 } else {
                     // Fallback to default image
                     $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+                }
+                
+                // Calculate actual sale price
+                $actual_sale_price = 0;
+                if ($item['sale_price'] > 0) {
+                    $discount_amount = ($item['price'] * $item['sale_price']) / 100;
+                    $actual_sale_price = $item['price'] - $discount_amount;
                 }
                 
                 // Create product link
@@ -317,9 +381,10 @@ ob_end_flush();
                                 </div>
                             <?php endif; ?>
                             <div class="item-price">
-                                <?php if ($item['sale_price'] > 0 && $item['sale_price'] < $item['price']): ?>
-                                    <span class="current">₱<?php echo number_format($item['sale_price'], 2); ?></span>
+                                <?php if ($item['sale_price'] > 0): ?>
+                                    <span class="current">₱<?php echo number_format($actual_sale_price, 2); ?></span>
                                     <span class="original">₱<?php echo number_format($item['price'], 2); ?></span>
+                                    <span class="discount-percentage">-<?php echo number_format($item['sale_price'], 0); ?>%</span>
                                 <?php else: ?>
                                     <span class="current">₱<?php echo number_format($item['price'], 2); ?></span>
                                 <?php endif; ?>
@@ -350,7 +415,18 @@ ob_end_flush();
 
           <?php if (count($orders) > 0): ?>
             <div class="orders-list">
-              <?php foreach ($orders as $order): ?>
+              <?php foreach ($orders as $order): 
+                // Check if order has cancellation or return requests
+                $cancellation_stmt = $conn->prepare("SELECT status FROM order_cancellations WHERE order_id = ?");
+                $cancellation_stmt->bind_param("i", $order['id']);
+                $cancellation_stmt->execute();
+                $cancellation = $cancellation_stmt->get_result()->fetch_assoc();
+                
+                $return_stmt = $conn->prepare("SELECT status, return_type, refund_amount FROM return_requests WHERE order_id = ?");
+                $return_stmt->bind_param("i", $order['id']);
+                $return_stmt->execute();
+                $return_request = $return_stmt->get_result()->fetch_assoc();
+              ?>
                 <div class="order-panel">
                   <div class="order-header">
                     <div class="order-meta">
@@ -365,6 +441,20 @@ ob_end_flush();
                         ?>
                       </span>
                       <span class="order-items"><?php echo $order['item_count']; ?> item(s)</span>
+                      
+                      <!-- Show cancellation status -->
+                      <?php if ($cancellation): ?>
+                        <div class="request-status status-<?php echo $cancellation['status']; ?>">
+                          Cancellation: <?php echo ucfirst($cancellation['status']); ?>
+                        </div>
+                      <?php endif; ?>
+                      
+                      <!-- Show return status -->
+                      <?php if ($return_request): ?>
+                        <div class="request-status status-<?php echo $return_request['status']; ?>">
+                          Return: <?php echo ucfirst(str_replace('_', ' ', $return_request['status'])); ?>
+                        </div>
+                      <?php endif; ?>
                     </div>
                     <div class="order-status">
                       <span class="status status-<?php echo strtolower($order['status']); ?>">
@@ -372,6 +462,33 @@ ob_end_flush();
                       </span>
                     </div>
                   </div>
+                  
+                  <!-- Return/Refund Information -->
+                  <?php if ($return_request): ?>
+                  <div class="return-info">
+                    <h4>Return & Refund Information</h4>
+                    <div class="return-details">
+                      <div class="return-detail-item">
+                        <strong>Type:</strong> <?php echo ucfirst($return_request['return_type']); ?>
+                      </div>
+                      <div class="return-detail-item">
+                        <strong>Refund Amount:</strong> ₱<?php echo number_format($return_request['refund_amount'], 2); ?>
+                      </div>
+                      <div class="return-detail-item">
+                        <strong>Status:</strong> 
+                        <span class="request-status status-<?php echo $return_request['status']; ?>">
+                          <?php echo ucfirst(str_replace('_', ' ', $return_request['status'])); ?>
+                        </span>
+                      </div>
+                    </div>
+                    <?php if ($return_request['status'] === 'approved'): ?>
+                      <div class="refund-processing">
+                        <p><strong>Refund Processing:</strong> Once we receive the returned item, we will inspect it and notify you. If approved, your refund will be automatically processed to your original payment method. Please allow 5-10 business days for the refund to show in your account.</p>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                  <?php endif; ?>
+                  
                   <div class="order-footer">
                     <div class="order-total">
                       <strong>Total: ₱<?php echo number_format($order['total_amount'], 2); ?></strong>
@@ -380,6 +497,21 @@ ob_end_flush();
                       <button class="secondary-button" onclick="viewOrderDetails(<?php echo $order['id']; ?>)">
                         <i class="fas fa-eye"></i> View Details
                       </button>
+                      
+                      <!-- Cancel Order Button -->
+                      <?php if (!$cancellation && $order['can_cancel'] && in_array($order['status'], ['pending', 'processing'])): ?>
+                        <button class="cancel-btn" onclick="openCancelModal(<?php echo $order['id']; ?>)">
+                          <i class="fas fa-times"></i> Cancel Order
+                        </button>
+                      <?php endif; ?>
+                      
+                      <!-- Return/Refund Button -->
+                      <?php if (!$return_request && $order['can_return'] && $order['status'] === 'delivered'): ?>
+                        <button class="return-btn" onclick="openReturnModal(<?php echo $order['id']; ?>)">
+                          <i class="fas fa-undo"></i> Return/Refund
+                        </button>
+                      <?php endif; ?>
+                      
                       <form method="POST" style="display: inline;">
                         <input type="hidden" name="reorder" value="1">
                         <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
@@ -418,6 +550,107 @@ ob_end_flush();
       <div class="modal-body" id="orderDetailsContent">
         <!-- Content will be loaded via AJAX -->
       </div>
+    </div>
+  </div>
+
+  <!-- Cancel Order Modal -->
+  <div id="cancelModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Cancel Order</h3>
+        <button class="close-button" onclick="closeCancelModal()">&times;</button>
+      </div>
+      <form method="POST" class="modal-form">
+        <input type="hidden" name="cancel_order" value="1">
+        <input type="hidden" id="cancel_order_id" name="order_id">
+        
+        <div class="form-group">
+          <label for="cancel_reason">Reason for Cancellation *</label>
+          <select id="cancel_reason" name="cancel_reason" required>
+            <option value="">Select a reason</option>
+            <option value="Changed my mind">Changed my mind</option>
+            <option value="Found better price">Found better price</option>
+            <option value="Ordered by mistake">Ordered by mistake</option>
+            <option value="Shipping takes too long">Shipping takes too long</option>
+            <option value="Other">Other reason</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="cancel_notes">Additional Notes (Optional)</label>
+          <textarea id="cancel_notes" name="cancel_notes" rows="3" placeholder="Any additional information..."></textarea>
+        </div>
+        
+        <div class="form-buttons">
+          <button type="button" class="secondary-button" onclick="closeCancelModal()">Cancel</button>
+          <button type="submit" class="cancel-btn">Submit Cancellation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Return/Refund Modal -->
+  <div id="returnModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Return / Refund Request</h3>
+        <button class="close-button" onclick="closeReturnModal()">&times;</button>
+      </div>
+      <form method="POST" class="modal-form">
+        <input type="hidden" name="return_request" value="1">
+        <input type="hidden" id="return_order_id" name="order_id">
+        
+        <div class="form-group">
+          <label for="return_type">Request Type *</label>
+          <select id="return_type" name="return_type" required>
+            <option value="refund">Refund</option>
+            <option value="exchange">Exchange</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="return_reason">Reason for Return *</label>
+          <select id="return_reason" name="return_reason" required>
+            <option value="">Select a reason</option>
+            <option value="Item not as described">Item not as described</option>
+            <option value="Wrong size">Wrong size</option>
+            <option value="Wrong item received">Wrong item received</option>
+            <option value="Damaged item">Damaged item</option>
+            <option value="Changed my mind">Changed my mind</option>
+            <option value="Other">Other reason</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="item_condition">Item Condition *</label>
+          <select id="item_condition" name="item_condition" required>
+            <option value="">Select condition</option>
+            <option value="Unused with tags">Unused with tags</option>
+            <option value="Unused without tags">Unused without tags</option>
+            <option value="Used but good condition">Used but good condition</option>
+            <option value="Damaged">Damaged</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="return_description">Detailed Description *</label>
+          <textarea id="return_description" name="return_description" rows="4" placeholder="Please provide detailed information about why you're returning this item..." required></textarea>
+        </div>
+        
+        <div class="return-policy">
+          <h4>Return Policy Information</h4>
+          <div class="policy-details">
+            <p><strong>Return Shipping:</strong> Customer is responsible for return shipping costs unless the item was faulty.</p>
+            <p><strong>Damaged Items:</strong> Please contact us immediately with photos of the damaged product.</p>
+            <p><strong>Refund Processing:</strong> Once we receive the returned item, we will inspect it and notify you. If approved, your refund will be automatically processed to your original payment method. Please allow 5-10 business days for the refund to show in your account.</p>
+          </div>
+        </div>
+        
+        <div class="form-buttons">
+          <button type="button" class="secondary-button" onclick="closeReturnModal()">Cancel</button>
+          <button type="submit" class="return-btn">Submit Return Request</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -547,9 +780,51 @@ ob_end_flush();
 
   <script src="<?php echo SITE_URL; ?>js/dashboard.js"></script>
   <script>
+    // NEW: Cancel Order Modal Functions
+    function openCancelModal(orderId) {
+        document.getElementById('cancel_order_id').value = orderId;
+        document.getElementById('cancelModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCancelModal() {
+        document.getElementById('cancelModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        // Reset form
+        document.getElementById('cancel_reason').value = '';
+        document.getElementById('cancel_notes').value = '';
+    }
+
+    // NEW: Return/Refund Modal Functions
+    function openReturnModal(orderId) {
+        document.getElementById('return_order_id').value = orderId;
+        document.getElementById('returnModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeReturnModal() {
+        document.getElementById('returnModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        // Reset form
+        document.getElementById('return_type').value = 'refund';
+        document.getElementById('return_reason').value = '';
+        document.getElementById('item_condition').value = '';
+        document.getElementById('return_description').value = '';
+    }
+
+    // Close modals when clicking outside
+    document.getElementById('cancelModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeCancelModal();
+    });
+    
+    document.getElementById('returnModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeReturnModal();
+    });
+
     // Order details functionality
     function viewOrderDetails(orderId) {
-        fetch('<?php echo SITE_URL; ?>includes/order-details.php?order_id=' + orderId)
+        // Use the order-details.php page instead of includes/order-details.php
+        fetch('<?php echo SITE_URL; ?>pages/order-details.php?order_id=' + orderId)
             .then(response => response.text())
             .then(html => {
                 document.getElementById('orderDetailsContent').innerHTML = html;
@@ -566,13 +841,6 @@ ob_end_flush();
         document.getElementById('orderDetailsModal').style.display = 'none';
         document.body.style.overflow = 'auto';
     }
-
-    // Close modal when clicking outside
-    document.getElementById('orderDetailsModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeOrderDetailsModal();
-        }
-    });
 
     // Set default address with AJAX
     function setDefaultAddress(addressId, addressType) {

@@ -604,3 +604,228 @@
         padding: 0.85rem;
     }
 }
+
+
+    .wishlist-item {
+        min-height: 120px;
+        align-items: center;
+    }
+    
+    .wishlist-product-info {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .wishlist-action-buttons {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .wishlist-product-price {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .btn-remove-wishlist {
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        min-width: 80px;
+        padding: 0.5rem 0.8rem;
+        background: none;
+        border: 1.5px solid #ff6b6b;
+        color: #ff6b6b;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .btn-remove-wishlist:hover {
+        background: #ff6b6b;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .wishlist-price-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+    }
+
+    .original-price {
+        text-decoration: line-through;
+        color: #999;
+        font-size: 0.9rem;
+    }
+
+    .sale-price {
+        color: #8b5a2b;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .discount-badge {
+        color: #28a745;
+        font-size: 0.8rem;
+        background: #f0f8f0;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    .final-price {
+        color: #8b5a2b;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 300px;
+        animation: slideIn 0.3s ease;
+    }
+
+    .notification-success {
+        background-color: #28a745;
+    }
+
+    .notification-error {
+        background-color: #dc3545;
+    }
+
+    .notification-info {
+        background-color: #17a2b8;
+    }
+
+    /* Custom Modal Styles */
+    .custom-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 10001;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .custom-modal-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+    }
+
+    .custom-modal h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.3rem;
+    }
+
+    .custom-modal p {
+        margin: 0 0 2rem 0;
+        color: #666;
+        font-size: 1rem;
+    }
+
+    .custom-modal-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .custom-modal-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 100px;
+    }
+
+    .custom-modal-confirm {
+        background: #ff6b6b;
+        color: white;
+    }
+
+    .custom-modal-confirm:hover {
+        background: #ff5252;
+        transform: translateY(-2px);
+    }
+
+    .custom-modal-cancel {
+        background: #f8f9fa;
+        color: #333;
+        border: 2px solid #dee2e6;
+    }
+
+    .custom-modal-cancel:hover {
+        background: #e9ecef;
+        transform: translateY(-2px);
+    }
+
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .custom-modal.show {
+        display: flex;
+        animation: modalFadeIn 0.3s ease;
+    }
+
+        .custom-modal-remove {
+        background: #dc3545; /* Red for remove actions */
+        color: white;
+    }
+
+    .custom-modal-remove:hover {
+        background: #c82333;
+        transform: translateY(-2px);
+    }
+
+    .custom-modal-clear {
+        background: #ffc107; /* Yellow/orange for clear actions */
+        color: #212529;
+    }
+
+    .custom-modal-clear:hover {
+        background: #e0a800;
+        transform: translateY(-2px);
+    }

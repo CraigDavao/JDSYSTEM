@@ -9,7 +9,7 @@ if (!$user_id) {
     exit;
 }
 
-// ✅ UPDATED QUERY: Get color-specific images and ALL PRICE COLUMNS
+// Get wishlist items with all price columns
 $sql = "
 SELECT 
     w.id AS wishlist_id,
@@ -75,111 +75,20 @@ $total_count = $count_result->fetch_assoc()['total_count'];
   <link rel="stylesheet" href="<?= SITE_URL; ?>css/wishlist.css?v=<?= time(); ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <title>My Wishlist | Jolly Dolly</title>
-  <style>
-    /* Ensure even height for all wishlist items */
-    .wishlist-item {
-        min-height: 120px;
-        align-items: center;
-    }
-    
-    .wishlist-product-info {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    
-    .wishlist-action-buttons {
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .wishlist-product-price {
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-    
-    /* FIX REMOVE BUTTON ALIGNMENT */
-    .btn-remove-wishlist {
-        height: 35px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        min-width: 80px;
-        padding: 0.5rem 0.8rem;
-        background: none;
-        border: 1.5px solid #ff6b6b;
-        color: #ff6b6b;
-        cursor: pointer;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        white-space: nowrap;
-    }
-
-    .btn-remove-wishlist:hover {
-        background: #ff6b6b;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .wishlist-item > .btn-remove-wishlist {
-        align-self: center;
-        justify-self: center;
-    }
-
-    /* Price display styling */
-    .wishlist-price-display {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 5px;
-    }
-
-    .original-price {
-        text-decoration: line-through;
-        color: #999;
-        font-size: 0.9rem;
-    }
-
-    .sale-price {
-        color: #8b5a2b;
-        font-weight: 700;
-        font-size: 1rem;
-    }
-
-    .discount-badge {
-        color: #28a745;
-        font-size: 0.8rem;
-        background: #f0f8f0;
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-    .final-price {
-        color: #8b5a2b;
-        font-weight: 700;
-        font-size: 1rem;
-    }
-
-    /* Animation styles */
-    @keyframes fadeOut {
-        from { opacity: 1; transform: scale(1); }
-        to { opacity: 0; transform: scale(0.8); }
-    }
-  </style>
 </head>
 <body>
+
+    <!-- Custom Confirmation Modal -->
+  <div class="custom-modal" id="confirmationModal">
+    <div class="custom-modal-content">
+      <h3 id="modalTitle">Remove Item</h3>
+      <p id="modalMessage">Are you sure you want to remove this item from your wishlist?</p>
+      <div class="custom-modal-buttons">
+        <button class="custom-modal-btn custom-modal-cancel" id="modalCancel">Cancel</button>
+        <button class="custom-modal-btn custom-modal-confirm" id="modalConfirm">Remove</button>
+      </div>
+    </div>
+  </div>
 
   <div class="wishlist-dashboard">
     <h2>My Wishlist</h2>
@@ -210,7 +119,7 @@ $total_count = $count_result->fetch_assoc()['total_count'];
           <?php if ($result->num_rows > 0): ?>
             <?php while ($item = $result->fetch_assoc()): ?>
               <?php
-              // 🎯 PRICE CALCULATION LOGIC BASED ON YOUR DATABASE COLUMNS
+              // Price calculation logic
               $regularPrice = floatval($item['price']);
               $salePrice = floatval($item['sale_price']);
               $actualSalePrice = floatval($item['actual_sale_price']);
@@ -248,7 +157,7 @@ $total_count = $count_result->fetch_assoc()['total_count'];
                       <span class="wishlist-variant-color"><?= htmlspecialchars($item['color_name']); ?></span>
                     <?php endif; ?>
                     
-                    <!-- 🎯 UPDATED PRICE DISPLAY - Only show sale info here -->
+                    <!-- Price Display -->
                     <div class="wishlist-price-display">
                       <?php if ($isOnSale): ?>
                         <span class="original-price">₱<?= number_format($regularPrice, 2); ?></span>
@@ -271,7 +180,7 @@ $total_count = $count_result->fetch_assoc()['total_count'];
                   </button>
                 </div>
                 
-                <!-- 🎯 UPDATED PRICE COLUMN - Show only the final price here -->
+                <!-- Price Column -->
                 <div class="wishlist-product-price">
                   <?php if ($isOnSale): ?>
                     <span class="final-price">₱<?= number_format($finalPrice, 2); ?></span>
@@ -352,7 +261,6 @@ $total_count = $count_result->fetch_assoc()['total_count'];
 
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
-  <!-- Include your JavaScript file -->
   <script>
     // Define SITE_URL for JavaScript
     const SITE_URL = '<?= SITE_URL; ?>';

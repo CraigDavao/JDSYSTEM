@@ -285,17 +285,19 @@ foreach ($addresses as $address) {
     }
 }
 
-// Handle reorder action
+// Handle reorder action - FIXED VERSION WITH ORIGINAL ORDER PRICE
 if (isset($_POST['reorder'])) {
     $order_id = $_POST['order_id'];
     
-    // Get order items
-    $stmt = $conn->prepare("SELECT product_id, quantity, size, color FROM order_items WHERE order_id = ?");
+    // Get order items - FIXED: Use the correct columns from your table including price
+    $stmt = $conn->prepare("SELECT product_id, quantity, size, color_id, color_name, price FROM order_items WHERE order_id = ?");
     $stmt->bind_param("i", $order_id);
     $stmt->execute();
     $reorder_items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     
     $added_to_cart = 0;
+    $errors = [];
+    
     foreach ($reorder_items as $item) {
         // Check if product exists and is active
         $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND is_active = 1");
@@ -304,19 +306,69 @@ if (isset($_POST['reorder'])) {
         $product_exists = $stmt->get_result()->fetch_assoc();
         
         if ($product_exists) {
-            // Add to cart
-            $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, size, color) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("iiiss", $user_id, $item['product_id'], $item['quantity'], $item['size'], $item['color']);
-            if ($stmt->execute()) {
-                $added_to_cart++;
+            // FIXED: Use the ORIGINAL ORDER PRICE (the price they actually paid)
+            $current_price = $item['price'];
+            error_log("Reordering product {$item['product_id']} with original order price: {$current_price}");
+            
+            try {
+                // First try: Insert with all fields including price
+                $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, size, color_id, color_name, price) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $color_id = $item['color_id'] ?? null;
+                $color_name = $item['color_name'] ?? '';
+                $stmt->bind_param("iiisisd", $user_id, $item['product_id'], $item['quantity'], $item['size'], $color_id, $color_name, $current_price);
+                if ($stmt->execute()) {
+                    $added_to_cart++;
+                    error_log("SUCCESS: Added product {$item['product_id']} to cart with original price: {$current_price}");
+                }
+            } catch (mysqli_sql_exception $e) {
+                // If that fails, try without color fields but with price
+                try {
+                    $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, size, price) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->bind_param("iiisd", $user_id, $item['product_id'], $item['quantity'], $item['size'], $current_price);
+                    if ($stmt->execute()) {
+                        $added_to_cart++;
+                        error_log("SUCCESS: Added product {$item['product_id']} to cart with original price (no color): {$current_price}");
+                    }
+                } catch (mysqli_sql_exception $e2) {
+                    // If that also fails, try with only basic fields including price
+                    try {
+                        $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
+                        $stmt->bind_param("iiid", $user_id, $item['product_id'], $item['quantity'], $current_price);
+                        if ($stmt->execute()) {
+                            $added_to_cart++;
+                            error_log("SUCCESS: Added product {$item['product_id']} to cart with original price (basic): {$current_price}");
+                        }
+                    } catch (mysqli_sql_exception $e3) {
+                        // Final fallback: without price
+                        try {
+                            $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)");
+                            $stmt->bind_param("iii", $user_id, $item['product_id'], $item['quantity']);
+                            if ($stmt->execute()) {
+                                $added_to_cart++;
+                                error_log("WARNING: Added product {$item['product_id']} to cart WITHOUT price");
+                            }
+                        } catch (mysqli_sql_exception $e4) {
+                            $errors[] = "Failed to add product ID {$item['product_id']} to cart: " . $e4->getMessage();
+                            error_log("ERROR: Failed to add product {$item['product_id']} to cart: " . $e4->getMessage());
+                        }
+                    }
+                }
             }
+        } else {
+            error_log("Product {$item['product_id']} not found or not active");
         }
     }
     
     if ($added_to_cart > 0) {
         $_SESSION['success_message'] = "{$added_to_cart} items added to cart from your order!";
+        if (!empty($errors)) {
+            $_SESSION['success_message'] .= " Some items could not be added.";
+        }
     } else {
         $_SESSION['error_message'] = "No items could be added to cart. Products may no longer be available.";
+        if (!empty($errors)) {
+            error_log("Reorder errors: " . implode(", ", $errors));
+        }
     }
     
     ob_end_clean();
