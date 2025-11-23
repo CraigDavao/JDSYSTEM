@@ -12,21 +12,19 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       lastScrollY = window.scrollY;
     });
-  });
+});
 
+// Keep your second scroll listener but add null check
 let lastScrollY = window.scrollY;
-  const navbar = document.querySelector("nav.site-nav");
+const navbar = document.querySelector("nav.site-nav");
 
-  window.addEventListener("scroll", () => {
-    if (window.scrollY > lastScrollY) {
-      navbar.classList.add("hidden"); // hide on scroll down
-    } else {
-      navbar.classList.remove("hidden"); // show on scroll up
-    }
-    lastScrollY = window.scrollY;
-  });
+window.addEventListener("scroll", () => {
+  if (!navbar) return; // Add this null check
   
-
-  
-
-  
+  if (window.scrollY > lastScrollY) {
+    navbar.classList.add("hidden"); // hide on scroll down
+  } else {
+    navbar.classList.remove("hidden"); // show on scroll up
+  }
+  lastScrollY = window.scrollY;
+});
