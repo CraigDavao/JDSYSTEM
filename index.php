@@ -1,5 +1,6 @@
 <?php 
 require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/connection/connection.php';
 
 /* ------------------------------------------------------------
    HELPER FUNCTION: Get default color ID for a product
