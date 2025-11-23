@@ -270,93 +270,92 @@ ob_end_flush();
           </div>
         </div>
 
-       <!-- Addresses Section -->
-<div class="section" id="addresses">
-    <div class="section-title">
-        <h2>Address Book</h2>
-        <button class="primary-button" onclick="openAddressModal()">
-            <i class="fas fa-plus"></i> Add New Address
-        </button>
-    </div>
+        <!-- Addresses Section -->
+        <div class="section" id="addresses">
+          <div class="section-title">
+            <h2>Address Book</h2>
+            <button class="primary-button" onclick="openAddressModal()">
+              <i class="fas fa-plus"></i> Add New Address
+            </button>
+          </div>
 
-    <div class="address-grid" id="addressesContainer">
-        <?php if (count($addresses) > 0): ?>
-            <?php foreach ($addresses as $address): ?>
+          <div class="address-grid" id="addressesContainer">
+            <?php if (count($addresses) > 0): ?>
+              <?php foreach ($addresses as $address): ?>
                 <div class="address-panel <?php echo $address['is_default'] ? 'default-address' : ''; ?>" 
                      data-address-id="<?php echo $address['id']; ?>"
                      data-address-type="<?php echo $address['type']; ?>"
                      onclick="editAddress(<?php echo $address['id']; ?>)">
-                    <div class="address-header">
-                        <h4>
-                            <?php echo ucfirst($address['type']); ?> Address 
-                            <?php if ($address['is_default']): ?>
-                                <span class="default-tag"><i class="fas fa-star"></i> Default</span>
-                            <?php endif; ?>
-                        </h4>
-                        <div class="address-actions">
-                            <button class="action-icon" onclick="event.stopPropagation(); editAddress(<?php echo $address['id']; ?>)">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="action-icon delete-icon" onclick="event.stopPropagation(); removeAddress(<?php echo $address['id']; ?>)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                  <div class="address-header">
+                    <h4>
+                      <?php echo ucfirst($address['type']); ?> Address 
+                      <?php if ($address['is_default']): ?>
+                        <span class="default-tag"><i class="fas fa-star"></i> Default</span>
+                      <?php endif; ?>
+                    </h4>
+                    <div class="address-actions">
+                      <button class="action-icon" onclick="event.stopPropagation(); editAddress(<?php echo $address['id']; ?>)">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="action-icon delete-icon" onclick="event.stopPropagation(); removeAddress(<?php echo $address['id']; ?>)">
+                        <i class="fas fa-trash"></i>
+                      </button>
                     </div>
-                    <div class="address-info">
-                        <p><strong><?php echo htmlspecialchars($address['fullname'] ?? $_SESSION['user_name']); ?></strong></p>
-                        <p><?php echo htmlspecialchars($address['street']); ?></p>
-                        <p><?php echo htmlspecialchars($address['city'] . ', ' . $address['state'] . ' ' . $address['zip_code']); ?></p>
-                        <p>Philippines</p>
+                  </div>
+                  <div class="address-info">
+                    <p><strong><?php echo htmlspecialchars($address['fullname'] ?? $_SESSION['user_name']); ?></strong></p>
+                    <p><?php echo htmlspecialchars($address['street']); ?></p>
+                    <p><?php echo htmlspecialchars($address['city'] . ', ' . $address['state'] . ' ' . $address['zip_code']); ?></p>
+                    <p>Philippines</p>
+                  </div>
+                  <?php if (!$address['is_default']): ?>
+                    <button class="secondary-button set-default-btn" 
+                            onclick="event.stopPropagation(); setDefaultAddress(<?php echo $address['id']; ?>, '<?php echo $address['type']; ?>')">
+                      <i class="fas fa-star"></i> Set as Default
+                    </button>
+                  <?php else: ?>
+                    <div class="default-indicator">
+                      <i class="fas fa-check-circle"></i> Default Address
                     </div>
-                    <?php if (!$address['is_default']): ?>
-                        <button class="secondary-button set-default-btn" 
-                                onclick="event.stopPropagation(); setDefaultAddress(<?php echo $address['id']; ?>, '<?php echo $address['type']; ?>')">
-                            <i class="fas fa-star"></i> Set as Default
-                        </button>
-                    <?php else: ?>
-                        <div class="default-indicator">
-                            <i class="fas fa-check-circle"></i> Default Address
-                        </div>
-                    <?php endif; ?>
+                  <?php endif; ?>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <div class="empty-state">
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="empty-state">
                 <i class="fas fa-map-marker-alt"></i>
                 <h3>No addresses saved</h3>
                 <p>Add your first address to make checkout easier.</p>
                 <button class="primary-button" onclick="openAddressModal()">
-                    <i class="fas fa-plus"></i> Add Address
+                  <i class="fas fa-plus"></i> Add Address
                 </button>
-            </div>
-        <?php endif; ?>
-    </div>
-</div>
+              </div>
+            <?php endif; ?>
+          </div>
+        </div>
 
- <!-- Wishlist Section -->
-<div class="section" id="wishlist">
-    <div class="section-title">
-        <h2>My Wishlist</h2>
-        <span class="count-badge"><?php echo $wishlist_count; ?> items</span>
-    </div>
+        <!-- Wishlist Section -->
+        <div class="section" id="wishlist">
+          <div class="section-title">
+            <h2>My Wishlist</h2>
+            <span class="count-badge"><?php echo $wishlist_count; ?> items</span>
+          </div>
 
-    <?php if ($wishlist_count > 0): ?>
-        <div class="wishlist-grid">
-            <?php foreach ($wishlist_items as $item): ?>
+          <?php if ($wishlist_count > 0): ?>
+            <div class="wishlist-grid">
+              <?php foreach ($wishlist_items as $item): ?>
                 <?php
                 // Handle image display
                 if (!empty($item['product_image']) && strpos($item['product_image'], 'base64') !== false) {
-                    $imageSrc = $item['product_image'];
+                  $imageSrc = $item['product_image'];
                 } else {
-                    // Fallback to default image
-                    $imageSrc = SITE_URL . 'uploads/sample1.jpg';
+                  $imageSrc = SITE_URL . 'uploads/sample1.jpg';
                 }
                 
                 // Calculate actual sale price
                 $actual_sale_price = 0;
                 if ($item['sale_price'] > 0) {
-                    $discount_amount = ($item['price'] * $item['sale_price']) / 100;
-                    $actual_sale_price = $item['price'] - $discount_amount;
+                  $discount_amount = ($item['price'] * $item['sale_price']) / 100;
+                  $actual_sale_price = $item['price'] - $discount_amount;
                 }
                 
                 // Create product link
@@ -364,47 +363,47 @@ ob_end_flush();
                 ?>
                 
                 <div class="wishlist-item" data-wishlist-id="<?php echo $item['id']; ?>" data-product-id="<?php echo $item['product_id']; ?>">
-                    <a href="<?php echo $product_link; ?>" class="wishlist-item-link">
-                        <div class="item-image">
-                            <img src="<?php echo $imageSrc; ?>" 
-                                 alt="<?php echo htmlspecialchars($item['name']); ?>"
-                                 onerror="this.onerror=null; this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
-                            <button class="remove-item" onclick="event.preventDefault(); event.stopPropagation(); deleteWishlistItem(<?php echo $item['id']; ?>)">
-                                <i class="fas fa-times"></i>
-                            </button>
+                  <a href="<?php echo $product_link; ?>" class="wishlist-item-link">
+                    <div class="item-image">
+                      <img src="<?php echo $imageSrc; ?>" 
+                           alt="<?php echo htmlspecialchars($item['name']); ?>"
+                           onerror="this.onerror=null; this.src='<?php echo SITE_URL; ?>uploads/sample1.jpg'">
+                      <button class="remove-item" onclick="event.preventDefault(); event.stopPropagation(); deleteWishlistItem(<?php echo $item['id']; ?>)">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                    <div class="item-details">
+                      <h4><?php echo htmlspecialchars($item['name']); ?></h4>
+                      <?php if (!empty($item['color_name'])): ?>
+                        <div class="item-color">
+                          <span class="color-badge">Color: <?php echo htmlspecialchars($item['color_name']); ?></span>
                         </div>
-                        <div class="item-details">
-                            <h4><?php echo htmlspecialchars($item['name']); ?></h4>
-                            <?php if (!empty($item['color_name'])): ?>
-                                <div class="item-color">
-                                    <span class="color-badge">Color: <?php echo htmlspecialchars($item['color_name']); ?></span>
-                                </div>
-                            <?php endif; ?>
-                            <div class="item-price">
-                                <?php if ($item['sale_price'] > 0): ?>
-                                    <span class="current">₱<?php echo number_format($actual_sale_price, 2); ?></span>
-                                    <span class="original">₱<?php echo number_format($item['price'], 2); ?></span>
-                                    <span class="discount-percentage">-<?php echo number_format($item['sale_price'], 0); ?>%</span>
-                                <?php else: ?>
-                                    <span class="current">₱<?php echo number_format($item['price'], 2); ?></span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </a>
+                      <?php endif; ?>
+                      <div class="item-price">
+                        <?php if ($item['sale_price'] > 0): ?>
+                          <span class="current">₱<?php echo number_format($actual_sale_price, 2); ?></span>
+                          <span class="original">₱<?php echo number_format($item['price'], 2); ?></span>
+                          <span class="discount-percentage">-<?php echo number_format($item['sale_price'], 0); ?>%</span>
+                        <?php else: ?>
+                          <span class="current">₱<?php echo number_format($item['price'], 2); ?></span>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  </a>
                 </div>
-            <?php endforeach; ?>
-        </div>
-    <?php else: ?>
-        <div class="empty-state">
-            <i class="fas fa-heart"></i>
-            <h3>Your wishlist is empty</h3>
-            <p>Start adding items you love to your wishlist.</p>
-            <a href="<?php echo SITE_URL; ?>pages/new.php" class="primary-button">
+              <?php endforeach; ?>
+            </div>
+          <?php else: ?>
+            <div class="empty-state">
+              <i class="fas fa-heart"></i>
+              <h3>Your wishlist is empty</h3>
+              <p>Start adding items you love to your wishlist.</p>
+              <a href="<?php echo SITE_URL; ?>pages/new.php" class="primary-button">
                 <i class="fas fa-shopping-bag"></i> Start Shopping
-            </a>
+              </a>
+            </div>
+          <?php endif; ?>
         </div>
-    <?php endif; ?>
-</div>
 
         <!-- Orders Section -->
         <div class="section" id="orders">
@@ -442,14 +441,12 @@ ob_end_flush();
                       </span>
                       <span class="order-items"><?php echo $order['item_count']; ?> item(s)</span>
                       
-                      <!-- Show cancellation status -->
                       <?php if ($cancellation): ?>
                         <div class="request-status status-<?php echo $cancellation['status']; ?>">
                           Cancellation: <?php echo ucfirst($cancellation['status']); ?>
                         </div>
                       <?php endif; ?>
                       
-                      <!-- Show return status -->
                       <?php if ($return_request): ?>
                         <div class="request-status status-<?php echo $return_request['status']; ?>">
                           Return: <?php echo ucfirst(str_replace('_', ' ', $return_request['status'])); ?>
@@ -463,7 +460,6 @@ ob_end_flush();
                     </div>
                   </div>
                   
-                  <!-- Return/Refund Information -->
                   <?php if ($return_request): ?>
                   <div class="return-info">
                     <h4>Return & Refund Information</h4>
@@ -498,14 +494,12 @@ ob_end_flush();
                         <i class="fas fa-eye"></i> View Details
                       </button>
                       
-                      <!-- Cancel Order Button -->
                       <?php if (!$cancellation && $order['can_cancel'] && in_array($order['status'], ['pending', 'processing'])): ?>
                         <button class="cancel-btn" onclick="openCancelModal(<?php echo $order['id']; ?>)">
                           <i class="fas fa-times"></i> Cancel Order
                         </button>
                       <?php endif; ?>
                       
-                      <!-- Return/Refund Button -->
                       <?php if (!$return_request && $order['can_return'] && $order['status'] === 'delivered'): ?>
                         <button class="return-btn" onclick="openReturnModal(<?php echo $order['id']; ?>)">
                           <i class="fas fa-undo"></i> Return/Refund
@@ -684,75 +678,70 @@ ob_end_flush();
     </div>
   </div>
 
- <!-- Add/Edit Address Modal -->
-<div id="addressModal" class="modal-overlay">
+  <!-- Add/Edit Address Modal -->
+  <div id="addressModal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-header">
-            <h3>Add New Address</h3>
-            <button class="close-button" onclick="closeAddressModal()">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-            <div id="addAddressForm">
-                <h4 style="margin-bottom: 25px; color: #2c3e50; font-size: 1.3em; font-weight: 600;">Add New Shipping Address</h4>
-                
-                <!-- Person's Name -->
-                <div class="form-group">
-                    <label for="newFullname">Recipient's Full Name *</label>
-                    <input type="text" id="newFullname" placeholder="Enter recipient's full name" required>
-                </div>
+      <div class="modal-header">
+        <h3>Add New Address</h3>
+        <button class="close-button" onclick="closeAddressModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div id="addAddressForm">
+          <h4>Add New Shipping Address</h4>
+          
+          <div class="form-group">
+            <label for="newFullname">Recipient's Full Name *</label>
+            <input type="text" id="newFullname" placeholder="Enter recipient's full name" required>
+          </div>
 
-                <!-- Address Type -->
-                <div class="form-group">
-                    <label for="newType">Address Type *</label>
-                    <select id="newType" required>
-                        <option value="shipping">Shipping Address</option>
-                        <option value="billing">Billing Address</option>
-                    </select>
-                </div>
+          <div class="form-group">
+            <label for="newType">Address Type *</label>
+            <select id="newType" required>
+              <option value="shipping">Shipping Address</option>
+              <option value="billing">Billing Address</option>
+            </select>
+          </div>
 
-                <!-- Address Information -->
-                <div class="form-group">
-                    <label for="newStreet">Street Address *</label>
-                    <input type="text" id="newStreet" placeholder="House number, street, barangay" required>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="newCity">City/Municipality *</label>
-                        <input type="text" id="newCity" placeholder="Enter your city or municipality" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newState">Province *</label>
-                        <input type="text" id="newState" placeholder="Enter your province" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="newZip">ZIP Code *</label>
-                    <input type="text" id="newZip" placeholder="Enter ZIP code" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="newCountry">Country *</label>
-                    <input type="text" id="newCountry" value="Philippines" readonly>
-                </div>
-
-                <!-- Default Address Option -->
-                <label class="form-check">
-                    <input type="checkbox" id="setAsDefault">
-                    Set as default address
-                </label>
-                
-                <!-- Form Buttons -->
-                <div class="form-buttons">
-                    <button id="saveAddressBtn" class="primary-button" onclick="saveOrUpdateAddress()">Save Address</button>
-                    <button type="button" class="secondary-button" onclick="closeAddressModal()">Cancel</button>
-                </div>
+          <div class="form-group">
+            <label for="newStreet">Street Address *</label>
+            <input type="text" id="newStreet" placeholder="House number, street, barangay" required>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newCity">City/Municipality *</label>
+              <input type="text" id="newCity" placeholder="Enter your city or municipality" required>
             </div>
+            <div class="form-group">
+              <label for="newState">Province *</label>
+              <input type="text" id="newState" placeholder="Enter your province" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="newZip">ZIP Code *</label>
+            <input type="text" id="newZip" placeholder="Enter ZIP code" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="newCountry">Country *</label>
+            <input type="text" id="newCountry" value="Philippines" readonly>
+          </div>
+
+          <label class="form-check">
+            <input type="checkbox" id="setAsDefault">
+            Set as default address
+          </label>
+          
+          <div class="form-buttons">
+            <button id="saveAddressBtn" class="primary-button" onclick="saveOrUpdateAddress()">Save Address</button>
+            <button type="button" class="secondary-button" onclick="closeAddressModal()">Cancel</button>
+          </div>
         </div>
+      </div>
     </div>
-</div>
+  </div>
 
   <!-- Security Verification Modal -->
   <div id="securityModal" class="modal-overlay">
@@ -780,248 +769,232 @@ ob_end_flush();
 
   <script src="<?php echo SITE_URL; ?>js/dashboard.js"></script>
   <script>
-    // NEW: Cancel Order Modal Functions
+    // Cancel Order Modal Functions
     function openCancelModal(orderId) {
-        document.getElementById('cancel_order_id').value = orderId;
-        document.getElementById('cancelModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+      document.getElementById('cancel_order_id').value = orderId;
+      document.getElementById('cancelModal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
     }
 
     function closeCancelModal() {
-        document.getElementById('cancelModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-        // Reset form
-        document.getElementById('cancel_reason').value = '';
-        document.getElementById('cancel_notes').value = '';
+      document.getElementById('cancelModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+      document.getElementById('cancel_reason').value = '';
+      document.getElementById('cancel_notes').value = '';
     }
 
-    // NEW: Return/Refund Modal Functions
+    // Return/Refund Modal Functions
     function openReturnModal(orderId) {
-        document.getElementById('return_order_id').value = orderId;
-        document.getElementById('returnModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+      document.getElementById('return_order_id').value = orderId;
+      document.getElementById('returnModal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
     }
 
     function closeReturnModal() {
-        document.getElementById('returnModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-        // Reset form
-        document.getElementById('return_type').value = 'refund';
-        document.getElementById('return_reason').value = '';
-        document.getElementById('item_condition').value = '';
-        document.getElementById('return_description').value = '';
+      document.getElementById('returnModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+      document.getElementById('return_type').value = 'refund';
+      document.getElementById('return_reason').value = '';
+      document.getElementById('item_condition').value = '';
+      document.getElementById('return_description').value = '';
     }
 
     // Close modals when clicking outside
     document.getElementById('cancelModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeCancelModal();
+      if (e.target === this) closeCancelModal();
     });
     
     document.getElementById('returnModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeReturnModal();
+      if (e.target === this) closeReturnModal();
     });
 
     // Order details functionality
     function viewOrderDetails(orderId) {
-        // Use the order-details.php page instead of includes/order-details.php
-        fetch('<?php echo SITE_URL; ?>pages/order-details.php?order_id=' + orderId)
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('orderDetailsContent').innerHTML = html;
-                document.getElementById('orderDetailsModal').style.display = 'flex';
-                document.body.style.overflow = 'hidden';
-            })
-            .catch(error => {
-                console.error('Error loading order details:', error);
-                document.getElementById('orderDetailsContent').innerHTML = '<div class="error-message">Error loading order details.</div>';
-            });
+      fetch('<?php echo SITE_URL; ?>pages/order-details.php?order_id=' + orderId)
+        .then(response => response.text())
+        .then(html => {
+          document.getElementById('orderDetailsContent').innerHTML = html;
+          document.getElementById('orderDetailsModal').style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+          document.getElementById('orderDetailsContent').innerHTML = '<div class="error-message">Error loading order details.</div>';
+        });
     }
 
     function closeOrderDetailsModal() {
-        document.getElementById('orderDetailsModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
+      document.getElementById('orderDetailsModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
     }
 
     // Set default address with AJAX
     function setDefaultAddress(addressId, addressType) {
-        if (!confirm(`Set this as your default ${addressType} address?`)) {
-            return;
+      if (!confirm(`Set this as your default ${addressType} address?`)) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('ajax_set_default_address', '1');
+      formData.append('address_id', addressId);
+      formData.append('address_type', addressType);
+
+      const buttons = document.querySelectorAll('.set-default-btn');
+      buttons.forEach(btn => btn.disabled = true);
+
+      fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          updateAddressesDisplay(data.addresses);
+          updateOverviewDisplay(data.default_shipping, data.default_billing);
+          showMessage(data.message, 'success');
+        } else {
+          showMessage(data.message, 'error');
         }
-
-        const formData = new FormData();
-        formData.append('ajax_set_default_address', '1');
-        formData.append('address_id', addressId);
-        formData.append('address_type', addressType);
-
-        // Show loading state
-        const buttons = document.querySelectorAll('.set-default-btn');
-        buttons.forEach(btn => btn.disabled = true);
-
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update addresses display
-                updateAddressesDisplay(data.addresses);
-                // Update overview display
-                updateOverviewDisplay(data.default_shipping, data.default_billing);
-                // Show success message
-                showMessage(data.message, 'success');
-            } else {
-                showMessage(data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error setting default address:', error);
-            showMessage('Error setting default address. Please try again.', 'error');
-        })
-        .finally(() => {
-            // Re-enable buttons
-            buttons.forEach(btn => btn.disabled = false);
-        });
+      })
+      .catch(error => {
+        showMessage('Error setting default address. Please try again.', 'error');
+      })
+      .finally(() => {
+        buttons.forEach(btn => btn.disabled = false);
+      });
     }
 
     // Update addresses display
     function updateAddressesDisplay(addresses) {
-        const addressesContainer = document.getElementById('addressesContainer');
-        
-        if (addresses.length === 0) {
-            addressesContainer.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <h3>No addresses saved</h3>
-                    <p>Add your first address to make checkout easier.</p>
-                    <button class="primary-button" onclick="openAddressModal()">
-                        <i class="fas fa-plus"></i> Add Address
-                    </button>
-                </div>
-            `;
-            return;
-        }
+      const addressesContainer = document.getElementById('addressesContainer');
+      
+      if (addresses.length === 0) {
+        addressesContainer.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-map-marker-alt"></i>
+            <h3>No addresses saved</h3>
+            <p>Add your first address to make checkout easier.</p>
+            <button class="primary-button" onclick="openAddressModal()">
+              <i class="fas fa-plus"></i> Add Address
+            </button>
+          </div>
+        `;
+        return;
+      }
 
-        let addressesHTML = '';
-        addresses.forEach(address => {
-            addressesHTML += `
-                <div class="address-panel ${address.is_default ? 'default-address' : ''}" 
-                     data-address-id="${address.id}"
-                     data-address-type="${address.type}">
-                    <div class="address-header">
-                        <h4>
-                            ${address.type.charAt(0).toUpperCase() + address.type.slice(1)} Address 
-                            ${address.is_default ? '<span class="default-tag"><i class="fas fa-star"></i> Default</span>' : ''}
-                        </h4>
-                        <div class="address-actions">
-                            <button class="action-icon" onclick="editAddress(${address.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="action-icon delete-icon" onclick="removeAddress(${address.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="address-info">
-                        <p><strong>${escapeHtml(address.fullname || 'User')}</strong></p>
-                        <p>${escapeHtml(address.street)}</p>
-                        <p>${escapeHtml(address.city + ', ' + address.state + ' ' + address.zip_code)}</p>
-                        <p>Philippines</p>
-                    </div>
-                    ${!address.is_default ? 
-                        `<button class="secondary-button set-default-btn" 
-                                onclick="setDefaultAddress(${address.id}, '${address.type}')">
-                            <i class="fas fa-star"></i> Set as Default
-                        </button>` : 
-                        `<div class="default-indicator">
-                            <i class="fas fa-check-circle"></i> Default Address
-                        </div>`
-                    }
-                </div>
-            `;
-        });
-        
-        addressesContainer.innerHTML = addressesHTML;
+      let addressesHTML = '';
+      addresses.forEach(address => {
+        addressesHTML += `
+          <div class="address-panel ${address.is_default ? 'default-address' : ''}" 
+               data-address-id="${address.id}"
+               data-address-type="${address.type}">
+            <div class="address-header">
+              <h4>
+                ${address.type.charAt(0).toUpperCase() + address.type.slice(1)} Address 
+                ${address.is_default ? '<span class="default-tag"><i class="fas fa-star"></i> Default</span>' : ''}
+              </h4>
+              <div class="address-actions">
+                <button class="action-icon" onclick="editAddress(${address.id})">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-icon delete-icon" onclick="removeAddress(${address.id})">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="address-info">
+              <p><strong>${escapeHtml(address.fullname || 'User')}</strong></p>
+              <p>${escapeHtml(address.street)}</p>
+              <p>${escapeHtml(address.city + ', ' + address.state + ' ' + address.zip_code)}</p>
+              <p>Philippines</p>
+            </div>
+            ${!address.is_default ? 
+              `<button class="secondary-button set-default-btn" 
+                      onclick="setDefaultAddress(${address.id}, '${address.type}')">
+                <i class="fas fa-star"></i> Set as Default
+              </button>` : 
+              `<div class="default-indicator">
+                <i class="fas fa-check-circle"></i> Default Address
+              </div>`
+            }
+          </div>
+        `;
+      });
+      
+      addressesContainer.innerHTML = addressesHTML;
     }
 
     // Update overview display
     function updateOverviewDisplay(defaultShipping, defaultBilling) {
-        const shippingDisplay = document.getElementById('defaultShippingDisplay');
-        const billingDisplay = document.getElementById('defaultBillingDisplay');
-        
-        // Update shipping address
-        if (defaultShipping) {
-            shippingDisplay.innerHTML = `
-                <div class="address-display">
-                    <strong>${escapeHtml(defaultShipping.fullname || '<?php echo $_SESSION['user_name']; ?>')}</strong><br>
-                    ${escapeHtml(defaultShipping.street)}<br>
-                    ${escapeHtml(defaultShipping.city + ', ' + defaultShipping.state + ' ' + defaultShipping.zip_code)}<br>
-                    Philippines
-                    <a href="#" onclick="showSection('addresses'); return false;" class="change-address-link">Change</a>
-                </div>
-            `;
-        } else {
-            shippingDisplay.innerHTML = `
-                <span class="not-set">Not set</span>
-                <a href="#" onclick="showSection('addresses'); return false;" class="set-address-link">Set shipping address</a>
-            `;
-        }
-        
-        // Update billing address
-        if (defaultBilling) {
-            billingDisplay.innerHTML = `
-                <div class="address-display">
-                    <strong>${escapeHtml(defaultBilling.fullname || '<?php echo $_SESSION['user_name']; ?>')}</strong><br>
-                    ${escapeHtml(defaultBilling.street)}<br>
-                    ${escapeHtml(defaultBilling.city + ', ' + defaultBilling.state + ' ' + defaultBilling.zip_code)}<br>
-                    Philippines
-                    <a href="#" onclick="showSection('addresses'); return false;" class="change-address-link">Change</a>
-                </div>
-            `;
-        } else {
-            billingDisplay.innerHTML = `
-                <span class="not-set">Not set</span>
-                <a href="#" onclick="showSection('addresses'); return false;" class="set-address-link">Set billing address</a>
-            `;
-        }
+      const shippingDisplay = document.getElementById('defaultShippingDisplay');
+      const billingDisplay = document.getElementById('defaultBillingDisplay');
+      
+      if (defaultShipping) {
+        shippingDisplay.innerHTML = `
+          <div class="address-display">
+            <strong>${escapeHtml(defaultShipping.fullname || '<?php echo $_SESSION['user_name']; ?>')}</strong><br>
+            ${escapeHtml(defaultShipping.street)}<br>
+            ${escapeHtml(defaultShipping.city + ', ' + defaultShipping.state + ' ' + defaultShipping.zip_code)}<br>
+            Philippines
+            <a href="#" onclick="showSection('addresses'); return false;" class="change-address-link">Change</a>
+          </div>
+        `;
+      } else {
+        shippingDisplay.innerHTML = `
+          <span class="not-set">Not set</span>
+          <a href="#" onclick="showSection('addresses'); return false;" class="set-address-link">Set shipping address</a>
+        `;
+      }
+      
+      if (defaultBilling) {
+        billingDisplay.innerHTML = `
+          <div class="address-display">
+            <strong>${escapeHtml(defaultBilling.fullname || '<?php echo $_SESSION['user_name']; ?>')}</strong><br>
+            ${escapeHtml(defaultBilling.street)}<br>
+            ${escapeHtml(defaultBilling.city + ', ' + defaultBilling.state + ' ' + defaultBilling.zip_code)}<br>
+            Philippines
+            <a href="#" onclick="showSection('addresses'); return false;" class="change-address-link">Change</a>
+          </div>
+        `;
+      } else {
+        billingDisplay.innerHTML = `
+          <span class="not-set">Not set</span>
+          <a href="#" onclick="showSection('addresses'); return false;" class="set-address-link">Set billing address</a>
+        `;
+      }
     }
 
     // Utility function to escape HTML
     function escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     // Show message function
     function showMessage(message, type) {
-        // Remove existing messages
-        const existingMessages = document.querySelectorAll('.message');
-        existingMessages.forEach(msg => msg.remove());
-        
-        // Create new message
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
-        
-        // Insert after page header
-        const pageHeader = document.querySelector('.page-header');
-        pageHeader.parentNode.insertBefore(messageDiv, pageHeader.nextSibling);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            if (messageDiv.parentNode) {
-                messageDiv.remove();
-            }
-        }, 5000);
+      const existingMessages = document.querySelectorAll('.message');
+      existingMessages.forEach(msg => msg.remove());
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${type}`;
+      messageDiv.textContent = message;
+      
+      const pageHeader = document.querySelector('.page-header');
+      pageHeader.parentNode.insertBefore(messageDiv, pageHeader.nextSibling);
+      
+      setTimeout(() => {
+        if (messageDiv.parentNode) {
+          messageDiv.remove();
+        }
+      }, 5000);
     }
 
     // Initialize address modal when page loads
     document.addEventListener('DOMContentLoaded', function() {
-        initAddressModal();
+      initAddressModal();
     });
 
     initSecurity(<?php echo $security_verified ? 'true' : 'false'; ?>);

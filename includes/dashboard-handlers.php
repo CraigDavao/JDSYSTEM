@@ -84,7 +84,7 @@ if (isset($_POST['remove_address'])) {
     }
 }
 
-// For updating address - FIXED VERSION
+// For updating address
 if (isset($_POST['update_address'])) {
     $address_id = $_POST['address_id'];
     $fullname = $_POST['fullname'];
@@ -96,11 +96,7 @@ if (isset($_POST['update_address'])) {
     $country = $_POST['country'];
     $is_default = isset($_POST['is_default']) ? (int)$_POST['is_default'] : 0;
     
-    // DEBUG: Check what values we're receiving
-    error_log("=== UPDATE ADDRESS DEBUG ===");
-    error_log("is_default: " . $is_default . ", type: " . $type);
-    
-    // ONLY set as default if checkbox is checked (is_default == 1)
+    // Only set as default if checkbox is checked
     if ($is_default == 1) {
         // Remove default from all addresses of this type (except the one we're updating)
         $reset_sql = "UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ? AND id != ?";
@@ -109,22 +105,17 @@ if (isset($_POST['update_address'])) {
         $reset_stmt->execute();
         $reset_stmt->close();
         
-        // This address will be updated with is_default = 1
         $final_is_default = 1;
-        error_log("Setting address as DEFAULT - removed defaults from others");
     } else {
-        // Checkbox is NOT checked - this address should NOT be default
         $final_is_default = 0;
-        error_log("Setting address as REGULAR - no changes to other addresses");
     }
     
-    // Update the address with the correct is_default value
+    // Update the address
     $sql = "UPDATE addresses SET fullname = ?, type = ?, street = ?, city = ?, state = ?, zip_code = ?, country = ?, is_default = ? WHERE id = ? AND user_id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("sssssssiii", $fullname, $type, $street, $city, $state, $zip_code, $country, $final_is_default, $address_id, $user_id);
     
     if ($stmt->execute()) {
-        error_log("SUCCESS: Updated address with is_default = " . $final_is_default);
         echo json_encode(['success' => true, 'message' => 'Address updated successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to update address']);
@@ -155,7 +146,7 @@ if (isset($_POST['remove_wishlist'])) {
     }
 }
 
-// For adding new address - FIXED VERSION
+// For adding new address
 if (isset($_POST['add_address'])) {
     $fullname = $_POST['fullname'];
     $type = $_POST['type'];
@@ -166,13 +157,7 @@ if (isset($_POST['add_address'])) {
     $country = $_POST['country'];
     $is_default = isset($_POST['is_default']) ? (int)$_POST['is_default'] : 0;
     
-    // DEBUG: Log what we received
-    error_log("=== ADD ADDRESS DEBUG ===");
-    error_log("Checkbox value received: " . $is_default);
-    error_log("Checkbox checked: " . ($is_default == 1 ? 'YES' : 'NO'));
-    error_log("Address Type: " . $type);
-    
-    // ONLY set as default if checkbox is explicitly checked
+    // Only set as default if checkbox is explicitly checked
     if ($is_default == 1) {
         // Remove default from all addresses of this type
         $reset_sql = "UPDATE addresses SET is_default = 0 WHERE user_id = ? AND type = ?";
@@ -180,19 +165,15 @@ if (isset($_POST['add_address'])) {
         $reset_stmt->bind_param("is", $user_id, $type);
         $reset_stmt->execute();
         $reset_stmt->close();
-        error_log("REMOVED defaults from other addresses because checkbox was checked");
-    } else {
-        error_log("Checkbox NOT checked - adding as REGULAR address");
     }
     
-    // Insert with the exact is_default value (0 if unchecked, 1 if checked)
+    // Insert address
     $sql = "INSERT INTO addresses (user_id, fullname, type, street, city, state, zip_code, country, is_default) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("isssssssi", $user_id, $fullname, $type, $street, $city, $state, $zip_code, $country, $is_default);
     
     if ($stmt->execute()) {
-        error_log("SUCCESS: Added address with is_default = " . $is_default);
         echo json_encode(['success' => true, 'message' => 'Address added successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to add address']);
@@ -206,30 +187,89 @@ $stmt = $conn->prepare("SELECT * FROM addresses WHERE user_id = ? ORDER BY is_de
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $address_result = $stmt->get_result();
+$addresses = [];
 while ($row = $address_result->fetch_assoc()) {
     $addresses[] = $row;
 }
 
-// Orders with product names
-$stmt = $conn->prepare("
-    SELECT o.*, 
-           GROUP_CONCAT(oi.product_name SEPARATOR ', ') as product_names, 
-           COUNT(oi.id) as item_count 
-    FROM orders o 
-    LEFT JOIN order_items oi ON o.id = oi.order_id 
-    WHERE o.user_id = ? 
-    GROUP BY o.id 
-    ORDER BY o.created_at DESC 
+// Get user orders with product images
+$orders_stmt = $conn->prepare("
+    SELECT 
+        o.id, 
+        o.order_number, 
+        o.total_amount, 
+        o.status, 
+        o.created_at,
+        o.can_cancel,
+        o.can_return,
+        COUNT(oi.id) as item_count,
+        oi.product_name,
+        oi.product_id,
+        oi.color_id,
+        oi.price,
+        oi.quantity
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    WHERE o.user_id = ?
+    GROUP BY o.id
+    ORDER BY o.created_at DESC
     LIMIT 10
 ");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$order_result = $stmt->get_result();
-while ($row = $order_result->fetch_assoc()) {
-    $orders[] = $row;
-}
+$orders_stmt->bind_param("i", $user_id);
+$orders_stmt->execute();
+$orders_result = $orders_stmt->get_result();
+$orders = [];
 
-// Get wishlist with proper image handling - FIXED VERSION
+while ($order = $orders_result->fetch_assoc()) {
+    // Get product image for this order item
+    $product_image = SITE_URL . 'uploads/sample1.jpg'; // Default fallback
+    
+    if (!empty($order['product_id'])) {
+        $image_stmt = $conn->prepare("
+            SELECT 
+                COALESCE(
+                    (SELECT CONCAT('data:image/', 
+                                  COALESCE(pi.image_format, 'jpeg'), 
+                                  ';base64,', 
+                                  TO_BASE64(pi.image))
+                     FROM product_images pi
+                     WHERE pi.product_id = ?
+                       AND (? IS NULL OR pi.color_name = (
+                           SELECT color_name FROM product_colors WHERE id = ?
+                       ))
+                     ORDER BY pi.sort_order ASC, pi.id ASC
+                     LIMIT 1),
+                    (SELECT CONCAT('data:image/', 
+                                  COALESCE(pi2.image_format, 'jpeg'), 
+                                  ';base64,', 
+                                  TO_BASE64(pi2.image))
+                     FROM product_images pi2
+                     WHERE pi2.product_id = ?
+                     ORDER BY pi2.sort_order ASC, pi2.id ASC
+                     LIMIT 1),
+                    NULL
+                ) AS product_image
+        ");
+        
+        $color_id = $order['color_id'] ?? null;
+        $image_stmt->bind_param("iiii", $order['product_id'], $color_id, $color_id, $order['product_id']);
+        $image_stmt->execute();
+        $image_result = $image_stmt->get_result();
+        
+        if ($image_row = $image_result->fetch_assoc()) {
+            if (!empty($image_row['product_image'])) {
+                $product_image = $image_row['product_image'];
+            }
+        }
+        $image_stmt->close();
+    }
+    
+    $order['product_image'] = $product_image;
+    $orders[] = $order;
+}
+$orders_stmt->close();
+
+// Get wishlist with proper image handling
 $stmt = $conn->prepare("
     SELECT 
         w.id,
@@ -285,11 +325,11 @@ foreach ($addresses as $address) {
     }
 }
 
-// Handle reorder action - FIXED VERSION WITH ORIGINAL ORDER PRICE
+// Handle reorder action
 if (isset($_POST['reorder'])) {
     $order_id = $_POST['order_id'];
     
-    // Get order items - FIXED: Use the correct columns from your table including price
+    // Get order items
     $stmt = $conn->prepare("SELECT product_id, quantity, size, color_id, color_name, price FROM order_items WHERE order_id = ?");
     $stmt->bind_param("i", $order_id);
     $stmt->execute();
@@ -306,56 +346,39 @@ if (isset($_POST['reorder'])) {
         $product_exists = $stmt->get_result()->fetch_assoc();
         
         if ($product_exists) {
-            // FIXED: Use the ORIGINAL ORDER PRICE (the price they actually paid)
+            // Use the original order price
             $current_price = $item['price'];
-            error_log("Reordering product {$item['product_id']} with original order price: {$current_price}");
             
             try {
-                // First try: Insert with all fields including price
+                // Try to insert with all fields including price
                 $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, size, color_id, color_name, price) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $color_id = $item['color_id'] ?? null;
                 $color_name = $item['color_name'] ?? '';
                 $stmt->bind_param("iiisisd", $user_id, $item['product_id'], $item['quantity'], $item['size'], $color_id, $color_name, $current_price);
                 if ($stmt->execute()) {
                     $added_to_cart++;
-                    error_log("SUCCESS: Added product {$item['product_id']} to cart with original price: {$current_price}");
                 }
             } catch (mysqli_sql_exception $e) {
-                // If that fails, try without color fields but with price
+                // Fallback without color fields
                 try {
                     $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, size, price) VALUES (?, ?, ?, ?, ?)");
                     $stmt->bind_param("iiisd", $user_id, $item['product_id'], $item['quantity'], $item['size'], $current_price);
                     if ($stmt->execute()) {
                         $added_to_cart++;
-                        error_log("SUCCESS: Added product {$item['product_id']} to cart with original price (no color): {$current_price}");
                     }
                 } catch (mysqli_sql_exception $e2) {
-                    // If that also fails, try with only basic fields including price
+                    // Final fallback with basic fields
                     try {
                         $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
                         $stmt->bind_param("iiid", $user_id, $item['product_id'], $item['quantity'], $current_price);
                         if ($stmt->execute()) {
                             $added_to_cart++;
-                            error_log("SUCCESS: Added product {$item['product_id']} to cart with original price (basic): {$current_price}");
                         }
                     } catch (mysqli_sql_exception $e3) {
-                        // Final fallback: without price
-                        try {
-                            $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)");
-                            $stmt->bind_param("iii", $user_id, $item['product_id'], $item['quantity']);
-                            if ($stmt->execute()) {
-                                $added_to_cart++;
-                                error_log("WARNING: Added product {$item['product_id']} to cart WITHOUT price");
-                            }
-                        } catch (mysqli_sql_exception $e4) {
-                            $errors[] = "Failed to add product ID {$item['product_id']} to cart: " . $e4->getMessage();
-                            error_log("ERROR: Failed to add product {$item['product_id']} to cart: " . $e4->getMessage());
-                        }
+                        $errors[] = "Failed to add product ID {$item['product_id']} to cart";
                     }
                 }
             }
-        } else {
-            error_log("Product {$item['product_id']} not found or not active");
         }
     }
     
@@ -366,9 +389,6 @@ if (isset($_POST['reorder'])) {
         }
     } else {
         $_SESSION['error_message'] = "No items could be added to cart. Products may no longer be available.";
-        if (!empty($errors)) {
-            error_log("Reorder errors: " . implode(", ", $errors));
-        }
     }
     
     ob_end_clean();
@@ -503,7 +523,6 @@ if (isset($_GET['refresh_addresses'])) {
         <?php endif; ?>
     </div>
     
-    
     <!-- Also output the overview displays -->
     <div id="defaultShippingDisplay">
         <?php if ($default_shipping): ?>
@@ -537,5 +556,4 @@ if (isset($_GET['refresh_addresses'])) {
     <?php
     exit();
 }
-
 ?>

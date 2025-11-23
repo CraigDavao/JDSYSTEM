@@ -4,9 +4,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Include configuration
+// Include configuration - ONLY ONCE
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../connection/connection.php';
+
+// Check if connection already exists to avoid duplicates
+if (!isset($conn)) {
+    require_once __DIR__ . '/../connection/connection.php';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,7 +30,6 @@ require_once __DIR__ . '/../connection/connection.php';
     <!-- JS -->
     <script src="<?php echo SITE_URL; ?>js/script.js?v=<?= time(); ?>" defer></script>
     <script src="<?= SITE_URL; ?>js/header.js?v=<?= time(); ?>"></script>
-    <script src="<?= SITE_URL; ?>js/wishlist.js?v=<?= time(); ?>" defer></script>
     <script>
     const SITE_URL = "<?= SITE_URL ?>";
     </script>
@@ -124,9 +127,6 @@ require_once __DIR__ . '/../connection/connection.php';
                 </div>
             </li>
 
-
-
-
             <!-- BABY with mega dropdown -->
             <li class="link has-dropdown">
                 <a href="<?= SITE_URL ?>pages/baby.php" class="dropdown-toggle">
@@ -182,7 +182,6 @@ require_once __DIR__ . '/../connection/connection.php';
                 </div>
             </li>
 
-
             <!-- ACCESSORIES with mega dropdown -->
             <li class="link has-dropdown">
                 <a href="<?= SITE_URL ?>pages/accessories.php" class="dropdown-toggle">
@@ -220,8 +219,6 @@ require_once __DIR__ . '/../connection/connection.php';
                 </div>
             </li>
 
-
-
             <li class="link"><a href="<?php echo SITE_URL; ?>pages/sale.php">SALE</a></li>
         </ul>
     </div>
@@ -239,7 +236,6 @@ require_once __DIR__ . '/../connection/connection.php';
             </div>
         </div>
 
-
         <?php if (isset($_SESSION['user_id'])): ?>
             <!-- If logged in, go to dashboard -->
             <a href="<?php echo SITE_URL; ?>dashboard.php" title="My Account">
@@ -252,260 +248,224 @@ require_once __DIR__ . '/../connection/connection.php';
             </a>
         <?php endif; ?>
 
-      <a href="<?php echo SITE_URL; ?>pages/wishlist.php" title="Wishlist">
-  <i class="fa-regular fa-heart"></i>
-  <span class="badge" id="wishlist-count">0</span>
-</a>
+        <a href="<?php echo SITE_URL; ?>pages/wishlist.php" title="Wishlist">
+            <i class="fa-regular fa-heart"></i>
+            <span class="badge" id="wishlist-count">0</span>
+        </a>
 
-       <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart">
-    <i class="fa-solid fa-bag-shopping"></i>
-    <span class="badge" id="cart-count">0</span>
-</a>
-
+        <a href="<?php echo SITE_URL; ?>pages/cart.php" title="Cart">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span class="badge" id="cart-count">0</span>
+        </a>
     </div>
 </nav>
 
 <!-- Profile Modal -->
 <div id="profile-modal" class="modal-overlay">
-  <div class="modal-box">
-    <!-- Close Button -->
-    <button class="modal-close" id="close-modal">&times;</button>
+    <div class="modal-box">
+        <button class="modal-close" id="close-modal">&times;</button>
 
-    <!-- Login Form -->
-    <div class="form-container" id="login-form">
-      <h2>Log in</h2>
-      <form method="POST" action="<?php echo SITE_URL; ?>auth/login.php" id="login-form-data">
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
-
-        <a href="#" id="show-forgot-password">Forgot your password?</a>
-
-        <div class="form-actions">
-          <button type="submit">Log in</button>
-          <a href="#" id="show-register">New customer? Create your account</a>
+        <!-- Login Form -->
+        <div class="form-container" id="login-form">
+            <h2>Log in</h2>
+            <form id="login-form-data">
+                <input type="email" name="email" placeholder="Email" required>
+                <div class="password-container">
+                    <input type="password" name="password" placeholder="Password" required class="password-input">
+                    <span class="toggle-password" onclick="togglePassword(this)">
+                        <i class="far fa-eye"></i>
+                    </span>
+                </div>
+                <a href="#" id="show-forgot-password">Forgot your password?</a>
+                <div class="form-actions">
+                    <button type="submit">Log in</button>
+                    <a href="#" id="show-register">New customer? Create your account</a>
+                </div>
+            </form>
         </div>
-      </form>
-    </div>
 
-    
-
-    <!-- Register Form -->
-    <div class="form-container hidden" id="register-form">
-      <h2>Create account</h2>
-      <form method="POST" action="<?php echo SITE_URL; ?>auth/register.php" id="register-form-data">
-        <input type="text" name="fullname" placeholder="Full Name" required>
-        <input type="text" name="number" placeholder="Mobile Number" required>
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
-
-        <div class="form-actions">
-          <button type="submit">Register</button>
-          <a href="#" id="show-login">Already have an account? Log in</a>
+        <!-- Register Form -->
+        <div class="form-container hidden" id="register-form">
+            <h2>Create account</h2>
+            <form id="register-form-data">
+                <input type="text" name="fullname" placeholder="Full Name" required>
+                <input type="text" name="number" placeholder="Mobile Number" required>
+                <input type="email" name="email" placeholder="Email" required>
+                <div class="password-container">
+                    <input type="password" name="password" placeholder="Password" required class="password-input">
+                    <span class="toggle-password" onclick="togglePassword(this)">
+                        <i class="far fa-eye"></i>
+                    </span>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Register</button>
+                    <a href="#" id="show-login">Already have an account? Log in</a>
+                </div>
+            </form>
         </div>
-      </form>
-    </div>
 
-    <!-- Forgot Password Form -->
-    <div class="form-container hidden" id="forgot-password-form">
-      <h2>Reset Password</h2>
-      <form id="forgot-password-form-data">
-        <p>Enter your email address and we'll send you a password reset link.</p>
-        <input type="email" name="email" placeholder="Email" required id="forgot-email">
-        
-        <div class="form-actions">
-          <button type="submit">Send Reset Link</button>
-          <a href="#" id="show-login-from-forgot">Back to Login</a>
+        <!-- Forgot Password Form -->
+        <div class="form-container hidden" id="forgot-password-form">
+            <h2>Reset Password</h2>
+            <form id="forgot-password-form-data">
+                <p>Enter your email address and we'll send you a password reset link.</p>
+                <input type="email" name="email" placeholder="Email" required>
+                <div class="form-actions">
+                    <button type="submit">Send Reset Link</button>
+                    <a href="#" id="show-login-from-forgot">Back to Login</a>
+                </div>
+            </form>
         </div>
-      </form>
-    </div>
 
-    <!-- Reset Password Form -->
-    <div class="form-container hidden" id="reset-password-form">
-      <h2>Create New Password</h2>
-      <form id="reset-password-form-data">
-        <input type="hidden" name="token" id="reset-token">
-        <input type="password" name="password" placeholder="New Password" required>
-        <input type="password" name="confirm_password" placeholder="Confirm New Password" required>
-        
-        <div class="form-actions">
-          <button type="submit">Reset Password</button>
-          <a href="#" id="show-login-from-reset">Back to Login</a>
+        <!-- Reset Password Form -->
+        <div class="form-container hidden" id="reset-password-form">
+            <h2>Create New Password</h2>
+            <form id="reset-password-form-data">
+                <input type="hidden" name="token" id="reset-token">
+                <div class="password-container">
+                    <input type="password" name="password" placeholder="New Password" required minlength="6" class="password-input">
+                    <span class="toggle-password" onclick="togglePassword(this)">
+                        <i class="far fa-eye"></i>
+                    </span>
+                </div>
+                <div class="password-container">
+                    <input type="password" name="confirm_password" placeholder="Confirm New Password" required minlength="6" class="password-input">
+                    <span class="toggle-password" onclick="togglePassword(this)">
+                        <i class="far fa-eye"></i>
+                    </span>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Reset Password</button>
+                    <a href="#" id="show-login-from-reset">Back to Login</a>
+                </div>
+            </form>
         </div>
-      </form>
-    </div>
 
-    <!-- Verification Form -->
-    <div class="form-container hidden" id="verify-form">
-      <h2>Verify account</h2>
-      <form method="POST" action="<?php echo SITE_URL; ?>auth/verify.php">
-        <input type="hidden" name="email" id="verify-email">
-        <input type="text" name="code" placeholder="Enter Verification Code *" required>
-        <button type="submit">Verify</button>
-      </form>
+        <!-- Verification Form -->
+        <div class="form-container hidden" id="verify-form">
+            <h2>Verify account</h2>
+            <form method="POST" action="<?php echo SITE_URL; ?>auth/verify.php">
+                <input type="hidden" name="email" id="verify-email">
+                <input type="text" name="code" placeholder="Enter Verification Code *" required>
+                <button type="submit">Verify</button>
+            </form>
+        </div>
     </div>
-  </div>
 </div>
 
-<script src="<?= SITE_URL; ?>js/wishlist.js?v=<?= time(); ?>" defer></script>
-
-<!-- 🟢 NUCLEAR CART BADGE FIX - WORKS ON ALL PAGES -->
+<!-- Clean Badge Updates - No Spam -->
 <script>
-// 🟢 NUCLEAR OPTION - Override everything to work on ALL pages
+// Clean cart badge updates
 (function() {
     'use strict';
     
-    console.log('💥 NUCLEAR CART BADGE ACTIVATED ON:', window.location.href);
+    let cartUpdateInProgress = false;
+    let lastCartUpdate = 0;
+    const MIN_UPDATE_INTERVAL = 10000; // 10 seconds between updates
     
-    // 1. Override ALL possible cart-related functions globally
-    const nuclearFunctions = ['updateCartBadge', 'updateCartCount', 'updateCart', 'cartUpdate', 'refreshCart'];
-    nuclearFunctions.forEach(funcName => {
-        window[funcName] = function() {
-            console.log('💥 Nuclear: Overridden', funcName, 'called');
-            nuclearForceUpdateCartBadge();
-        };
-    });
-    
-    // 2. Nuclear badge protection
-    function nuclearBadgeProtection() {
-        const badge = document.getElementById('cart-count');
-        if (!badge) {
-            // Badge doesn't exist yet, keep checking
-            setTimeout(nuclearBadgeProtection, 500);
+    async function updateCartBadge() {
+        const now = Date.now();
+        
+        // Prevent too frequent updates
+        if (cartUpdateInProgress || (now - lastCartUpdate) < MIN_UPDATE_INTERVAL) {
             return;
         }
         
-        console.log('💥 Nuclear: Protecting badge element on', window.location.href);
+        cartUpdateInProgress = true;
+        lastCartUpdate = now;
         
-        // Completely lock down the badge - make it read-only
         try {
-            Object.defineProperty(badge, 'textContent', {
-                get: function() { 
-                    const correctCount = getNuclearCorrectCountSync();
-                    return correctCount; 
-                },
-                set: function(value) { 
-                    console.log('💥 Nuclear: Blocked textContent update to:', value, 'on', window.location.href);
-                    nuclearForceUpdateCartBadge();
-                },
-                configurable: false,
-                enumerable: true
-            });
-            
-            Object.defineProperty(badge, 'innerText', {
-                get: function() { 
-                    const correctCount = getNuclearCorrectCountSync();
-                    return correctCount; 
-                },
-                set: function(value) { 
-                    console.log('💥 Nuclear: Blocked innerText update to:', value, 'on', window.location.href);
-                    nuclearForceUpdateCartBadge();
-                },
-                configurable: false,
-                enumerable: true
-            });
-            
-            Object.defineProperty(badge, 'innerHTML', {
-                get: function() { 
-                    const correctCount = getNuclearCorrectCountSync();
-                    return correctCount; 
-                },
-                set: function(value) { 
-                    console.log('💥 Nuclear: Blocked innerHTML update to:', value, 'on', window.location.href);
-                    nuclearForceUpdateCartBadge();
-                },
-                configurable: false,
-                enumerable: true
-            });
-            
-            // Set initial value
-            nuclearForceUpdateCartBadge();
-            
-        } catch (e) {
-            console.log('💥 Nuclear: Protection setup error:', e);
-        }
-    }
-    
-    // 3. Get correct count with fallback
-    let nuclearCurrentCount = '0';
-    
-    function getNuclearCorrectCountSync() {
-        return nuclearCurrentCount;
-    }
-    
-    async function nuclearForceUpdateCartBadge() {
-        try {
-            const response = await fetch('<?php echo SITE_URL; ?>actions/cart-count.php?t=' + Date.now());
+            const response = await fetch('<?php echo SITE_URL; ?>actions/cart-count.php?t=' + now);
             const data = await response.json();
             
-            nuclearCurrentCount = data.count.toString();
             const badge = document.getElementById('cart-count');
-            
-            if (badge) {
-                // Use direct DOM manipulation to bypass our own protections
-                badge.firstChild?.remove();
-                badge.appendChild(document.createTextNode(nuclearCurrentCount));
-                
-                console.log('💥 Nuclear: Badge set to', nuclearCurrentCount, 'on', window.location.href);
+            if (badge && data.count !== undefined) {
+                badge.textContent = data.count;
             }
         } catch (error) {
-            console.log('💥 Nuclear: Update error on', window.location.href, ':', error);
+            // Silent fail
+        } finally {
+            cartUpdateInProgress = false;
         }
     }
     
-    // 4. Monitor ALL fetch requests for cart-related activity
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        const url = args[0];
-        
-        if (typeof url === 'string' && (url.includes('cart') || url.includes('Cart'))) {
-            console.log('💥 Nuclear: Detected cart-related fetch:', url);
-            return originalFetch.apply(this, args).then(response => {
-                // After any cart request, force update
-                setTimeout(nuclearForceUpdateCartBadge, 100);
-                return response;
-            });
-        }
-        
-        return originalFetch.apply(this, args);
-    };
-    
-    // 5. Start nuclear protection immediately
-    nuclearBadgeProtection();
-    
-    // 6. Frequent updates to override any bad changes
-    setInterval(nuclearForceUpdateCartBadge, 1500);
-    
-    // 7. Override on ALL possible events
-    const nuclearEvents = ['DOMContentLoaded', 'load', 'pageshow', 'visibilitychange', 'mouseenter', 'click', 'keydown'];
-    nuclearEvents.forEach(event => {
-        window.addEventListener(event, nuclearForceUpdateCartBadge);
+    // Update on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(updateCartBadge, 100);
     });
     
-    // 8. Monitor for badge element creation
-    const nuclearObserver = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-                if (node.nodeType === 1 && (node.id === 'cart-count' || node.querySelector('#cart-count'))) {
-                    console.log('💥 Nuclear: New badge element detected on', window.location.href);
-                    setTimeout(nuclearBadgeProtection, 100);
-                }
-            });
-        });
-    });
+    // Update every 30 seconds
+    setInterval(updateCartBadge, 30000);
     
-    nuclearObserver.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    console.log('💥 Nuclear protection active on:', window.location.href);
-    
-    // Initial update
-    setTimeout(nuclearForceUpdateCartBadge, 100);
-    setTimeout(nuclearForceUpdateCartBadge, 1000);
-    setTimeout(nuclearForceUpdateCartBadge, 3000);
+    // Global function for other scripts to call
+    window.updateCartBadge = updateCartBadge;
     
 })();
+
+// Clean wishlist badge updates
+(function() {
+    'use strict';
+    
+    let wishlistUpdateInProgress = false;
+    let lastWishlistUpdate = 0;
+    const MIN_UPDATE_INTERVAL = 10000; // 10 seconds between updates
+    
+    async function updateWishlistBadge() {
+        const now = Date.now();
+        
+        // Prevent too frequent updates
+        if (wishlistUpdateInProgress || (now - lastWishlistUpdate) < MIN_UPDATE_INTERVAL) {
+            return;
+        }
+        
+        wishlistUpdateInProgress = true;
+        lastWishlistUpdate = now;
+        
+        try {
+            const response = await fetch('<?php echo SITE_URL; ?>actions/wishlist-count.php?t=' + now);
+            const data = await response.json();
+            
+            const badge = document.getElementById('wishlist-count');
+            if (badge && data.count !== undefined) {
+                badge.textContent = data.count;
+            }
+        } catch (error) {
+            // Silent fail
+        } finally {
+            wishlistUpdateInProgress = false;
+        }
+    }
+    
+    // Update on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(updateWishlistBadge, 100);
+    });
+    
+    // Update every 30 seconds
+    setInterval(updateWishlistBadge, 30000);
+    
+    // Global function for other scripts to call
+    window.updateWishlistBadge = updateWishlistBadge;
+    
+})();
+</script>
+
+<!-- Password Toggle Function -->
+<script>
+function togglePassword(element) {
+    const passwordInput = element.parentElement.querySelector('.password-input');
+    const icon = element.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
 </script>
 
 <!-- Improved Modal JavaScript -->
@@ -532,50 +492,66 @@ document.addEventListener('DOMContentLoaded', function () {
     const showRegister = document.getElementById('show-register');
     const showLogin = document.getElementById('show-login');
 
-    /** -------------------------
-     * Modal show / hide handling
-     * ------------------------- */
-    profileIcon?.addEventListener('click', (e) => {
-        e.preventDefault();
+    // Modal Functions
+    function openModal() {
         profileModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         hideAllForms();
         loginForm.classList.remove('hidden');
-    });
+    }
 
-    closeModal?.addEventListener('click', () => {
+    function closeModalFunc() {
         profileModal.style.display = 'none';
         document.body.style.overflow = 'auto';
         hideAllForms();
         loginForm.classList.remove('hidden');
-        // ✅ Clear any URL token so reset form won't reappear
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
+        // Clear URL token
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    function hideAllForms() {
+        [loginForm, registerForm, forgotPasswordForm, resetPasswordForm, verifyForm].forEach(form => {
+            if (form) form.classList.add('hidden');
+        });
+    }
+
+    function showFormMessage(form, message, isSuccess = true) {
+        // Remove existing messages
+        const existingMessages = form.querySelectorAll('.form-message');
+        existingMessages.forEach(msg => msg.remove());
+        
+        // Add new message
+        const msg = document.createElement('div');
+        msg.className = `form-message ${isSuccess ? 'success' : 'error'}`;
+        msg.textContent = message;
+        form.insertBefore(msg, form.firstChild);
+        
+        // Auto-remove success messages after 5 seconds
+        if (isSuccess) {
+            setTimeout(() => {
+                msg.remove();
+            }, 5000);
+        }
+    }
+
+    // Event Listeners
+    profileIcon?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openModal();
     });
 
-    // Close modal when clicking outside
+    closeModal?.addEventListener('click', closeModalFunc);
+
     window.addEventListener('click', (e) => {
-        if (e.target === profileModal) {
-            profileModal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            hideAllForms();
-            loginForm.classList.remove('hidden');
-        }
+        if (e.target === profileModal) closeModalFunc();
     });
 
-    // Close modal with Escape key
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && profileModal.style.display === 'flex') {
-            profileModal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            hideAllForms();
-            loginForm.classList.remove('hidden');
-        }
+        if (e.key === 'Escape' && profileModal.style.display === 'flex') closeModalFunc();
     });
 
-    /** -------------------------
-     * Form navigation logic
-     * ------------------------- */
+    // Form Navigation
     showForgotPassword?.addEventListener('click', (e) => {
         e.preventDefault();
         hideAllForms();
@@ -606,31 +582,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loginForm.classList.remove('hidden');
     });
 
-    /** -------------------------
-     * Utility functions
-     * ------------------------- */
-    function hideAllForms() {
-        [loginForm, registerForm, forgotPasswordForm, resetPasswordForm, verifyForm].forEach(form => {
-            if (form) form.classList.add('hidden');
-        });
-    }
-
-    function clearFormMessages(form) {
-        const existingMessages = form.querySelectorAll('.form-message');
-        existingMessages.forEach(msg => msg.remove());
-    }
-
-    function showFormMessage(form, message, isSuccess = true) {
-        clearFormMessages(form);
-        const msg = document.createElement('div');
-        msg.className = `form-message ${isSuccess ? 'success' : 'error'}`;
-        msg.textContent = message;
-        form.insertBefore(msg, form.firstChild);
-    }
-
-    /** -------------------------
-     * Login Form Submission (AJAX)
-     * ------------------------- */
+    // Login Form Submission
     const loginFormData = document.getElementById('login-form-data');
     loginFormData?.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -639,7 +591,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const password = this.querySelector('input[name="password"]').value;
 
         if (!email || !password) {
-            showFormMessage(this, '⚠️ Please fill in all fields.', false);
+            showFormMessage(this, 'Please enter both email and password', false);
             return;
         }
 
@@ -649,8 +601,10 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
 
         try {
-            const formData = new FormData(this);
-            
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', password);
+
             const response = await fetch(SITE_URL + 'auth/login.php', {
                 method: 'POST',
                 body: formData
@@ -658,45 +612,84 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const result = await response.text();
 
-            // Check if login was successful (redirects to dashboard)
-            if (response.redirected || result.includes('dashboard') || result.includes('success')) {
-                // Login successful - reload page to update header
+            // Check for successful login
+            if (result.includes('dashboard') || response.redirected) {
+                // Login successful - reload page
                 window.location.reload();
-            } 
+                return;
+            }
+
             // Check for specific error messages
-            else if (result.includes('Invalid email or password') || result.includes('incorrect')) {
-                showFormMessage(this, '❌ Invalid email or password. Please try again.', false);
+            if (result.includes('Invalid email or password') || result.includes('No account found')) {
+                showFormMessage(this, 'Invalid email or password', false);
             }
-            else if (result.includes('Account not verified')) {
-                showFormMessage(this, '⚠️ Please verify your account first.', false);
+            else if (result.includes('verify your email')) {
+                showFormMessage(this, 'Please verify your email before logging in', false);
             }
-            else if (result.includes('User not found')) {
-                showFormMessage(this, '❌ No account found with this email.', false);
+            else if (result.includes('blocked')) {
+                showFormMessage(this, 'Your account has been blocked. Please contact support.', false);
+            }
+            else if (result.includes('Service temporarily unavailable') || result.includes('Fatal error')) {
+                showFormMessage(this, 'Service temporarily unavailable. Please try again later.', false);
             }
             else {
-                // Generic error
-                showFormMessage(this, '❌ Login failed. Please try again.', false);
+                showFormMessage(this, 'Login failed. Please try again.', false);
             }
 
         } catch (error) {
-            console.error('Login error:', error);
-            showFormMessage(this, '⚠️ Network error. Please try again.', false);
+            showFormMessage(this, 'Network error. Please check your connection.', false);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
         }
     });
 
-    /** -------------------------
-     * Forgot Password Submission
-     * ------------------------- */
+    // Register Form Submission
+    const registerFormData = document.getElementById('register-form-data');
+    registerFormData?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const btn = this.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = 'Registering...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(SITE_URL + 'auth/register.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.text();
+
+            if (result.includes('success') || result.includes('verification')) {
+                showFormMessage(this, 'Registration successful! Please check your email for verification.', true);
+                setTimeout(() => {
+                    this.reset();
+                    hideAllForms();
+                    loginForm.classList.remove('hidden');
+                }, 3000);
+            } else {
+                showFormMessage(this, result || 'Registration failed. Please try again.', false);
+            }
+
+        } catch (error) {
+            showFormMessage(this, 'Network error. Please try again.', false);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // Forgot Password Submission
     const forgotPasswordFormData = document.getElementById('forgot-password-form-data');
     forgotPasswordFormData?.addEventListener('submit', async function (e) {
         e.preventDefault();
         const email = this.querySelector('input[name="email"]').value.trim();
 
         if (!email) {
-            showFormMessage(this, '⚠️ Please enter your email.', false);
+            showFormMessage(this, 'Please enter your email', false);
             return;
         }
 
@@ -706,46 +699,58 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
 
         try {
-            const res = await fetch(SITE_URL + 'auth/forgot.php', {
+            const formData = new FormData();
+            formData.append('email', email);
+
+            const response = await fetch(SITE_URL + 'auth/forgot.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ email })
+                body: formData
             });
 
-            const text = await res.text();
-            if (text.includes('✅') || text.includes('reset link has been sent')) {
-                showFormMessage(this, '✅ Password reset link has been sent!', true);
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                showFormMessage(this, result.message, true);
                 setTimeout(() => {
                     this.reset();
                     hideAllForms();
                     loginForm.classList.remove('hidden');
-                }, 2500);
+                }, 3000);
             } else {
-                showFormMessage(this, text.replace(/<[^>]*>/g, '') || '⚠️ Error sending email.', false);
+                showFormMessage(this, result.message, false);
             }
-        } catch {
-            showFormMessage(this, '⚠️ Network error. Try again later.', false);
+        } catch (error) {
+            showFormMessage(this, 'Network error. Please try again', false);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
         }
     });
 
-    /** -------------------------
-     * Reset Password Submission
-     * ------------------------- */
+    // Reset Password Submission
     const resetPasswordFormData = document.getElementById('reset-password-form-data');
     resetPasswordFormData?.addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const token = this.querySelector('#reset-token').value.trim();
+        const token = this.querySelector('#reset-token').value;
         const password = this.querySelector('input[name="password"]').value;
-        const confirm = this.querySelector('input[name="confirm_password"]').value;
+        const confirmPassword = this.querySelector('input[name="confirm_password"]').value;
 
-        if (!token) return showFormMessage(this, '⚠️ Invalid token.', false);
-        if (!password || !confirm) return showFormMessage(this, '⚠️ Fill in all fields.', false);
-        if (password !== confirm) return showFormMessage(this, '⚠️ Passwords do not match.', false);
-        if (password.length < 6) return showFormMessage(this, '⚠️ Minimum 6 characters.', false);
+        // Validation
+        if (!password || !confirmPassword) {
+            showFormMessage(this, 'Please fill in all fields', false);
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showFormMessage(this, 'Passwords do not match', false);
+            return;
+        }
+
+        if (password.length < 6) {
+            showFormMessage(this, 'Password must be at least 6 characters', false);
+            return;
+        }
 
         const btn = this.querySelector('button');
         const originalText = btn.textContent;
@@ -753,48 +758,51 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
 
         try {
-            const res = await fetch(SITE_URL + 'actions/reset-password.php', {
+            const formData = new FormData();
+            formData.append('token', token);
+            formData.append('new_password', password);
+
+            const response = await fetch(SITE_URL + 'actions/reset-password.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ token, new_password: password })
+                body: formData
             });
 
-            const result = await res.json();
+            const result = await response.json();
+            
             if (result.status === 'success') {
                 showFormMessage(this, result.message, true);
                 this.reset();
                 setTimeout(() => {
                     hideAllForms();
                     loginForm.classList.remove('hidden');
-                }, 2000);
+                }, 3000);
             } else {
                 showFormMessage(this, result.message, false);
             }
-        } catch {
-            showFormMessage(this, '⚠️ Network error.', false);
+        } catch (error) {
+            showFormMessage(this, 'Network error. Please try again', false);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
         }
     });
 
-    /** -------------------------
-     * Auto-show Reset Form by Token
-     * ------------------------- */
+    // Auto-show Reset Form when token is in URL
     const urlParams = new URLSearchParams(window.location.search);
     const resetToken = urlParams.get('token');
+    
     if (resetToken) {
         document.getElementById('reset-token').value = resetToken;
-        profileModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        openModal();
         hideAllForms();
         resetPasswordForm.classList.remove('hidden');
-        // Remove token from URL so it won't persist
+        
+        // Clean URL
         const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    // Add CSS for form messages
+    // Add CSS for form messages and password toggle
     const style = document.createElement('style');
     style.textContent = `
         .form-message {
@@ -818,172 +826,34 @@ document.addEventListener('DOMContentLoaded', function () {
         .hidden {
             display: none !important;
         }
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+        .password-input {
+            width: 100%;
+            padding-right: 40px !important;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            user-select: none;
+            background: white;
+            padding: 5px;
+            border-radius: 3px;
+            z-index: 2;
+            color: #666;
+        }
+        .toggle-password:hover {
+            color: #333;
+        }
     `;
     document.head.appendChild(style);
 });
 </script>
 
-<!-- 🟢 NUCLEAR WISHLIST BADGE FIX - WORKS ON ALL PAGES -->
-<script>
-// 🟢 NUCLEAR OPTION - Override everything to work on ALL pages
-(function() {
-    'use strict';
-    
-    console.log('💖 NUCLEAR WISHLIST BADGE ACTIVATED ON:', window.location.href);
-    
-    // 1. Override ALL possible wishlist-related functions globally
-    const nuclearFunctions = ['updateWishlistBadge', 'updateWishlistCount', 'updateWishlist', 'wishlistUpdate', 'refreshWishlist'];
-    nuclearFunctions.forEach(funcName => {
-        window[funcName] = function() {
-            console.log('💖 Nuclear: Overridden', funcName, 'called');
-            nuclearForceUpdateWishlistBadge();
-        };
-    });
-    
-    // 2. Nuclear badge protection
-    function nuclearBadgeProtection() {
-        const badge = document.getElementById('wishlist-count');
-        if (!badge) {
-            // Badge doesn't exist yet, keep checking
-            setTimeout(nuclearBadgeProtection, 500);
-            return;
-        }
-        
-        console.log('💖 Nuclear: Protecting wishlist badge element on', window.location.href);
-        
-        // Completely lock down the badge - make it read-only
-        try {
-            Object.defineProperty(badge, 'textContent', {
-                get: function() { 
-                    const correctCount = getNuclearCorrectCountSync();
-                    return correctCount; 
-                },
-                set: function(value) { 
-                    console.log('💖 Nuclear: Blocked textContent update to:', value, 'on', window.location.href);
-                    nuclearForceUpdateWishlistBadge();
-                },
-                configurable: false,
-                enumerable: true
-            });
-            
-            Object.defineProperty(badge, 'innerText', {
-                get: function() { 
-                    const correctCount = getNuclearCorrectCountSync();
-                    return correctCount; 
-                },
-                set: function(value) { 
-                    console.log('💖 Nuclear: Blocked innerText update to:', value, 'on', window.location.href);
-                    nuclearForceUpdateWishlistBadge();
-                },
-                configurable: false,
-                enumerable: true
-            });
-            
-            Object.defineProperty(badge, 'innerHTML', {
-                get: function() { 
-                    const correctCount = getNuclearCorrectCountSync();
-                    return correctCount; 
-                },
-                set: function(value) { 
-                    console.log('💖 Nuclear: Blocked innerHTML update to:', value, 'on', window.location.href);
-                    nuclearForceUpdateWishlistBadge();
-                },
-                configurable: false,
-                enumerable: true
-            });
-            
-            // Set initial value
-            nuclearForceUpdateWishlistBadge();
-            
-        } catch (e) {
-            console.log('💖 Nuclear: Protection setup error:', e);
-        }
-    }
-    
-    // 3. Get correct count with fallback
-    let nuclearCurrentCount = '0';
-    
-    function getNuclearCorrectCountSync() {
-        return nuclearCurrentCount;
-    }
-    
-    async function nuclearForceUpdateWishlistBadge() {
-        try {
-            const response = await fetch('<?php echo SITE_URL; ?>actions/wishlist-count.php?t=' + Date.now());
-            const data = await response.json();
-            
-            nuclearCurrentCount = data.count.toString();
-            const badge = document.getElementById('wishlist-count');
-            
-            if (badge) {
-                // Use direct DOM manipulation to bypass our own protections
-                badge.firstChild?.remove();
-                badge.appendChild(document.createTextNode(nuclearCurrentCount));
-                
-                console.log('💖 Nuclear: Wishlist badge set to', nuclearCurrentCount, 'on', window.location.href);
-            }
-        } catch (error) {
-            console.log('💖 Nuclear: Wishlist update error on', window.location.href, ':', error);
-            // Fallback: try to get count from PHP session
-            nuclearCurrentCount = '0';
-        }
-    }
-    
-    // 4. Monitor ALL fetch requests for wishlist-related activity
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        const url = args[0];
-        
-        if (typeof url === 'string' && (url.includes('wishlist') || url.includes('Wishlist'))) {
-            console.log('💖 Nuclear: Detected wishlist-related fetch:', url);
-            return originalFetch.apply(this, args).then(response => {
-                // After any wishlist request, force update
-                setTimeout(nuclearForceUpdateWishlistBadge, 100);
-                return response;
-            });
-        }
-        
-        return originalFetch.apply(this, args);
-    };
-    
-    // 5. Start nuclear protection immediately
-    nuclearBadgeProtection();
-    
-    // 6. Frequent updates to override any bad changes
-    setInterval(nuclearForceUpdateWishlistBadge, 1500);
-    
-    // 7. Override on ALL possible events
-    const nuclearEvents = ['DOMContentLoaded', 'load', 'pageshow', 'visibilitychange', 'mouseenter', 'click', 'keydown'];
-    nuclearEvents.forEach(event => {
-        window.addEventListener(event, nuclearForceUpdateWishlistBadge);
-    });
-    
-    // 8. Monitor for badge element creation
-    const nuclearObserver = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-                if (node.nodeType === 1 && (node.id === 'wishlist-count' || node.querySelector('#wishlist-count'))) {
-                    console.log('💖 Nuclear: New wishlist badge element detected on', window.location.href);
-                    setTimeout(nuclearBadgeProtection, 100);
-                }
-            });
-        });
-    });
-    
-    nuclearObserver.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    console.log('💖 Nuclear wishlist protection active on:', window.location.href);
-    
-    // Initial update
-    setTimeout(nuclearForceUpdateWishlistBadge, 100);
-    setTimeout(nuclearForceUpdateWishlistBadge, 1000);
-    setTimeout(nuclearForceUpdateWishlistBadge, 3000);
-    
-})();
-</script>
-
- </body>
+</body>
 </html>

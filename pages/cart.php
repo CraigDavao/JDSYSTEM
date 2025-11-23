@@ -5,6 +5,18 @@ require_once __DIR__ . '/../includes/header.php';
 
 <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/cart.css?v=<?= time(); ?>">
 
+<!-- Custom Confirmation Modal -->
+<div class="custom-modal" id="confirmationModal">
+    <div class="custom-modal-content">
+        <h3 id="modalTitle">Remove Item</h3>
+        <p id="modalMessage">Are you sure you want to remove this item from your cart?</p>
+        <div class="custom-modal-buttons">
+            <button class="custom-modal-btn custom-modal-cancel" id="modalCancel">Cancel</button>
+            <button class="custom-modal-btn custom-modal-remove" id="modalConfirm">Remove</button>
+        </div>
+    </div>
+</div>
+
 <div class="cart-dashboard">
     <h2>My Cart</h2>
     
@@ -52,6 +64,65 @@ const SITE_URL = "<?= SITE_URL; ?>";
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     let checkboxStates = {};
+    
+    // Custom modal variables
+    let currentCartId = null;
+    let currentItemElement = null;
+    let currentAction = null; // 'remove' or 'clearSelected'
+    const confirmationModal = document.getElementById('confirmationModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalConfirm = document.getElementById('modalConfirm');
+    const modalCancel = document.getElementById('modalCancel');
+
+    // Show custom modal for different actions
+    function showConfirmationModal(action, cartId = null, itemElement = null) {
+        currentAction = action;
+        currentCartId = cartId;
+        currentItemElement = itemElement;
+        
+        if (action === 'remove') {
+            modalTitle.textContent = 'Remove Item';
+            modalMessage.textContent = 'Are you sure you want to remove this item from your cart?';
+            modalConfirm.textContent = 'Remove';
+            modalConfirm.className = 'custom-modal-btn custom-modal-remove';
+        } else if (action === 'clearSelected') {
+            const selectedCount = document.querySelectorAll('.select-item:checked').length;
+            modalTitle.textContent = 'Remove Selected Items';
+            modalMessage.textContent = `Are you sure you want to remove ${selectedCount} selected item(s) from your cart?`;
+            modalConfirm.textContent = 'Remove Selected';
+            modalConfirm.className = 'custom-modal-btn custom-modal-remove';
+        }
+        
+        confirmationModal.classList.add('show');
+    }
+
+    // Hide custom modal
+    function hideConfirmationModal() {
+        confirmationModal.classList.remove('show');
+        currentCartId = null;
+        currentItemElement = null;
+        currentAction = null;
+    }
+
+    // Modal event listeners
+    modalConfirm.addEventListener('click', () => {
+        if (currentAction === 'remove' && currentCartId && currentItemElement) {
+            removeCartItem(currentCartId, currentItemElement);
+        } else if (currentAction === 'clearSelected') {
+            clearSelectedCartItems();
+        }
+        hideConfirmationModal();
+    });
+
+    modalCancel.addEventListener('click', hideConfirmationModal);
+
+    // Close modal when clicking outside
+    confirmationModal.addEventListener('click', (e) => {
+        if (e.target === confirmationModal) {
+            hideConfirmationModal();
+        }
+    });
 
     async function loadCart() {
         try {
@@ -143,12 +214,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 attachCartEvents();
                 updateSelectAllState();
             } else {
-                // Empty cart
+                // Empty cart - FIXED: Use JavaScript variable instead of PHP
                 cartItems.innerHTML = `
                     <div class="cart-empty">
                         <h3>Your cart is empty</h3>
                         <p>Add some products to get started</p>
-                        <a href="<?php echo SITE_URL; ?>pages/products.php" class="btn-continue-shopping">Continue Shopping</a>
+                        <a href="${SITE_URL}pages/new.php" class="btn-continue-shopping">Continue Shopping</a>
                     </div>
                 `;
                 cartTotal.innerHTML = `
@@ -205,10 +276,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.querySelectorAll(".remove-item").forEach(btn => {
             btn.addEventListener("click", async () => {
-                const cartId = btn.closest(".cart-item").dataset.cartId;
-                await removeCartItem(cartId);
-                delete checkboxStates[cartId];
-                loadCart();
+                const cartItem = btn.closest(".cart-item");
+                const cartId = cartItem.dataset.cartId;
+                showConfirmationModal('remove', cartId, cartItem);
             });
         });
 
@@ -236,14 +306,120 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            if (confirm(`Are you sure you want to remove ${selectedItems.length} item(s) from your cart?`)) {
-                for (const cartId of selectedItems) {
-                    await removeCartItem(cartId);
-                    delete checkboxStates[cartId];
-                }
-                loadCart();
+            showConfirmationModal('clearSelected');
+        });
+    }
+
+    // CLEAR SELECTED CART ITEMS
+    async function clearSelectedCartItems() {
+        const selectedItems = document.querySelectorAll('.select-item:checked');
+        const selectedIds = [];
+        
+        // Collect all selected cart IDs
+        selectedItems.forEach(checkbox => {
+            const cartId = checkbox.dataset.cartId;
+            if (cartId) {
+                selectedIds.push(cartId);
             }
         });
+        
+        if (selectedIds.length === 0) {
+            alert('No items selected to remove');
+            return;
+        }
+        
+        try {
+            // Remove all selected items from UI with animation
+            selectedItems.forEach(checkbox => {
+                const itemElement = checkbox.closest('.cart-item');
+                if (itemElement) {
+                    itemElement.style.opacity = '0';
+                    itemElement.style.transform = 'scale(0.8)';
+                    itemElement.style.transition = 'all 0.3s ease';
+                    
+                    setTimeout(() => {
+                        itemElement.remove();
+                    }, 300);
+                }
+            });
+
+            // Remove from database
+            for (const cartId of selectedIds) {
+                await removeCartItem(cartId);
+                delete checkboxStates[cartId];
+            }
+            
+            setTimeout(() => {
+                updateTotalOnSelection();
+                updateSelectAllState();
+                checkEmptyCart();
+            }, 350);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error removing items');
+        }
+    }
+
+    // REMOVE SINGLE CART ITEM
+    async function removeCartItem(cartId, itemElement = null) {
+        try {
+            await fetch(SITE_URL + "actions/cart-remove.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `cart_id=${cartId}`
+            });
+            
+            // Remove from UI if element provided
+            if (itemElement) {
+                itemElement.style.opacity = '0';
+                itemElement.style.transform = 'scale(0.8)';
+                itemElement.style.transition = 'all 0.3s ease';
+                
+                setTimeout(() => {
+                    itemElement.remove();
+                    updateTotalOnSelection();
+                    updateSelectAllState();
+                    checkEmptyCart();
+                }, 300);
+            }
+        } catch (error) {
+            console.error('Error removing cart item:', error);
+            alert('Error removing item');
+        }
+    }
+
+    function checkEmptyCart() {
+        const cartItems = document.querySelectorAll('.cart-item');
+        if (cartItems.length === 0) {
+            // FIXED: Use JavaScript variable instead of PHP
+            document.getElementById('cart-items').innerHTML = `
+                <div class="cart-empty">
+                    <h3>Your cart is empty</h3>
+                    <p>Add some products to get started</p>
+                    <a href="${SITE_URL}pages/new.php" class="btn-continue-shopping">Continue Shopping</a>
+                </div>
+            `;
+            document.getElementById('cart-total').innerHTML = `
+                <div class="total-section">
+                    <h4>Order Total</h4>
+                    <div class="total-breakdown">
+                        <div class="total-row">
+                            <span class="total-label">Subtotal:</span>
+                            <span class="total-value">₱0.00</span>
+                        </div>
+                        <div class="total-row">
+                            <span class="total-label">Shipping:</span>
+                            <span class="total-value">₱0.00</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span class="total-label">Total:</span>
+                            <span class="total-value">₱0.00</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     function updateSelectAllState() {
@@ -273,18 +449,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         } catch (error) {
             console.error('Error updating cart:', error);
-        }
-    }
-
-    async function removeCartItem(cartId) {
-        try {
-            await fetch(SITE_URL + "actions/cart-remove.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `cart_id=${cartId}`
-            });
-        } catch (error) {
-            console.error('Error removing cart item:', error);
         }
     }
 

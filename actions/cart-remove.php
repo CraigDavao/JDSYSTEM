@@ -16,3 +16,4 @@ $delete->bind_param("ii", $cart_id, $user_id);
 $delete->execute();
 
 echo json_encode(['status' => 'success']);
+?>

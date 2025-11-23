@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-// 🟢 COUNT UNIQUE ITEMS (each row in cart = 1 item, regardless of quantity)
+// COUNT UNIQUE ITEMS (each row in cart = 1 item, regardless of quantity)
 $stmt = $conn->prepare("SELECT COUNT(*) AS item_count FROM cart WHERE user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();

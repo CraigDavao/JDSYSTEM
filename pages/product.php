@@ -313,7 +313,6 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && !empty($prod
         </div>
     </div>
 
-      <!-- ✅ Quantity Selector -->
       <!-- ✅ Quantity Selector - FIXED TO USE ACTUAL STOCK -->
 <div class="quantity-selector <?= $current_stock == 0 ? 'out-of-stock' : '' ?>">
   <label>Quantity:</label>

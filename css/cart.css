@@ -595,3 +595,113 @@
         padding: 0.85rem;
     }
 }
+
+    /* Custom Modal Styles */
+    .custom-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 10001;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .custom-modal-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+    }
+
+    .custom-modal h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.3rem;
+    }
+
+    .custom-modal p {
+        margin: 0 0 2rem 0;
+        color: #666;
+        font-size: 1rem;
+    }
+
+    .custom-modal-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .custom-modal-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 100px;
+    }
+
+    .custom-modal-remove {
+        background: #dc3545;
+        color: white;
+    }
+
+    .custom-modal-remove:hover {
+        background: #c82333;
+        transform: translateY(-2px);
+    }
+
+    .custom-modal-clear {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .custom-modal-clear:hover {
+        background: #e0a800;
+        transform: translateY(-2px);
+    }
+
+    .custom-modal-cancel {
+        background: #f8f9fa;
+        color: #333;
+        border: 2px solid #dee2e6;
+    }
+
+    .custom-modal-cancel:hover {
+        background: #e9ecef;
+        transform: translateY(-2px);
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .custom-modal.show {
+        display: flex;
+        animation: modalFadeIn 0.3s ease;
+    }
+
+    @media (max-width: 480px) {
+        .custom-modal-content {
+            padding: 1.5rem;
+            margin: 1rem;
+        }
+        
+        .custom-modal-buttons {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .custom-modal-btn {
+            width: 100%;
+        }
+    }

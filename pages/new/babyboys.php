@@ -120,10 +120,23 @@ if ($products && $products->num_rows > 0) {
           $hasSale = isOnSale($product);
           $displayPrice = getDisplayPrice($product);
 
-          // ✅ Use BLOB image from DB or fallback
-          $imageSrc = !empty($product['product_image'])
-              ? 'data:image/jpeg;base64,' . $product['product_image']
-              : SITE_URL . 'uploads/sample1.jpg';
+          // ✅ FIXED: Proper Base64 image handling
+          $imageSrc = SITE_URL . 'uploads/sample1.jpg'; // Default fallback
+          
+          if (!empty($product['product_image'])) {
+              // Check if it's already a complete Base64 data URL
+              if (strpos($product['product_image'], 'data:image') === 0) {
+                  $imageSrc = $product['product_image'];
+              } 
+              // Check if it's just Base64 encoded data
+              else if (strpos($product['product_image'], 'base64') !== false) {
+                  $imageSrc = $product['product_image'];
+              }
+              // Otherwise, it might be raw blob data that needs encoding
+              else {
+                  $imageSrc = 'data:image/jpeg;base64,' . base64_encode($product['product_image']);
+              }
+          }
         ?>
         <a href="<?= htmlspecialchars($product_link) ?>" class="product-card">
           <div class="product-image-container">
