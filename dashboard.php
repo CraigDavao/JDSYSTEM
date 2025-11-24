@@ -39,6 +39,34 @@ $wishlist_items = [];
 // Include the handlers file
 require_once __DIR__ . '/includes/dashboard-handlers.php';
 
+// Helper function to get product image by product ID
+function getProductImage($productId, $conn) {
+    $stmt = $conn->prepare("SELECT image FROM products WHERE id = ?");
+    $stmt->bind_param("i", $productId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['image'];
+    }
+    
+    return null;
+}
+
+// Helper function to get product color-specific image
+function getProductColorImage($productId, $colorName, $conn) {
+    $stmt = $conn->prepare("SELECT image FROM product_images WHERE product_id = ? AND color_name = ? ORDER BY sort_order LIMIT 1");
+    $stmt->bind_param("is", $productId, $colorName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['image'];
+    }
+    
+    return null;
+}
+
 // Handle cancellation and return requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['cancel_order'])) {
@@ -109,6 +137,59 @@ ob_end_flush();
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/profile.css?v=<?= time(); ?>">
   <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/details.css?v=<?= time(); ?>">
+  <style>
+    .order-meta {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .order-product-images {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .order-product-image {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #e0e0e0;
+    }
+
+    .order-product-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .order-product-image .no-image {
+        width: 100%;
+        height: 100%;
+        background: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: #666;
+    }
+
+    .order-text-info {
+        flex: 1;
+    }
+
+    /* For responsive design */
+    @media (max-width: 768px) {
+        .order-meta {
+            flex-direction: column;
+        }
+        
+        .order-product-images {
+            width: 100%;
+        }
+    }
+  </style>
 </head>
 <body>
   <div class="account-wrapper">
@@ -425,33 +506,80 @@ ob_end_flush();
                 $return_stmt->bind_param("i", $order['id']);
                 $return_stmt->execute();
                 $return_request = $return_stmt->get_result()->fetch_assoc();
+
+                // Get order items with product details
+                $items_stmt = $conn->prepare("
+                  SELECT oi.product_id, oi.product_name, oi.color_name, oi.quantity, oi.price,
+                         p.image as product_image,
+                         pc.color_name as product_color
+                  FROM order_items oi 
+                  LEFT JOIN products p ON oi.product_id = p.id 
+                  LEFT JOIN product_colors pc ON oi.product_id = pc.product_id AND oi.color_name = pc.color_name
+                  WHERE oi.order_id = ?
+                ");
+                $items_stmt->bind_param("i", $order['id']);
+                $items_stmt->execute();
+                $order_items = $items_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
               ?>
                 <div class="order-panel">
                   <div class="order-header">
                     <div class="order-meta">
-                      <h4>Order #<?php echo $order['order_number']; ?></h4>
-                      <span class="order-date">
-                        <?php 
-                          if (isset($order['created_at'])) {
-                            echo date('F j, Y g:i A', strtotime($order['created_at']));
-                          } else {
-                            echo 'Date not available';
-                          }
+                      <div class="order-product-images">
+                        <?php
+                        if (is_array($order_items)) {
+                            foreach ($order_items as $item) {
+                                $productImage = null;
+                                
+                                // Try to get the specific color image first
+                                if (isset($item['color_name']) && !empty($item['color_name'])) {
+                                    $productImage = getProductColorImage($item['product_id'], $item['color_name'], $conn);
+                                }
+                                
+                                // If no color-specific image found, get default product image
+                                if (!$productImage) {
+                                    $productImage = getProductImage($item['product_id'], $conn);
+                                }
+                                
+                                echo '<div class="order-product-image">';
+                                if ($productImage) {
+                                    echo '<img src="data:image/jpeg;base64,' . base64_encode($productImage) . '" 
+                                          alt="' . htmlspecialchars($item['product_name'] ?? 'Product') . '" 
+                                          title="' . htmlspecialchars($item['product_name'] ?? 'Product') . 
+                                          (isset($item['color_name']) ? ' - ' . htmlspecialchars($item['color_name']) : '') . '">';
+                                } else {
+                                    echo '<div class="no-image">No Image</div>';
+                                }
+                                echo '</div>';
+                            }
+                        }
                         ?>
-                      </span>
-                      <span class="order-items"><?php echo $order['item_count']; ?> item(s)</span>
+                      </div>
                       
-                      <?php if ($cancellation): ?>
-                        <div class="request-status status-<?php echo $cancellation['status']; ?>">
-                          Cancellation: <?php echo ucfirst($cancellation['status']); ?>
-                        </div>
-                      <?php endif; ?>
-                      
-                      <?php if ($return_request): ?>
-                        <div class="request-status status-<?php echo $return_request['status']; ?>">
-                          Return: <?php echo ucfirst(str_replace('_', ' ', $return_request['status'])); ?>
-                        </div>
-                      <?php endif; ?>
+                      <div class="order-text-info">
+                        <h4>Order #<?php echo $order['order_number']; ?></h4>
+                        <span class="order-date">
+                          <?php 
+                            if (isset($order['created_at'])) {
+                              echo date('F j, Y g:i A', strtotime($order['created_at']));
+                            } else {
+                              echo 'Date not available';
+                            }
+                          ?>
+                        </span>
+                        <span class="order-items"><?php echo $order['item_count']; ?> item(s)</span>
+                        
+                        <?php if ($cancellation): ?>
+                          <div class="request-status status-<?php echo $cancellation['status']; ?>">
+                            Cancellation: <?php echo ucfirst($cancellation['status']); ?>
+                          </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($return_request): ?>
+                          <div class="request-status status-<?php echo $return_request['status']; ?>">
+                            Return: <?php echo ucfirst(str_replace('_', ' ', $return_request['status'])); ?>
+                          </div>
+                        <?php endif; ?>
+                      </div>
                     </div>
                     <div class="order-status">
                       <span class="status status-<?php echo strtolower($order['status']); ?>">

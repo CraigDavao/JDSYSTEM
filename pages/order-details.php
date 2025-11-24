@@ -9,6 +9,34 @@ if (!isset($_SESSION['user_id'])) {
 $order_id = $_GET['order_id'] ?? 0;
 $user_id = $_SESSION['user_id'];
 
+// Helper function to get product image by product ID
+function getProductImage($productId, $conn) {
+    $stmt = $conn->prepare("SELECT image FROM products WHERE id = ?");
+    $stmt->bind_param("i", $productId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['image'];
+    }
+    
+    return null;
+}
+
+// Helper function to get product color-specific image
+function getProductColorImage($productId, $colorName, $conn) {
+    $stmt = $conn->prepare("SELECT image FROM product_images WHERE product_id = ? AND color_name = ? ORDER BY sort_order LIMIT 1");
+    $stmt->bind_param("is", $productId, $colorName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['image'];
+    }
+    
+    return null;
+}
+
 // Fetch order info
 $stmt = $conn->prepare("
     SELECT o.*, 
@@ -29,15 +57,12 @@ if (!$order) {
     exit;
 }
 
-// Fetch order items
+// Fetch order items with improved image handling
 $stmt = $conn->prepare("
     SELECT oi.*, p.name AS product_name, p.price AS original_price,
-           CONCAT('data:image/', COALESCE(pi.image_format, 'jpeg'), ';base64,', TO_BASE64(COALESCE(pi.image, ''))) AS product_image
+           oi.color_name, oi.size
     FROM order_items oi
     LEFT JOIN products p ON oi.product_id = p.id
-    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.id = (
-        SELECT MIN(pi2.id) FROM product_images pi2 WHERE pi2.product_id = p.id
-    )
     WHERE oi.order_id = ?
 ");
 $stmt->bind_param("i", $order_id);
@@ -45,6 +70,26 @@ $stmt->execute();
 $item_result = $stmt->get_result();
 $order_items = [];
 while ($row = $item_result->fetch_assoc()) {
+    // Get the appropriate product image
+    $productImage = null;
+    
+    // Try to get the specific color image first
+    if (isset($row['color_name']) && !empty($row['color_name'])) {
+        $productImage = getProductColorImage($row['product_id'], $row['color_name'], $conn);
+    }
+    
+    // If no color-specific image found, get default product image
+    if (!$productImage) {
+        $productImage = getProductImage($row['product_id'], $conn);
+    }
+    
+    // Convert image to base64 if exists
+    if ($productImage) {
+        $row['product_image'] = 'data:image/jpeg;base64,' . base64_encode($productImage);
+    } else {
+        $row['product_image'] = null;
+    }
+    
     $order_items[] = $row;
 }
 $stmt->close();
@@ -210,7 +255,9 @@ $can_return = !$return_request && $order['status'] === 'delivered';
                     <div class="order-item">
                         <div class="item-image">
                             <?php if (!empty($item['product_image'])): ?>
-                                <img src="<?= htmlspecialchars($item['product_image']); ?>" alt="<?= htmlspecialchars($item['product_name']); ?>">
+                                <img src="<?= htmlspecialchars($item['product_image']); ?>" 
+                                     alt="<?= htmlspecialchars($item['product_name']); ?>"
+                                     title="<?= htmlspecialchars($item['product_name']); ?><?= !empty($item['color_name']) ? ' - ' . htmlspecialchars($item['color_name']) : ''; ?>">
                             <?php else: ?>
                                 <div class="no-image">No Image</div>
                             <?php endif; ?>
@@ -226,7 +273,6 @@ $can_return = !$return_request && $order['status'] === 'delivered';
                                     <span>Color: <?= htmlspecialchars($item['color_name']); ?></span>
                                 <?php endif; ?>
                             </div>
-                            <div class="item-price">₱<?= number_format($item['price'], 2); ?> each</div>
                         </div>
                         <div class="item-total"><strong>₱<?= number_format($item['price'] * $item['quantity'], 2); ?></strong></div>
                     </div>
@@ -369,6 +415,92 @@ $can_return = !$return_request && $order['status'] === 'delivered';
         </form>
     </div>
 </div>
+
+<style>
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    gap: 15px;
+}
+
+.item-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item-image .no-image {
+    width: 100%;
+    height: 100%;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #666;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-details h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.item-meta {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.item-price {
+    font-size: 14px;
+    color: #666;
+}
+
+.item-total {
+    font-size: 16px;
+    color: #333;
+    font-weight: bold;
+    min-width: 100px;
+    text-align: right;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .order-item {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+    }
+    
+    .item-image {
+        align-self: center;
+    }
+    
+    .item-total {
+        align-self: flex-end;
+        text-align: right;
+        margin-top: 10px;
+    }
+}
+</style>
 
 <script>
 function openCancelModal(orderId) {
