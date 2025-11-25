@@ -1,7 +1,6 @@
 <?php
 require_once '../connection/connection.php';
 
-// Set JSON header for AJAX responses
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -12,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $token = $_POST['token'] ?? '';
 $newPassword = $_POST['new_password'] ?? '';
 
-// Input validation
 if (empty($token) || empty($newPassword)) {
     echo json_encode(['status' => 'error', 'message' => 'Token and password are required']);
     exit;
@@ -49,8 +47,8 @@ try {
     // Hash the new password
     $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
 
-    // Update the password and clear reset token
-    $update_stmt = $conn->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?");
+    // Update the password and clear reset fields
+    $update_stmt = $conn->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_code = NULL, reset_expires = NULL WHERE id = ?");
     $update_stmt->bind_param("si", $hashedPassword, $user['id']);
     
     if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
@@ -58,9 +56,6 @@ try {
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Failed to update password']);
     }
-    
-    $update_stmt->close();
-    $check_stmt->close();
     
 } catch (Exception $e) {
     error_log("Password reset error: " . $e->getMessage());

@@ -67,6 +67,39 @@ function getProductColorImage($productId, $colorName, $conn) {
     return null;
 }
 
+// Helper function to get order status history
+function getOrderStatusHistory($orderId, $conn) {
+    $stmt = $conn->prepare("SELECT status, notes, created_at FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $history = [];
+    while ($row = $result->fetch_assoc()) {
+        $history[] = $row;
+    }
+    return $history;
+}
+
+// Helper function to get order items with complete details
+function getOrderItems($orderId, $conn) {
+    $stmt = $conn->prepare("
+        SELECT oi.*, p.image as product_image, p.sale_price as product_sale_price
+        FROM order_items oi 
+        LEFT JOIN products p ON oi.product_id = p.id 
+        WHERE oi.order_id = ?
+    ");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $items = [];
+    while ($row = $result->fetch_assoc()) {
+        $items[] = $row;
+    }
+    return $items;
+}
+
 // Handle cancellation and return requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['cancel_order'])) {
@@ -80,13 +113,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $order = $stmt->get_result()->fetch_assoc();
         
         if ($order && $order['can_cancel'] && in_array($order['status'], ['pending', 'processing'])) {
-            $stmt = $conn->prepare("INSERT INTO order_cancellations (order_id, user_id, reason) VALUES (?, ?, ?)");
-            $stmt->bind_param("iis", $order_id, $user_id, $reason);
+            // Start transaction
+            $conn->begin_transaction();
             
-            if ($stmt->execute()) {
-                $_SESSION['success_message'] = "Cancellation request submitted successfully!";
-            } else {
-                $_SESSION['error_message'] = "Failed to submit cancellation request.";
+            try {
+                // Update order status
+                $stmt = $conn->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?");
+                $stmt->bind_param("i", $order_id);
+                $stmt->execute();
+                
+                // Add to status history
+                $stmt = $conn->prepare("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, 'cancelled', ?)");
+                $stmt->bind_param("is", $order_id, $reason);
+                $stmt->execute();
+                
+                // Insert cancellation record
+                $stmt = $conn->prepare("INSERT INTO order_cancellations (order_id, user_id, reason, status) VALUES (?, ?, ?, 'approved')");
+                $stmt->bind_param("iis", $order_id, $user_id, $reason);
+                $stmt->execute();
+                
+                $conn->commit();
+                $_SESSION['success_message'] = "Order cancelled successfully!";
+            } catch (Exception $e) {
+                $conn->rollback();
+                $_SESSION['error_message'] = "Failed to cancel order: " . $e->getMessage();
             }
         } else {
             $_SESSION['error_message'] = "This order cannot be cancelled.";
@@ -101,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reason = trim($_POST['return_reason']);
         $return_type = $_POST['return_type'];
         $item_condition = trim($_POST['item_condition']);
+        $description = trim($_POST['return_description']);
         
         // Check if order belongs to user and can be returned
         $stmt = $conn->prepare("SELECT id, total_amount, status, can_return FROM orders WHERE id = ? AND user_id = ?");
@@ -109,11 +160,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $order = $stmt->get_result()->fetch_assoc();
         
         if ($order && $order['can_return'] && $order['status'] === 'delivered') {
-            $stmt = $conn->prepare("INSERT INTO return_requests (order_id, user_id, reason, return_type, item_condition, refund_amount) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisssd", $order_id, $user_id, $reason, $return_type, $item_condition, $order['total_amount']);
+            $stmt = $conn->prepare("INSERT INTO return_requests (order_id, user_id, reason, return_type, item_condition, description, refund_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
+            $stmt->bind_param("iissssd", $order_id, $user_id, $reason, $return_type, $item_condition, $description, $order['total_amount']);
             
             if ($stmt->execute()) {
-                $_SESSION['success_message'] = "Return request submitted successfully!";
+                $_SESSION['success_message'] = "Return request submitted successfully! We will review your request within 24-48 hours.";
             } else {
                 $_SESSION['error_message'] = "Failed to submit return request.";
             }
@@ -123,6 +174,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         header("Location: " . SITE_URL . "dashboard.php");
         exit();
+    }
+    
+    // Handle reorder
+    if (isset($_POST['reorder'])) {
+        $order_id = intval($_POST['order_id']);
+        
+        // Get order items
+        $items = getOrderItems($order_id, $conn);
+        
+        if (!empty($items)) {
+            foreach ($items as $item) {
+                // Add to cart (you'll need to implement your cart addition logic)
+                // This is a simplified example
+                $cart_item = [
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'color_name' => $item['color_name'],
+                    'size_name' => $item['size_name']
+                ];
+                
+                // You'll need to implement your cart session logic here
+                $_SESSION['cart'][] = $cart_item;
+            }
+            
+            $_SESSION['success_message'] = "Items added to cart successfully!";
+            header("Location: " . SITE_URL . "pages/cart.php");
+            exit();
+        } else {
+            $_SESSION['error_message'] = "No items found to reorder.";
+            header("Location: " . SITE_URL . "dashboard.php");
+            exit();
+        }
     }
 }
 
@@ -179,6 +262,52 @@ ob_end_flush();
         flex: 1;
     }
 
+    .request-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 600;
+        margin-top: 5px;
+        display: inline-block;
+    }
+
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d1edff; color: #0c5460; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+    .status-completed { background: #d4edda; color: #155724; }
+
+    .return-info, .cancellation-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+        border-left: 4px solid #007bff;
+    }
+
+    .cancellation-info {
+        border-left-color: #dc3545;
+    }
+
+    .return-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .return-detail-item {
+        padding: 8px;
+        background: white;
+        border-radius: 4px;
+    }
+
+    .refund-processing {
+        background: #e7f3ff;
+        padding: 10px;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+
     /* For responsive design */
     @media (max-width: 768px) {
         .order-meta {
@@ -187,6 +316,10 @@ ob_end_flush();
         
         .order-product-images {
             width: 100%;
+        }
+        
+        .return-details {
+            grid-template-columns: 1fr;
         }
     }
   </style>
@@ -927,15 +1060,6 @@ ob_end_flush();
       document.getElementById('return_description').value = '';
     }
 
-    // Close modals when clicking outside
-    document.getElementById('cancelModal')?.addEventListener('click', function(e) {
-      if (e.target === this) closeCancelModal();
-    });
-    
-    document.getElementById('returnModal')?.addEventListener('click', function(e) {
-      if (e.target === this) closeReturnModal();
-    });
-
     // Order details functionality
     function viewOrderDetails(orderId) {
       fetch('<?php echo SITE_URL; ?>pages/order-details.php?order_id=' + orderId)
@@ -954,6 +1078,19 @@ ob_end_flush();
       document.getElementById('orderDetailsModal').style.display = 'none';
       document.body.style.overflow = 'auto';
     }
+
+    // Close modals when clicking outside
+    document.getElementById('cancelModal')?.addEventListener('click', function(e) {
+      if (e.target === this) closeCancelModal();
+    });
+    
+    document.getElementById('returnModal')?.addEventListener('click', function(e) {
+      if (e.target === this) closeReturnModal();
+    });
+
+    document.getElementById('orderDetailsModal')?.addEventListener('click', function(e) {
+      if (e.target === this) closeOrderDetailsModal();
+    });
 
     // Set default address with AJAX
     function setDefaultAddress(addressId, addressType) {
@@ -1125,7 +1262,75 @@ ob_end_flush();
       initAddressModal();
     });
 
-    initSecurity(<?php echo $security_verified ? 'true' : 'false'; ?>);
+    // Section navigation
+    function showSection(sectionName) {
+      // Hide all sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      
+      // Remove active class from all menu items
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // Show selected section
+      document.getElementById(sectionName).classList.add('active');
+      
+      // Activate corresponding menu item
+      document.querySelector(`[data-section="${sectionName}"]`).classList.add('active');
+    }
+
+    // Initialize section navigation
+    document.querySelectorAll('.menu-item').forEach(item => {
+      if (!item.classList.contains('logout-link')) {
+        item.addEventListener('click', function() {
+          const sectionName = this.getAttribute('data-section');
+          showSection(sectionName);
+        });
+      }
+    });
+
+    // Modal functions
+    function openEditModal() {
+      document.getElementById('editModal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+
+    function openAddressModal() {
+      document.getElementById('addressModal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeAddressModal() {
+      document.getElementById('addressModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+
+    // Close modals when clicking outside
+    document.getElementById('editModal')?.addEventListener('click', function(e) {
+      if (e.target === this) closeEditModal();
+    });
+
+    document.getElementById('addressModal')?.addEventListener('click', function(e) {
+      if (e.target === this) closeAddressModal();
+    });
+
+    // Escape key to close modals
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeEditModal();
+        closeAddressModal();
+        closeCancelModal();
+        closeReturnModal();
+        closeOrderDetailsModal();
+      }
+    });
   </script>
 </body>
 </html>

@@ -5,7 +5,7 @@ require_once '../vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-header('Content-Type: application/json'); // return JSON
+header('Content-Type: application/json');
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $fullname = $_POST['fullname'] ?? '';
@@ -23,19 +23,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
     $code = rand(100000, 999999);
 
-    // Check if email already exists
-    $check = $conn->prepare("SELECT id FROM users WHERE email=?");
+    // Check if email already exists AND is verified
+    $check = $conn->prepare("SELECT id FROM users WHERE email=? AND is_verified=1");
     $check->bind_param("s", $email);
     $check->execute();
     $check->store_result();
+    
     if ($check->num_rows > 0) {
         echo json_encode(["status" => "error", "message" => "⚠️ Email already registered."]);
         exit;
     }
 
-    // Save to DB
-    $stmt = $conn->prepare("INSERT INTO users (fullname, number, email, password, verification_code, is_verified) VALUES (?, ?, ?, ?, ?, 0)");
-    $stmt->bind_param("sssss", $fullname, $number, $email, $hashedPassword, $code);
+    // Check if email exists but unverified - UPDATE instead of INSERT
+    $check_unverified = $conn->prepare("SELECT id FROM users WHERE email=? AND is_verified=0");
+    $check_unverified->bind_param("s", $email);
+    $check_unverified->execute();
+    $check_unverified->store_result();
+    
+    if ($check_unverified->num_rows > 0) {
+        // Update existing unverified user
+        $stmt = $conn->prepare("UPDATE users SET fullname=?, number=?, password=?, verification_code=? WHERE email=? AND is_verified=0");
+        $stmt->bind_param("sssss", $fullname, $number, $hashedPassword, $code, $email);
+    } else {
+        // Insert new user
+        $stmt = $conn->prepare("INSERT INTO users (fullname, number, email, password, verification_code, is_verified) VALUES (?, ?, ?, ?, ?, 0)");
+        $stmt->bind_param("sssss", $fullname, $number, $email, $hashedPassword, $code);
+    }
 
     if ($stmt->execute()) {
         // Send email with code
@@ -45,11 +58,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $mail->Host = "smtp.gmail.com";
             $mail->SMTPAuth = true;
             $mail->Username = "davaojonathancraig28@gmail.com"; 
-            $mail->Password = "twzt gwhe opao snzz"; // your app password
+            $mail->Password = "nyqj lovn cxfh nbup";
             $mail->SMTPSecure = "tls";
             $mail->Port = 587;
 
-            $mail->setFrom("yourgmail@gmail.com", "Your Website");
+            $mail->setFrom("davaojonathancraig28@gmail.com", "JDSystem");
             $mail->addAddress($email);
             $mail->isHTML(true);
             $mail->Subject = "Verify Your Account";

@@ -1,102 +1,86 @@
 <?php
-require_once __DIR__ . '/../connection/connection.php';
-require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../config.php';
+require_once '../connection/connection.php';
+require_once '../vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 header('Content-Type: application/json');
 
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method']);
     exit;
 }
 
-$email = trim($_POST['email'] ?? '');
+$email = $_POST['email'] ?? '';
 
 if (empty($email)) {
-    echo json_encode(['status' => 'error', 'message' => 'Please enter your email']);
+    echo json_encode(['status' => 'error', 'message' => 'Email is required']);
     exit;
 }
 
-// Check if email exists
-$stmt = $conn->prepare("SELECT id, fullname FROM users WHERE email = ? LIMIT 1");
-$stmt->bind_param("s", $email);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows === 0) {
-    // For security, don't reveal if email exists
-    echo json_encode(['status' => 'success', 'message' => 'If an account with that email exists, a reset link has been sent']);
-    exit;
-}
-
-$user = $result->fetch_assoc();
-
-// Generate token and expiry
-$token = bin2hex(random_bytes(32));
-$expires = date("Y-m-d H:i:s", strtotime("+1 hour"));
-
-// Update database with token
-$update_stmt = $conn->prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?");
-$update_stmt->bind_param("ssi", $token, $expires, $user['id']);
-
-if (!$update_stmt->execute()) {
-    echo json_encode(['status' => 'error', 'message' => 'Error generating reset token']);
-    exit;
-}
-
-// Create reset link that points to main site with token
-$resetLink = SITE_URL . "?token=" . $token;
-
-// Send email
-$mail = new PHPMailer(true);
 try {
-    // SMTP Configuration
+    // Check if email exists
+    $check_stmt = $conn->prepare("SELECT id, fullname FROM users WHERE email = ? AND is_verified = 1");
+    $check_stmt->bind_param("s", $email);
+    $check_stmt->execute();
+    $result = $check_stmt->get_result();
+    $user = $result->fetch_assoc();
+    
+    if (!$user) {
+        echo json_encode(['status' => 'error', 'message' => 'No account found with this email']);
+        exit;
+    }
+
+    // Generate reset code (6 digits)
+    $reset_code = rand(100000, 999999);
+    $reset_expires = date('Y-m-d H:i:s', strtotime('+30 minutes')); // Code expires in 30 minutes
+
+    // Store reset code in database
+    $update_stmt = $conn->prepare("UPDATE users SET reset_code = ?, reset_expires = ? WHERE email = ?");
+    $update_stmt->bind_param("sss", $reset_code, $reset_expires, $email);
+    
+    if (!$update_stmt->execute()) {
+        throw new Exception('Failed to store reset code');
+    }
+
+    // Send email with reset code
+    $mail = new PHPMailer(true);
+    
     $mail->isSMTP();
-    $mail->Host = 'smtp.gmail.com';
+    $mail->Host = "smtp.gmail.com";
     $mail->SMTPAuth = true;
     $mail->Username = "davaojonathancraig28@gmail.com";
-    $mail->Password = "nyqj lovn cxfh nbup"; // Your app password
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Password = "nyqj lovn cxfh nbup";
+    $mail->SMTPSecure = "tls";
     $mail->Port = 587;
-    $mail->Timeout = 30;
 
-    // Email content
-    $mail->setFrom('noreply@jollydolly.com', 'Jolly Dolly');
-    $mail->addAddress($email, $user['fullname']);
+    $mail->setFrom("davaojonathancraig28@gmail.com", "JDSystem");
+    $mail->addAddress($email);
     $mail->isHTML(true);
-    $mail->Subject = "Password Reset Request - Jolly Dolly";
-    
+    $mail->Subject = "Password Reset Code";
     $mail->Body = "
-    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-        <h2 style='color: #333;'>Password Reset Request</h2>
-        <p>Hello <strong>{$user['fullname']}</strong>,</p>
-        <p>You requested a password reset for your Jolly Dolly account.</p>
-        <p>Click the button below to reset your password:</p>
-        <div style='text-align: center; margin: 30px 0;'>
-            <a href='$resetLink' style='background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>Reset Password</a>
-        </div>
-        <p>Or copy and paste this link in your browser:</p>
-        <p style='background: #f8f9fa; padding: 10px; border-radius: 4px; word-break: break-all;'>$resetLink</p>
-        <p><strong>⚠️ This link will expire in 1 hour.</strong></p>
-        <p>If you didn't request this password reset, please ignore this email.</p>
+        <h3>Password Reset Request</h3>
+        <p>Hello <b>{$user['fullname']}</b>,</p>
+        <p>Your password reset code is: <b style='font-size: 24px; color: #333;'>{$reset_code}</b></p>
+        <p>This code will expire in 30 minutes.</p>
+        <p>If you didn't request this reset, please ignore this email.</p>
         <br>
-        <p>Best regards,<br>Jolly Dolly Team</p>
-    </div>";
-
-    $mail->AltBody = "Password Reset Request\n\nHello {$user['fullname']},\n\nYou requested a password reset. Click this link: $resetLink\n\nThis link expires in 1 hour.\n\nIf you didn't request this, please ignore this email.";
+        <p>Best regards,<br>JDSystem Team</p>
+    ";
 
     if ($mail->send()) {
-        error_log("Password reset email sent to: $email");
-        echo json_encode(['status' => 'success', 'message' => 'Password reset link has been sent to your email! Check your inbox.']);
+        echo json_encode([
+            'status' => 'success', 
+            'message' => 'Reset code sent to your email',
+            'email' => $email // Include email for the next step
+        ]);
     } else {
-        throw new Exception('Mail send failed');
+        throw new Exception('Failed to send email');
     }
 
 } catch (Exception $e) {
-    error_log("Mailer Error: " . $e->getMessage());
-    echo json_encode(['status' => 'error', 'message' => 'Could not send email. Please try again later.']);
+    error_log("Forgot password error: " . $e->getMessage());
+    echo json_encode(['status' => 'error', 'message' => 'Failed to process request. Please try again.']);
 }
 ?>

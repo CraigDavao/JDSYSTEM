@@ -18,6 +18,7 @@ if (!isset($conn)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JDSystem</title>
+    <link rel="icon" type="image/png" href="uploads/jolly.png">
 
     <!-- CSS -->
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>css/style.css?v=<?= time(); ?>">
@@ -317,6 +318,20 @@ if (!isset($conn)) {
             </form>
         </div>
 
+        <!-- Reset Code Verification Form -->
+        <div class="form-container hidden" id="reset-code-form">
+            <h2>Enter Reset Code</h2>
+            <form id="reset-code-form-data">
+                <input type="hidden" name="email" id="reset-email">
+                <p>We sent a 6-digit code to your email. Enter it below:</p>
+                <input type="text" name="code" placeholder="Enter 6-digit code" required maxlength="6" pattern="[0-9]{6}">
+                <div class="form-actions">
+                    <button type="submit">Verify Code</button>
+                    <a href="#" id="show-forgot-from-code">Back to Forgot Password</a>
+                </div>
+            </form>
+        </div>
+
         <!-- Reset Password Form -->
         <div class="form-container hidden" id="reset-password-form">
             <h2>Create New Password</h2>
@@ -450,24 +465,6 @@ if (!isset($conn)) {
 })();
 </script>
 
-<!-- Password Toggle Function -->
-<script>
-function togglePassword(element) {
-    const passwordInput = element.parentElement.querySelector('.password-input');
-    const icon = element.querySelector('i');
-    
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        icon.classList.remove('fa-eye');
-        icon.classList.add('fa-eye-slash');
-    } else {
-        passwordInput.type = 'password';
-        icon.classList.remove('fa-eye-slash');
-        icon.classList.add('fa-eye');
-    }
-}
-</script>
-
 <!-- Improved Modal JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -478,17 +475,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeModal = document.getElementById('close-modal');
     const profileIcon = document.getElementById('profile-icon');
 
-    // Form containers
+    // Form containers - ADD THE NEW FORM
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const forgotPasswordForm = document.getElementById('forgot-password-form');
+    const resetCodeForm = document.getElementById('reset-code-form'); // NEW
     const resetPasswordForm = document.getElementById('reset-password-form');
     const verifyForm = document.getElementById('verify-form');
 
-    // Navigation links
+    // Navigation links - ADD THE NEW NAVIGATION
     const showForgotPassword = document.getElementById('show-forgot-password');
     const showLoginFromForgot = document.getElementById('show-login-from-forgot');
     const showLoginFromReset = document.getElementById('show-login-from-reset');
+    const showForgotFromCode = document.getElementById('show-forgot-from-code'); // NEW
     const showRegister = document.getElementById('show-register');
     const showLogin = document.getElementById('show-login');
 
@@ -511,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function hideAllForms() {
-        [loginForm, registerForm, forgotPasswordForm, resetPasswordForm, verifyForm].forEach(form => {
+        [loginForm, registerForm, forgotPasswordForm, resetCodeForm, resetPasswordForm, verifyForm].forEach(form => {
             if (form) form.classList.add('hidden');
         });
     }
@@ -568,6 +567,13 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         hideAllForms();
         loginForm.classList.remove('hidden');
+    });
+
+    // NEW: Navigation from reset code back to forgot password
+    showForgotFromCode?.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideAllForms();
+        forgotPasswordForm.classList.remove('hidden');
     });
 
     showRegister?.addEventListener('click', (e) => {
@@ -661,17 +667,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: formData
             });
 
-            const result = await response.text();
+            const result = await response.json();
 
-            if (result.includes('success') || result.includes('verification')) {
-                showFormMessage(this, 'Registration successful! Please check your email for verification.', true);
-                setTimeout(() => {
-                    this.reset();
-                    hideAllForms();
-                    loginForm.classList.remove('hidden');
-                }, 3000);
+            if (result.status === 'success') {
+                // Show verification form
+                hideAllForms();
+                verifyForm.classList.remove('hidden');
+                document.getElementById('verify-email').value = result.email;
+                
+                showFormMessage(verifyForm, result.message, true);
             } else {
-                showFormMessage(this, result || 'Registration failed. Please try again.', false);
+                showFormMessage(this, result.message, false);
             }
 
         } catch (error) {
@@ -682,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Forgot Password Submission
+    // Forgot Password Submission - UPDATED
     const forgotPasswordFormData = document.getElementById('forgot-password-form-data');
     forgotPasswordFormData?.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -711,11 +717,63 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (result.status === 'success') {
                 showFormMessage(this, result.message, true);
+                // Store email and show code verification form
+                document.getElementById('reset-email').value = result.email;
                 setTimeout(() => {
                     this.reset();
                     hideAllForms();
-                    loginForm.classList.remove('hidden');
-                }, 3000);
+                    resetCodeForm.classList.remove('hidden');
+                }, 2000);
+            } else {
+                showFormMessage(this, result.message, false);
+            }
+        } catch (error) {
+            showFormMessage(this, 'Network error. Please try again', false);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // NEW: Reset Code Verification Submission
+    const resetCodeFormData = document.getElementById('reset-code-form-data');
+    resetCodeFormData?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        
+        const email = this.querySelector('#reset-email').value;
+        const code = this.querySelector('input[name="code"]').value.trim();
+
+        if (!code || code.length !== 6) {
+            showFormMessage(this, 'Please enter a valid 6-digit code', false);
+            return;
+        }
+
+        const btn = this.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = 'Verifying...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('code', code);
+
+            const response = await fetch(SITE_URL + 'auth/verify-reset-code.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                showFormMessage(this, result.message, true);
+                // Store token and show reset password form
+                document.getElementById('reset-token').value = result.token;
+                setTimeout(() => {
+                    this.reset();
+                    hideAllForms();
+                    resetPasswordForm.classList.remove('hidden');
+                }, 2000);
             } else {
                 showFormMessage(this, result.message, false);
             }
@@ -855,5 +913,51 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<!-- Debug Password Toggle -->
+<script>
+function togglePassword(element) {
+    const passwordInput = element.parentElement.querySelector('.password-input');
+    const icon = element.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// Make sure it works after page load and modal opens
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup event listeners for existing toggles
+    const toggleButtons = document.querySelectorAll('.toggle-password');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            togglePassword(this);
+        });
+    });
+    
+    // Also re-setup when modal opens (for dynamically created forms)
+    const profileIcon = document.getElementById('profile-icon');
+    if (profileIcon) {
+        profileIcon.addEventListener('click', function() {
+            // Small delay to ensure modal is fully rendered
+            setTimeout(() => {
+                const modalToggles = document.querySelectorAll('.toggle-password');
+                modalToggles.forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        togglePassword(this);
+                    });
+                });
+            }, 100);
+        });
+    }
+});
+</script>
 </body>
 </html>

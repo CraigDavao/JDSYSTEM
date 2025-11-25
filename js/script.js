@@ -134,34 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Handle registration via AJAX - ONLY if form exists
-  if (registerForm) {
-    registerForm.querySelector("form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const formData = new FormData(e.target);
-
-      try {
-        let response = await fetch(SITE_URL + "auth/register.php", {
-          method: "POST",
-          body: formData
-        });
-
-        let result = await response.json();
-
-        if (result.status === "success") {
-          registerForm.classList.add("hidden");
-          if (verifyForm) verifyForm.classList.remove("hidden");
-          if (verifyEmailInput) verifyEmailInput.value = result.email;
-          alert(result.message);
-        } else {
-          alert(result.message);
-        }
-      } catch (err) {
-        console.error("Registration error:", err);
-        alert("Unexpected response from server.");
-      }
-    });
-  }
+  
 
   // Back to Top button - ONLY if element exists
   if (backToTopButton) {
