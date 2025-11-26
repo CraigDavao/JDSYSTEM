@@ -1,15 +1,18 @@
 <?php
-// define("SITE_URL", "http://localhost/JDSystem/");
-// define("DB_HOST", "localhost");
-// define("DB_USER", "root");
-// define("DB_PASS", "");
-// define("DB_NAME", "jolly_database");
+// config.php for Hostinger
+define("SITE_URL", "https://jollydolly.shop/");
 
-define("SITE_URL", getenv('SITE_URL') ?: '/');
-
-define("DB_HOST", "srv1319.hstgr.io");
+// Hostinger database details (from your control panel)
+define("DB_HOST", "localhost"); // Try this instead of srv1319.hstgr.io
 define("DB_USER", "u251504662_group6");
-define("DB_PASS", "o7JOhio|T7");
+define("DB_PASS", "o7JOhio|T7"); 
 define("DB_NAME", "u251504662_jollydolly");
 define("DB_PORT", 3306);
+
+// Error reporting for development
+if ($_SERVER['HTTP_HOST'] == 'jollydolly.shop') {
+    ini_set('display_errors', 0); // Hide errors on live site
+} else {
+    ini_set('display_errors', 1); // Show errors on local
+}
 ?>
