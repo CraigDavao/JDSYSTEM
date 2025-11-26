@@ -7,8 +7,8 @@
 
 define("SITE_URL", "https://jdsystem.onrender.com/");
 
-define("DB_HOST", "b1fg0pdkdmrocvt3wjeo-mysql.services.clever-cloud.com");
-define("DB_USER", "umz5zyy2hz9w9fce");
-define("DB_PASS", "uHkWPlNngNVhuwP3CAQn");
-define("DB_NAME", "b1fg0pdkdmrocvt3wjeo");
+define("DB_HOST", "b3sl32ekxzydrb5wscjh-mysql.services.clever-cloud.com");
+define("DB_USER", "ujowc00747fduqvq");
+define("DB_PASS", "mDScdVXVx0pc74ibViLe");
+define("DB_NAME", "b3sl32ekxzydrb5wscjh");
 ?>
