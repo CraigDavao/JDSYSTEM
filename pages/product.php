@@ -345,48 +345,6 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && !empty($prod
     </div>
   </div>
 
-  <!-- 🚨 DEBUG CONFIGURATION -->
-<script>
-// 🚀 ABSOLUTE URLS FOR HOSTINGER
-window.APP_CONFIG = {
-    siteUrl: '<?= SITE_URL ?>',
-    baseUrl: '<?= SITE_URL ?>',
-    apiUrls: {
-        wishlistCount: '<?= SITE_URL ?>actions/wishlist-count.php',
-        cartFetch: '<?= SITE_URL ?>actions/cart-fetch.php',
-        buyNow: '<?= SITE_URL ?>actions/buy_now.php',
-        cartAdd: '<?= SITE_URL ?>actions/cart-add.php',
-        wishlistAdd: '<?= SITE_URL ?>actions/wishlist-add.php'
-    }
-};
-
-console.log('🔧 APP_CONFIG loaded:', window.APP_CONFIG);
-
-// Test API endpoints
-async function testApiEndpoints() {
-    console.log('🧪 Testing API endpoints...');
-    
-    for (const [name, url] of Object.entries(window.APP_CONFIG.apiUrls)) {
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                credentials: 'include'
-            });
-            console.log(`✅ ${name}: ${response.status} - ${response.statusText}`);
-            
-            if (response.status === 404) {
-                console.error(`❌ ${name} NOT FOUND at: ${url}`);
-            }
-        } catch (error) {
-            console.error(`❌ ${name} ERROR:`, error);
-        }
-    }
-}
-
-// Run test when page loads
-document.addEventListener('DOMContentLoaded', testApiEndpoints);
-</script>
-
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
   <script src="<?= SITE_URL; ?>js/color-selector.js?v=<?= time() ?>"></script>
@@ -411,8 +369,6 @@ document.addEventListener('DOMContentLoaded', testApiEndpoints);
   </script>
 
   <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
-
-
 </body>
 </html>
 <?php ob_end_flush(); ?>
