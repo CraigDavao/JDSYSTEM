@@ -2,7 +2,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log("🔧 product.js loaded - Starting initialization");
     
-    const SITE_URL = window.location.origin + "/JDSystem/";
+    const SITE_URL = window.location.origin + "/";
     console.log("🌐 SITE_URL detected:", SITE_URL);
     
     const loginModal = document.getElementById("profile-modal");

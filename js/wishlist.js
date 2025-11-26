@@ -1,7 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log('🔧 wishlist.js loaded - Starting initialization');
     
-    const SITE_URL = window.location.origin + "/JDSystem/";
+    const SITE_URL = window.location.origin + "/";
+    console.log("🌐 SITE_URL detected:", SITE_URL);
 
     // Custom modal variables
     let currentWishlistId = null;
