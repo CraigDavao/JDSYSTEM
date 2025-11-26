@@ -357,14 +357,51 @@ if (!isset($conn)) {
         </div>
 
         <!-- Verification Form -->
-        <div class="form-container hidden" id="verify-form">
-            <h2>Verify account</h2>
-            <form method="POST" action="<?php echo SITE_URL; ?>auth/verify.php">
-                <input type="hidden" name="email" id="verify-email">
-                <input type="text" name="code" placeholder="Enter Verification Code *" required>
-                <button type="submit">Verify</button>
-            </form>
-        </div>
+<div class="form-container hidden" id="verify-form">
+    <h2>Verify account</h2>
+    <form method="POST" id="verificationForm">
+        <input type="hidden" name="email" id="verify-email">
+        <input type="text" name="code" placeholder="Enter Verification Code *" required>
+        <button type="submit">Verify</button>
+    </form>
+</div>
+
+<script>
+document.getElementById('verificationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('<?php echo SITE_URL; ?>auth/verify.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(result => {
+        if (result.includes('success') || result.trim() === '') {
+            // Hide verification form, show login form
+            document.getElementById('verify-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            
+            // Show success message
+            const loginForm = document.getElementById('login-form');
+            const successMsg = document.createElement('div');
+            successMsg.className = 'alert alert-success';
+            successMsg.innerHTML = ' ✅ Account verified successfully! You can now login.';
+            successMsg.style.cssText = 'background: #d4edda; color: #155724; padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #c3e6cb;';
+            
+            loginForm.insertBefore(successMsg, loginForm.firstChild);
+        } else {
+            // Show error message
+            alert('Invalid verification code. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred during verification.');
+    });
+});
+</script>
     </div>
 </div>
 

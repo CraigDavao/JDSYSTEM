@@ -726,3 +726,227 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+// Feedback Modal Functions
+function openFeedbackModal(orderId, productId, productName) {
+    document.getElementById('feedback_order_id').value = orderId;
+    document.getElementById('feedback_product_id').value = productId;
+    document.getElementById('feedback_product_name').textContent = productName;
+    document.getElementById('feedback_order_number').textContent = orderId; // You might want to get actual order number
+    
+    // Reset form
+    document.getElementById('feedbackForm').reset();
+    document.getElementById('rating').value = '';
+    document.getElementById('ratingText').textContent = 'Select rating';
+    document.getElementById('imagePreview').innerHTML = '';
+    
+    // Reset stars
+    document.querySelectorAll('#ratingStars .star i').forEach(star => {
+        star.className = 'far fa-star';
+    });
+    
+    document.getElementById('feedbackModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeFeedbackModal() {
+    document.getElementById('feedbackModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Star rating functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('#ratingStars .star');
+    const ratingInput = document.getElementById('rating');
+    const ratingText = document.getElementById('ratingText');
+    
+    const ratingLabels = {
+        1: 'Poor',
+        2: 'Fair',
+        3: 'Good',
+        4: 'Very Good',
+        5: 'Excellent'
+    };
+    
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.getAttribute('data-rating'));
+            ratingInput.value = rating;
+            ratingText.textContent = ratingLabels[rating] || 'Select rating';
+            
+            // Update stars display
+            stars.forEach((s, index) => {
+                const starIcon = s.querySelector('i');
+                if (index < rating) {
+                    starIcon.className = 'fas fa-star';
+                } else {
+                    starIcon.className = 'far fa-star';
+                }
+            });
+        });
+        
+        star.addEventListener('mouseenter', function() {
+            const rating = parseInt(this.getAttribute('data-rating'));
+            stars.forEach((s, index) => {
+                const starIcon = s.querySelector('i');
+                if (index < rating) {
+                    starIcon.className = 'fas fa-star';
+                } else {
+                    starIcon.className = 'far fa-star';
+                }
+            });
+        });
+        
+        star.addEventListener('mouseleave', function() {
+            const currentRating = parseInt(ratingInput.value) || 0;
+            stars.forEach((s, index) => {
+                const starIcon = s.querySelector('i');
+                if (index < currentRating) {
+                    starIcon.className = 'fas fa-star';
+                } else {
+                    starIcon.className = 'far fa-star';
+                }
+            });
+        });
+    });
+    
+    // Image preview for feedback
+    document.getElementById('feedback_images').addEventListener('change', function(e) {
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = '';
+        
+        const files = e.target.files;
+        const maxFiles = 4;
+        
+        if (files.length > maxFiles) {
+            alert(`You can only upload up to ${maxFiles} images.`);
+            this.value = '';
+            return;
+        }
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'preview-image';
+                    imgContainer.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <button type="button" class="remove-image" onclick="this.parentElement.remove()">×</button>
+                    `;
+                    preview.appendChild(imgContainer);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    });
+    
+    // Feedback form submission
+    document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        formData.append('submit_feedback', '1');
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        submitBtn.disabled = true;
+        
+        fetch('includes/feedback-handler.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                closeFeedbackModal();
+                // Refresh the feedback section
+                showSection('feedback');
+            } else {
+                showMessage(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error submitting feedback. Please try again.', 'error');
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+    
+    // Close modal when clicking outside
+    document.getElementById('feedbackModal').addEventListener('click', function(e) {
+        if (e.target === this) closeFeedbackModal();
+    });
+});
+
+// ORDER CONFIRMATION FUNCTION
+function confirmOrderReceived(orderId) {
+    if (confirm('Have you received this order and are satisfied with your items?')) {
+        const formData = new FormData();
+        formData.append('confirm_order_received', '1');
+        formData.append('order_id', orderId);
+
+        // Show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Confirming...';
+        button.disabled = true;
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Refresh the page to update the interface
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showMessage(data.message, 'error');
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }
+            } catch (e) {
+                // If it's not JSON, assume success
+                showMessage('Order confirmed as received! You can now leave feedback.', 'success');
+                setTimeout(() => location.reload(), 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error confirming order receipt', 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+}
+
+// IMAGE MODAL FUNCTIONS
+function openImageModal(imageSrc) {
+    document.getElementById('modalImage').src = imageSrc;
+    document.getElementById('imageModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Add to your existing DOMContentLoaded event listener
+document.addEventListener('DOMContentLoaded', function() {
+    // ... your existing code
+    
+    // Add image modal click outside handler
+    document.getElementById('imageModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeImageModal();
+    });
+});
