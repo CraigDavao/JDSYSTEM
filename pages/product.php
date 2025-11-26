@@ -347,6 +347,10 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && !empty($prod
 
   <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
+  <script>
+      const SITE_URL = "<?= SITE_URL ?>";
+  </script>
+  <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
   <script src="<?= SITE_URL; ?>js/color-selector.js?v=<?= time() ?>"></script>
 
   <!-- ✅ Cart action marking script -->
@@ -367,8 +371,6 @@ if (!empty($product['sale_price']) && $product['sale_price'] > 0 && !empty($prod
         });
     });
   </script>
-
-  <script src="<?= SITE_URL; ?>js/product.js?v=<?= time() ?>"></script>
 </body>
 </html>
 <?php ob_end_flush(); ?>

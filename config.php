@@ -5,7 +5,7 @@
 // define("DB_PASS", "");
 // define("DB_NAME", "jolly_database");
 
-define("SITE_URL", getenv('SITE_URL') ?: '/');
+define("SITE_URL", "https://jdsystem.onrender.com/");
 
 define("DB_HOST", "b3sl32ekxzydrb5wscjh-mysql.services.clever-cloud.com");
 define("DB_USER", "ujowc00747fduqvq");
