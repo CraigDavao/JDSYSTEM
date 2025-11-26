@@ -5,7 +5,11 @@
 // define("DB_PASS", "");
 // define("DB_NAME", "jolly_database");
 
-define("SITE_URL", getenv('SITE_URL') ?: '/');
+// config.php - FIXED FOR HOSTINGER
+// define("SITE_URL", "http://localhost/JDSystem/");
+
+// For Hostinger - use absolute URL
+define("SITE_URL", "https://jollydolly.shop/JDSystem/");
 
 define("DB_HOST", "srv1319.hstgr.io");
 define("DB_USER", "u251504662_group6");
